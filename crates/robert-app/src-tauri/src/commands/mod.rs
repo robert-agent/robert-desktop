@@ -1,6 +1,6 @@
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::BrowserDriver;
+use robert_webdriver::ChromeDriver;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
@@ -28,10 +28,10 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
         return Ok("Browser already running".to_string());
     }
 
-    emit_chrome_launching(&app, "Launching browser in sandboxed mode...").ok();
+    emit_chrome_launching(&app, "Launching browser...").ok();
 
-    // Launch in headless mode for Linux environment
-    match BrowserDriver::launch_headless().await {
+    // Launch with auto-detection (headless in CI, visible otherwise)
+    match ChromeDriver::launch_auto().await {
         Ok(driver) => {
             emit_chrome_launched(&app, "Browser launched successfully!").ok();
             emit_success(&app, "Chrome is ready for automation").ok();
