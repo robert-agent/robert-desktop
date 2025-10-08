@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 spider_chrome = { workspace = true }
+spider_chromiumoxide_fetcher = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
