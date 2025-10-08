@@ -12,7 +12,11 @@ pub struct ChromeDriver {
 /// Connection mode for Chrome browser
 pub enum ConnectionMode {
     /// Sandboxed mode - launches Chrome using system installation
-    Sandboxed { chrome_path: Option<String> },
+    Sandboxed {
+        chrome_path: Option<String>,
+        no_sandbox: bool,
+        headless: bool,
+    },
     /// Advanced mode - connects to existing Chrome on debug port
     DebugPort(u16),
 }
@@ -20,13 +24,50 @@ pub enum ConnectionMode {
 impl ChromeDriver {
     /// Launch Chrome in sandboxed mode (uses system Chrome)
     pub async fn launch_sandboxed() -> Result<Self> {
-        Self::new(ConnectionMode::Sandboxed { chrome_path: None }).await
+        Self::new(ConnectionMode::Sandboxed {
+            chrome_path: None,
+            no_sandbox: false,
+            headless: false,
+        })
+        .await
     }
 
     /// Launch Chrome in sandboxed mode with custom path
-    pub async fn launch_with_path(chrome_path: String) -> Result<Self> {
+    pub async fn launch_with_path(
+        chrome_path: String,
+        no_sandbox: bool,
+        headless: bool,
+    ) -> Result<Self> {
         Self::new(ConnectionMode::Sandboxed {
             chrome_path: Some(chrome_path),
+            no_sandbox,
+            headless,
+        })
+        .await
+    }
+
+    /// Launch Chrome with no-sandbox flag (Linux workaround for AppArmor restrictions)
+    pub async fn launch_no_sandbox() -> Result<Self> {
+        Self::new(ConnectionMode::Sandboxed {
+            chrome_path: None,
+            no_sandbox: true,
+            headless: false,
+        })
+        .await
+    }
+
+    /// Launch Chrome with auto-detection for CI environments
+    pub async fn launch_auto() -> Result<Self> {
+        let is_ci = std::env::var("CI").is_ok()
+            || std::env::var("GITHUB_ACTIONS").is_ok()
+            || std::env::var("GITLAB_CI").is_ok()
+            || std::env::var("JENKINS_HOME").is_ok()
+            || std::env::var("CIRCLECI").is_ok();
+
+        Self::new(ConnectionMode::Sandboxed {
+            chrome_path: None,
+            no_sandbox: is_ci, // CI environments typically need --no-sandbox
+            headless: is_ci,   // CI environments should run headless
         })
         .await
     }
@@ -39,9 +80,22 @@ impl ChromeDriver {
     /// Create new ChromeDriver with specified connection mode
     pub async fn new(mode: ConnectionMode) -> Result<Self> {
         let browser = match mode {
-            ConnectionMode::Sandboxed { chrome_path } => {
-                // Launch Chrome with visible UI
-                let mut config = BrowserConfig::builder().with_head();
+            ConnectionMode::Sandboxed {
+                chrome_path,
+                no_sandbox,
+                headless,
+            } => {
+                // Launch Chrome with visible UI or headless
+                let mut config = if headless {
+                    BrowserConfig::builder()
+                } else {
+                    BrowserConfig::builder().with_head()
+                };
+
+                // Add no-sandbox flag if requested (Linux AppArmor workaround)
+                if no_sandbox {
+                    config = config.arg("--no-sandbox");
+                }
 
                 // Use custom Chrome path if provided, otherwise try auto-download
                 if let Some(path) = chrome_path {
@@ -70,7 +124,8 @@ impl ChromeDriver {
                                  - Ubuntu/Debian: sudo apt install chromium-browser\n\
                                  - Fedora: sudo dnf install chromium\n\
                                  - macOS: brew install --cask google-chrome\n\
-                                 - Or specify path: --chrome-path /path/to/chrome",
+                                 - Or specify path: --chrome-path /path/to/chrome\n\
+                                 - Linux sandbox issue? Try: --no-sandbox",
                         e
                     ))
                 })?)
@@ -83,7 +138,8 @@ impl ChromeDriver {
                          - Ubuntu/Debian: sudo apt install chromium-browser\n\
                          - Fedora: sudo dnf install chromium\n\
                          - macOS: brew install --cask google-chrome\n\
-                         - Or specify path: --chrome-path /path/to/chrome",
+                         - Or specify path: --chrome-path /path/to/chrome\n\
+                         - Linux sandbox issue? Try: --no-sandbox",
                         e
                     ))
                 })?;

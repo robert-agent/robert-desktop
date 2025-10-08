@@ -1,5 +1,5 @@
 use clap::Parser;
-use robert_webdriver::ChromeDriver;
+use robert_webdriver::{ChromeDriver, ConnectionMode};
 
 #[derive(Parser)]
 #[command(name = "robert")]
@@ -26,6 +26,15 @@ struct Cli {
     /// CSS selector for specific element (optional)
     #[arg(short = 's', long)]
     selector: Option<String>,
+
+    /// Disable Chrome sandbox (required on some Linux systems with AppArmor restrictions)
+    /// WARNING: Reduces security. Only use if Chrome fails to launch.
+    #[arg(long)]
+    no_sandbox: bool,
+
+    /// Run Chrome in headless mode (no visible window)
+    #[arg(long)]
+    headless: bool,
 }
 
 #[tokio::main]
@@ -42,6 +51,21 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("Robert CLI v0.1.0");
     println!("================\n");
 
+    // Detect CI environment
+    let is_ci = std::env::var("CI").is_ok()
+        || std::env::var("GITHUB_ACTIONS").is_ok()
+        || std::env::var("GITLAB_CI").is_ok()
+        || std::env::var("JENKINS_HOME").is_ok()
+        || std::env::var("CIRCLECI").is_ok();
+
+    // Auto-enable no-sandbox and headless in CI environments
+    let no_sandbox = cli.no_sandbox || is_ci;
+    let headless = cli.headless || is_ci;
+
+    if is_ci {
+        println!("🤖 CI environment detected - using headless mode with --no-sandbox\n");
+    }
+
     // Connect to Chrome (sandboxed or debug port)
     let driver = if let Some(port) = cli.debug_port {
         println!("🔌 Connecting to Chrome debug port {}...", port);
@@ -57,17 +81,37 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(path) = cli.chrome_path {
         println!("🚀 Launching Chrome in sandboxed mode...");
         println!("   (Using Chrome at: {})\n", path);
-        ChromeDriver::launch_with_path(path).await.map_err(|e| {
-            format!(
-                "Failed to launch Chrome.\n\
+        if no_sandbox && !is_ci {
+            println!("⚠️  WARNING: Running with --no-sandbox (reduced security)\n");
+        }
+        if headless {
+            println!("👻 Running in headless mode (no visible window)\n");
+        }
+        ChromeDriver::launch_with_path(path, no_sandbox, headless)
+            .await
+            .map_err(|e| {
+                format!(
+                    "Failed to launch Chrome.\n\
                  Error: {}",
-                e
-            )
-        })?
+                    e
+                )
+            })?
     } else {
         println!("🚀 Launching Chrome in sandboxed mode...");
         println!("   (Using system Chrome - isolated session)\n");
-        ChromeDriver::launch_sandboxed().await.map_err(|e| {
+        if no_sandbox && !is_ci {
+            println!("⚠️  WARNING: Running with --no-sandbox (reduced security)\n");
+        }
+        if headless {
+            println!("👻 Running in headless mode (no visible window)\n");
+        }
+        ChromeDriver::new(ConnectionMode::Sandboxed {
+            chrome_path: None,
+            no_sandbox,
+            headless,
+        })
+        .await
+        .map_err(|e| {
             format!(
                 "Failed to launch Chrome.\n\
                  Error: {}",
