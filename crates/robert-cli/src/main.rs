@@ -14,6 +14,11 @@ struct Cli {
     #[arg(long)]
     debug_port: Option<u16>,
 
+    /// Path to Chrome/Chromium executable (optional)
+    /// Example: --chrome-path /usr/bin/chromium
+    #[arg(long)]
+    chrome_path: Option<String>,
+
     /// Output format: html or text
     #[arg(short = 'f', long, default_value = "html")]
     format: String,
@@ -49,13 +54,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 port, port, e
             )
         })?
+    } else if let Some(path) = cli.chrome_path {
+        println!("🚀 Launching Chrome in sandboxed mode...");
+        println!("   (Using Chrome at: {})\n", path);
+        ChromeDriver::launch_with_path(path).await.map_err(|e| {
+            format!(
+                "Failed to launch Chrome.\n\
+                 Error: {}",
+                e
+            )
+        })?
     } else {
         println!("🚀 Launching Chrome in sandboxed mode...");
         println!("   (Using system Chrome - isolated session)\n");
         ChromeDriver::launch_sandboxed().await.map_err(|e| {
             format!(
                 "Failed to launch Chrome.\n\
-                 Make sure Chrome or Chromium is installed on your system.\n\
                  Error: {}",
                 e
             )

@@ -1,194 +1,144 @@
-# robert-cli
+# Robert CLI - Browser Automation Tool
 
-Command-line interface for browser automation - Phase 0 prototype.
-
-## Overview
-
-A simple CLI tool that demonstrates browser automation capabilities using the `robert-webdriver` library. This tool connects to Chrome via chromedriver and can navigate to URLs and extract content.
+A command-line interface for browser automation using Chrome DevTools Protocol (CDP).
 
 ## Installation
 
-```bash
-# Build from workspace root
-cargo build --bin robert
+Requires Chrome or Chromium to be installed on your system.
 
-# Or run directly
-cargo run --bin robert -- <URL>
+### Install Chrome/Chromium
+
+**Ubuntu/Debian:**
+```bash
+sudo apt install chromium-browser
 ```
 
-## Prerequisites
-
-- Rust 1.70+
-- Chrome browser installed
-- chromedriver installed and running
-
-### Installing chromedriver
+**Fedora:**
+```bash
+sudo dnf install chromium
+```
 
 **macOS:**
 ```bash
-brew install chromedriver
+brew install --cask google-chrome
 ```
 
-**Linux:**
-```bash
-# Download from https://chromedriver.chromium.org/
-# Or use package manager (e.g., apt, yum)
-```
+**Or download from:** https://www.google.com/chrome/
 
 ## Usage
 
-### Start chromedriver
-
-First, start chromedriver in a separate terminal:
+### Basic Usage (Auto-detect Chrome)
 
 ```bash
-chromedriver --port=9515
-```
-
-### Basic Usage
-
-```bash
-# Navigate to a URL and get HTML
+# Navigate to a URL and print HTML
 cargo run --bin robert -- https://example.com
 
-# Get visible text only
+# Print visible text only
 cargo run --bin robert -- https://example.com --format text
 
-# Extract text from specific element
+# Extract specific element
 cargo run --bin robert -- https://example.com --selector "h1"
-
-# Use different port
-cargo run --bin robert -- https://example.com --port 9516
 ```
 
-## Command-Line Options
+### Custom Chrome Path
+
+If Chrome isn't auto-detected, specify the path:
+
+```bash
+cargo run --bin robert -- https://example.com --chrome-path /usr/bin/chromium
+```
+
+### Advanced Mode (Connect to Running Chrome)
+
+Connect to an existing Chrome instance with your profile:
+
+```bash
+# First, start Chrome with remote debugging
+google-chrome --remote-debugging-port=9222
+
+# Then connect to it
+cargo run --bin robert -- https://example.com --debug-port 9222
+```
+
+## Options
 
 ```
-Usage: robert [OPTIONS] <URL>
+robert <URL> [OPTIONS]
 
 Arguments:
   <URL>  URL to navigate to
 
 Options:
-  -p, --port <PORT>          Chromedriver port [default: 9515]
-  -f, --format <FORMAT>      Output format: html or text [default: html]
-  -s, --selector <SELECTOR>  CSS selector for specific element (optional)
-  -h, --help                 Print help
-  -V, --version              Print version
+  --debug-port <PORT>       Connect to existing Chrome debug port (advanced mode)
+  --chrome-path <PATH>      Path to Chrome/Chromium executable
+  -f, --format <FORMAT>     Output format: html or text [default: html]
+  -s, --selector <SELECTOR> CSS selector for specific element
+  -h, --help                Print help
+  -V, --version             Print version
 ```
+
+## Modes
+
+### 1. Sandboxed Mode (Default)
+- Uses system Chrome installation
+- Isolated session (no cookies/history)
+- Auto-detects Chrome location
+- Best for: Testing, automation, scripts
+
+### 2. Advanced Mode (--debug-port)
+- Connects to your running Chrome
+- Uses your real profile (logged-in accounts, cookies, etc.)
+- Requires Chrome started with `--remote-debugging-port`
+- Best for: Authenticated workflows, personal automation
+
+### 3. Custom Path (--chrome-path)
+- Specify exact Chrome/Chromium binary
+- Useful when multiple versions installed
+- Useful when Chrome not in standard location
 
 ## Examples
 
-### Get page HTML
 ```bash
-cargo run --bin robert -- https://example.com
+# Basic navigation
+robert https://github.com
+
+# Get page title area
+robert https://github.com --selector "title"
+
+# Use specific Chrome
+robert https://github.com --chrome-path /usr/bin/chromium
+
+# Connect to running Chrome (macOS)
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 &
+robert https://github.com --debug-port 9222
+
+# Get visible text only
+robert https://github.com --format text
 ```
 
-Output:
-```
-Robert CLI v0.1.0
-================
+## Troubleshooting
 
-🔌 Connecting to Chrome on port 9515...
-🌐 Navigating to https://example.com...
-✅ Page loaded: Example Domain
+**Error: "Chrome/Chromium not found"**
 
-<!doctype html>
-<html>
-...
-</html>
-```
+Solution:
+1. Install Chrome/Chromium (see Installation above)
+2. Or specify path: `--chrome-path /path/to/chrome`
+3. Or use advanced mode: `--debug-port 9222`
 
-### Get visible text
-```bash
-cargo run --bin robert -- https://example.com --format text
-```
+**Error: "Failed to connect to Chrome on port 9222"**
 
-Output:
-```
-Robert CLI v0.1.0
-================
+Solution:
+1. Make sure Chrome is running with: `chrome --remote-debugging-port=9222`
+2. Check no other process is using port 9222
+3. Try a different port number
 
-🔌 Connecting to Chrome on port 9515...
-🌐 Navigating to https://example.com...
-✅ Page loaded: Example Domain
+## Technology
 
-Example Domain
-This domain is for use in illustrative examples in documents...
-```
-
-### Extract specific element
-```bash
-cargo run --bin robert -- https://example.com --selector "h1"
-```
-
-Output:
-```
-Robert CLI v0.1.0
-================
-
-🔌 Connecting to Chrome on port 9515...
-🌐 Navigating to https://example.com...
-✅ Page loaded: Example Domain
-📍 Extracting content from: h1
-
-Example Domain
-```
-
-## Error Handling
-
-The CLI provides helpful error messages:
-
-### chromedriver not running
-```
-❌ Error: Failed to connect to Chrome. Is chromedriver running on port 9515?
-  Error: Connection refused
-```
-
-### Invalid URL
-```
-❌ Error: Failed to navigate to invalid-url:
-  Error: Invalid URL
-```
-
-### Element not found
-```
-❌ Error: Element not found: .non-existent-selector
-```
-
-## Architecture
-
-```
-robert-cli (main.rs)
-    │
-    ├─ Argument parsing (clap)
-    ├─ Error handling
-    └─ Uses robert-webdriver
-        │
-        ├─ ChromeDriver::connect()
-        ├─ navigate()
-        ├─ get_page_source()
-        ├─ get_page_text()
-        └─ get_element_text()
-```
-
-## Future Enhancements
-
-This CLI tool is a Phase 0 prototype. Future versions will include:
-
-- YAML script support
-- Multiple page automation
-- Screenshot capture
-- Form interaction
-- Wait conditions
-- Output to files
-
-The primary focus is shifting to the Tauri desktop application (`robert-app`) in Phase 1.
-
-## Contributing
-
-This is a prototype tool. See the main project README for contribution guidelines.
+- **Library:** spider_chrome (maintained chromiumoxide fork)
+- **Protocol:** Chrome DevTools Protocol (CDP)
+- **Runtime:** Tokio async
+- **Language:** Rust
 
 ## License
 
-TBD
+MIT OR Apache-2.0
