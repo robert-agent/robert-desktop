@@ -13,11 +13,13 @@ Robert is an open-source, local-first browser automation tool that brings automa
 - 🏢 **Herd/Monitoro** are centralized, proprietary, and require programming
 
 ### Our Solution
+- 🎤 **Voice-driven** - Talk through your automation, AI writes it for you
 - 👁️ **Visual feedback** - Watch browser automation happen in real-time
 - 🎮 **Full control** - Pause, abort, inspect state at any moment
-- 🏠 **Local-first** - Runs on your device, complete privacy
+- 🏠 **Local-first** - 100% on-device AI, zero data sent to cloud by default
+- 🔒 **Privacy protected** - Auto-obfuscates passwords/sensitive data if you opt for cloud AI
 - 🆓 **Open source** - Free, auditable, community-owned
-- 📝 **Simple YAML** - No programming required, just readable scripts
+- 📝 **Markdown scripts** - Human-readable format, not scary YAML or code
 - 🎨 **Eye-candy UI** - Beautiful interface that makes automation delightful
 
 ## Project Status
@@ -27,9 +29,11 @@ Robert is an open-source, local-first browser automation tool that brings automa
 
 ## What Robert Provides
 
+- **Talk, Don't Type** - Voice-driven agent creator writes scripts for you
 - **Watch It Work** - Real-time visual feedback as automation runs
-- **Local Execution** - Runs entirely on your device with optional cloud inference
-- **Simple Scripts** - YAML-based automation anyone can understand
+- **100% Local AI** - All inference runs on your device by default (zero cloud)
+- **Privacy First** - If you opt for cloud AI, we auto-obfuscate passwords & sensitive data
+- **Markdown Scripts** - Human-readable format anyone can understand
 - **Full Control** - Pause, abort, and inspect automation at any moment
 - **Content Capture** - Screenshots and text extraction
 - **Beautiful UI** - Eye-candy interface that builds confidence
@@ -87,7 +91,7 @@ robert/
 - 🔄 Chrome automation via CDP
 - 🔄 Real-time execution UI
 - 🔄 Screenshot and text capture
-- 🔄 YAML script format
+- 🔄 Voice-driven Markdown script creation
 - 🔄 Output management
 
 ### Version 1.5 (Months 3-4) - Linux & Advanced Features
@@ -102,32 +106,47 @@ robert/
 - 🔄 Visual script builder
 - 🔄 Cloud execution
 
-## Example: Future YAML Script
+## Example: Talk, Don't Type
 
-Here's what automation will look like in the full desktop app:
+Instead of writing code or YAML, just **talk to Robert**:
 
-```yaml
-name: "Monitor Competitor Prices"
-description: "Check competitor pricing every hour"
-output_dir: "./output/competitor_prices"
+**You:** "I want to check product prices on competitor.com"
 
-steps:
-  - action: navigate
-    url: "https://competitor.com/products"
+**Robert:** "Great! I'll help you create that. What do you want to do on the page?"
 
-  - action: screenshot
-    type: "full_page"
-    filename: "products_page.png"
+**You:** "Take a screenshot and extract all the prices"
 
-  - action: extract_text
-    selector: ".price"
-    output: "prices.txt"
+**Robert creates this for you:**
 
-  - action: wait
-    seconds: 2  # Watch it happen!
+```markdown
+---
+name: competitor-price-check
+description: Monitor competitor product prices
+---
+
+# Competitor Price Monitor
+
+Automatically check competitor.com for pricing changes.
+
+## Steps
+
+### 1. Navigate to products page
+Go to https://competitor.com/products
+- Wait for: page load complete
+
+### 2. Take screenshot
+Capture full page screenshot
+- Filename: products_page.png
+- Type: full-page
+
+### 3. Extract all prices
+Get text from price elements
+- Selector: .price
+- Save to: prices.txt
+- Get all matches: yes
 ```
 
-**No programming required.** Just describe what you want to happen, and Robert does it—while you watch.
+**No programming. No YAML. No syntax.** Just talk through what you want, Robert writes it in readable Markdown, and you watch it work.
 
 ## Quick Start (CLI Prototype)
 
@@ -171,11 +190,12 @@ cargo run --bin robert -- example.com --debug-port 9222
 4. **Browser closes** when done
 
 This is just the CLI prototype. The full desktop app will have:
+- 🎤 Voice-driven agent creator - Just talk, don't type
 - 🎨 Beautiful visual dashboard
 - ▶️ Play/pause/stop controls
 - 📊 Real-time step-by-step progress
 - 🖼️ Screenshot previews
-- 📝 YAML script editor
+- 📝 Markdown script viewer (editable if you want)
 
 **Running Tests:**
 ```bash
@@ -217,9 +237,10 @@ Implementation begins after Phase 0 validation.
 
 ### Next Steps:
 1. 🔄 Begin Phase 1: Tauri desktop app
-2. 🔄 Implement YAML script parser
-3. 🔄 Build execution status UI
-4. 🔄 Add screenshot capture functionality
+2. 🔄 Implement voice-driven agent creator
+3. 🔄 Implement Markdown script parser
+4. 🔄 Build execution status UI with real-time visual feedback
+5. 🔄 Add screenshot capture functionality
 
 ### Phase 0 Summary:
 - **Workspace**: Cargo multi-crate workspace with shared dependencies
@@ -234,11 +255,13 @@ Implementation begins after Phase 0 validation.
 **Automation should be for everyone, not just developers.**
 
 We believe:
+- **Voice beats typing** - Talk through your automation naturally
 - **Visual feedback builds confidence** - See it work, trust it works
-- **Local-first protects privacy** - Your device, your data
-- **Open source ensures freedom** - No vendor lock-in, ever
+- **Local-first protects privacy** - 100% on-device AI, your data never leaves
+- **Privacy by design** - Auto-obfuscation if you choose cloud AI
+- **Open source ensures freedom** - No vendor lock-in, auditable code
 - **Beautiful UI matters** - Eye-candy makes automation delightful
-- **Simple > complex** - YAML over programming languages
+- **Readable > code** - Markdown over YAML over programming
 - **Control > convenience** - Pause/abort beats fire-and-forget
 
 ## Inspiration

@@ -53,7 +53,8 @@ We believe automation should be:
 - ❌ Charge for what should be free
 
 **Robert's differentiators:**
-- ✅ **No programming required** - Visual, YAML-based scripting
+- ✅ **Voice-driven creation** - Talk through your automation, we write it for you
+- ✅ **Markdown scripts** - Readable format like Claude agents, not scary YAML
 - ✅ **Local-first execution** - Runs on your device, your control
 - ✅ **Open source** - Free, auditable, community-owned
 - ✅ **Optional cloud** - Send inference to cloud when you choose
@@ -79,7 +80,7 @@ We believe automation should be:
 - Visual learners who need to see automation work
 - Want control and transparency (not black-box AI)
 - Value privacy and local execution
-- Willing to learn simple YAML, not programming languages
+- Can talk through what they want, no need to learn syntax
 - Need immediate feedback and error visibility
 
 ### Secondary Users - "Power Users"
@@ -99,11 +100,11 @@ We believe automation should be:
 ## Goals
 
 ### Primary Goals (v1.0) - "Watch It Work"
-1. ✅ **Visual automation everyone can understand** - No programming required
-2. ✅ **Real-time visual feedback** - Watch browser automation happen with eye-candy UI
-3. ✅ **Local-first execution** - Runs on your device, complete privacy
-4. ✅ **Full control** - Pause, abort, inspect state at any moment
-5. ✅ **Simple YAML scripts** - Readable by non-programmers, powerful for experts
+1. ✅ **Voice-driven agent creator** - Talk through your automation, AI writes it
+2. ✅ **Markdown scripts** - Human-readable format (like Claude agents), not code
+3. ✅ **Real-time visual feedback** - Watch browser automation happen with eye-candy UI
+4. ✅ **Local-first execution** - Runs on your device, complete privacy
+5. ✅ **Full control** - Pause, abort, inspect state at any moment
 6. ✅ **Beautiful UI** - Eye-candy that makes automation delightful
 7. ✅ **Open source** - Free, auditable, community-owned
 
@@ -115,7 +116,7 @@ We believe automation should be:
 5. ✅ **User-friendly errors** - Learn from failures with clear guidance
 
 ### Future Goals (Roadmap)
-1. 🔄 **AI-assisted script generation** - Natural language to YAML (optional cloud inference)
+1. 🔄 **Voice-driven script creation** - Talk naturally, AI writes Markdown (local-first, optional cloud)
 2. 🔄 **Visual script builder** - Drag-and-drop for non-technical users
 3. 🔄 **Record & replay** - Watch once, automate forever
 4. 🔄 **Community script library** - Share and discover automations
@@ -135,7 +136,7 @@ We believe automation should be:
 
 #### User Interface
 - ✅ **Tauri-based desktop app** with Svelte frontend
-- ✅ **Script editor** with YAML syntax highlighting
+- ✅ **Script editor** with Markdown syntax highlighting
 - ✅ **Real-time execution dashboard**
 - ✅ **Live step progress** and status indicators
 - ✅ **Visual output browser** (screenshots, text files)
@@ -143,7 +144,7 @@ We believe automation should be:
 - ✅ **Native macOS integration** (menus, notifications)
 
 #### Automation Features
-- ✅ **YAML script format**
+- ✅ **Markdown script format** (inspired by Claude agents)
 - ✅ **Basic navigation** (goto, back, forward, refresh)
 - ✅ **Element interactions** (click, type, scroll)
 - ✅ **Wait conditions** (element, timeout, page load)
@@ -191,12 +192,12 @@ We believe automation should be:
 - **FR1.6**: Persist window size and position
 
 #### FR2: Script Management
-- **FR2.1**: Create new YAML scripts in editor
+- **FR2.1**: Create new Markdown scripts via voice or editor
 - **FR2.2**: Load scripts from file picker
 - **FR2.3**: Save scripts to local filesystem
 - **FR2.4**: Validate script syntax with visual feedback
 - **FR2.5**: Provide script templates and examples
-- **FR2.6**: Syntax highlighting for YAML
+- **FR2.6**: Syntax highlighting for Markdown
 - **FR2.7**: Auto-completion for action types
 
 #### FR3: Browser Control
@@ -308,11 +309,14 @@ We believe automation should be:
 - **NFR4.4**: Screen resolutions from 1280x800 to 5K
 
 #### NFR5: Security & Privacy
-- **NFR5.1**: No telemetry or data collection (opt-in only)
-- **NFR5.2**: Local-only execution (no cloud required)
-- **NFR5.3**: Secure storage of sensitive data (keychain integration)
-- **NFR5.4**: Sandboxed browser contexts
-- **NFR5.5**: No credential harvesting or malicious use
+- **NFR5.1**: Local-first inference (100% on-device by default)
+- **NFR5.2**: No telemetry or data collection (opt-in only)
+- **NFR5.3**: Optional cloud inference with automatic data obfuscation
+- **NFR5.4**: Multi-layer protection (text + image obfuscation)
+- **NFR5.5**: Secure storage of sensitive data (macOS Keychain integration)
+- **NFR5.6**: Sandboxed browser contexts
+- **NFR5.7**: Audit logging for cloud data transmission
+- **NFR5.8**: No credential harvesting or malicious use
 
 #### NFR6: Maintainability
 - **NFR6.1**: Modular architecture
@@ -497,7 +501,7 @@ Open Settings → Adjust Preferences → Save → Settings Applied
 **So that** everyone can run the same automation
 
 **Acceptance Criteria:**
-- Export script as YAML file
+- Export script as Markdown file
 - Include dependencies/requirements
 - Add comments/documentation
 - Share via file, email, or repo
@@ -510,57 +514,54 @@ Create Script → Add Documentation → Export → Share File → Teammate Impor
 
 ## Script Format Specification
 
-### YAML Structure
+**Note:** See [SCRIPT_FORMAT.md](SCRIPT_FORMAT.md) for full specification. Robert uses Markdown scripts inspired by Claude agents.
 
-```yaml
-# Script metadata
-name: "Example Automation"
-version: "1.0.0"
-description: "Demonstrates basic navigation and capture"
-author: "Your Name"
-output_dir: "./output/example"
+### Example Markdown Structure
 
-# Browser configuration
-browser:
-  type: "chrome"
-  window_size: [1280, 1024]
-  headless: false  # Always false for v1.0 desktop
+```markdown
+---
+name: example-automation
+version: 1.0.0
+description: Demonstrates basic navigation and capture
+author: Your Name
+---
 
-# Global settings
-settings:
-  default_timeout: 30000  # milliseconds
-  screenshot_format: "png"
-  on_error: "stop"  # stop | continue | retry
+# Example Automation
 
-# Automation steps
-steps:
-  - action: navigate
-    url: "https://example.com"
-    wait_for: "dom_content_loaded"
+This automation demonstrates basic web navigation and content capture.
 
-  - action: wait
-    condition: "element"
-    selector: "h1"
-    timeout: 5000
+## Steps
 
-  - action: screenshot
-    type: "full_page"
-    filename: "homepage.png"
+### 1. Navigate to website
+Go to https://example.com and wait for page to load
 
-  - action: click
-    selector: "button#cta"
-    wait_after: 1000
+### 2. Wait for heading
+Wait until the main heading is visible
+- Selector: h1
+- Timeout: 5 seconds
 
-  - action: type
-    selector: "input[name='email']"
-    text: "user@example.com"
-    clear_first: true
+### 3. Take screenshot
+Capture full page screenshot
+- Filename: homepage.png
+- Type: full-page
 
-  - action: extract_text
-    selector: ".results"
-    output: "results.txt"
+### 4. Click call-to-action button
+Click the CTA button
+- Selector: button#cta
+- Wait after: 1 second
 
-  - action: scroll
+### 5. Enter email
+Type email address into the form
+- Selector: input[name='email']
+- Text: user@example.com
+- Clear first: yes
+
+### 6. Extract results
+Get text from results section
+- Selector: .results
+- Save to: results.txt
+
+### 7. Scroll down
     direction: "down"
     amount: 500
 
@@ -696,6 +697,111 @@ output/
 }
 ```
 
+## Safety & Privacy Features
+
+### Local-First Inference
+
+**Default: 100% Local Execution**
+- All AI inference runs on-device (voice-to-script, planning, suggestions)
+- Zero data sent to cloud by default
+- Complete privacy and offline capability
+- Uses Mac's Neural Engine when available
+- Fast, efficient quantized models
+
+**Benefits:**
+- Complete privacy - your automation workflows never leave your device
+- No API keys required
+- No usage tracking or data retention
+- Works offline
+- Zero ongoing costs
+
+### Optional Cloud Inference
+
+**Advanced Feature (Opt-In Only):**
+- Users can choose to use cloud AI (GPT-4, Claude, etc.) for more powerful models
+- Clearly opt-in with informed consent
+- Never required - local inference always available
+
+**When Enabled: Automatic Safety**
+
+### Multi-Layer Data Protection
+
+**1. Text Obfuscation**
+- Automatic detection and redaction of sensitive data:
+  - Passwords and API keys
+  - Credit card numbers and CVV codes
+  - Social Security Numbers (SSN)
+  - Personal identifiable information (PII)
+  - Private keys and credentials
+- Pattern matching with context awareness
+- Tokenization (sensitive data stored locally, tokens sent to cloud)
+- Original data never leaves your device
+
+**Example:**
+```
+Original: "Login with password SuperSecret123"
+Sent to cloud: "Login with password [PASSWORD_REDACTED_8CHARS]"
+Cloud response: "Fill input#password with [PASSWORD_REDACTED_8CHARS]"
+Local execution: Robert replaces token with actual password
+```
+
+**2. Image Obfuscation**
+- Screenshots and page captures are scanned before cloud transmission
+- Computer vision detects sensitive visual content:
+  - Password fields (visible or masked)
+  - Credit card forms
+  - Personal information in documents
+  - Private messages or emails
+- Automatic blurring or pixelation of sensitive regions
+- OCR + pattern matching for text in images
+
+**Example:**
+```
+Screenshot contains login form:
+- Email field: "john@example.com" → Blurred
+- Password field: "••••••••" → Blurred region
+- Only safe layout information sent to cloud
+```
+
+**3. User Controls**
+- Sensitivity levels (Maximum/Balanced/Minimal)
+- Manual review before sending to cloud
+- Per-automation opt-in/out
+- Audit log of what was sent where
+
+**4. Encryption**
+- Sensitive data encrypted in macOS Keychain
+- TLS 1.3 for cloud API calls
+- Certificate pinning
+- Hardware-backed keys (Secure Enclave)
+
+### Privacy Guarantees
+
+**What We Never Do:**
+- ❌ Send data to cloud by default
+- ❌ Store sensitive data long-term
+- ❌ Log passwords or API keys
+- ❌ Share data with third parties
+- ❌ Train AI models on your data
+- ❌ Track usage without consent
+
+**What We Always Do:**
+- ✅ Local inference by default
+- ✅ Obfuscate before any cloud transmission
+- ✅ Encrypt sensitive data
+- ✅ Give users full control
+- ✅ Maintain audit logs (local only)
+- ✅ Open source for auditability
+
+### Compliance
+- GDPR compliant (data minimization, user consent)
+- CCPA compliant (consumer rights, opt-out)
+- SOC 2 principles (security, privacy, audit)
+
+**See [SAFETY_PRIVACY.md](SAFETY_PRIVACY.md) for complete technical details.**
+
+---
+
 ## Success Metrics
 
 ### Adoption Metrics (3 months post-launch)
@@ -714,10 +820,16 @@ output/
 - <24 hour average support response time
 - 70%+ retention (monthly active users)
 
+### Privacy Metrics
+- 95%+ users comfortable with privacy approach
+- <1% opt-in to cloud inference initially (grows with trust)
+- Zero data breaches or privacy incidents
+
 ### Technical Metrics
 - 99% uptime (local execution reliability)
 - <100MB memory footprint (app only), <1.5GB with browser
 - <50ms UI latency
+- <1 second local inference time
 
 ## Risks and Mitigations
 
@@ -733,42 +845,139 @@ output/
 | **User expectations for unsupported features** | Low | High | Clear documentation of scope, roadmap visibility |
 | **Competition from established tools** | Medium | High | Focus on UX, macOS-native feel, ease of use |
 
-## Roadmap
+## Go-to-Market Strategy: The Tesla Approach
 
-### Version 1.0 (Weeks 1-7) - **macOS Desktop App**
-- ✅ Tauri desktop application
-- ✅ Chrome automation via thirtyfour
-- ✅ Real-time execution UI
+### Philosophy: Start Premium, Signal Quality
+
+Like Tesla started with the Roadster for affluent early adopters, Robert will launch **exclusively for macOS**—targeting discerning, moneyed users who value quality and design. When they adopt and advocate, it signals status and utility to the broader market.
+
+### Why macOS First?
+
+**Strategic Advantages:**
+1. **Discerning audience** - Mac users expect polished, native experiences and spot poor UX immediately
+2. **Affluent market** - Higher disposable income for productivity tools, willing to pay for quality
+3. **Status signaling** - Mac adoption creates aspirational appeal for Windows/Linux users (FOMO effect)
+4. **Quality feedback** - Mac users provide thoughtful, detailed feedback that refines the product
+5. **Network effects** - Mac users are vocal on Twitter, Product Hunt, Hacker News—they influence their networks
+
+**Technical Advantages:**
+- macOS provides excellent native frameworks (Tauri works beautifully)
+- Consistent platform reduces support burden and testing complexity
+- High-quality screenshots and demos look professional
+- Single platform focus = better UX and polish
+
+### The Playbook
+
+**Phase 0: Foundation (Q4 2025)**
+- ✅ CLI prototype proves technology works
+- 🔄 Beautiful macOS native app in development
+- 🔄 Focus on perfect UX and eye-candy UI
+
+**Phase 1: Premium Launch (Q1 2026) - "The Roadster"**
+- **Target:** macOS power users, designers, product managers, entrepreneurs
+- **Distribution:** Product Hunt, Hacker News, Twitter, Mac communities
+- **Messaging:** "Automation for the discerning Mac user"
+- **Goal:** 1,000 passionate early adopters who love and advocate
+
+**Phase 2: Refinement (Q2-Q3 2026) - "Listen & Polish"**
+- Gather feedback from Mac community
+- Refine UI based on real usage patterns
+- Build reputation for quality and responsiveness
+- **Goal:** 5,000+ MAU, 4.5+ star rating, featured in Mac blogs
+
+**Phase 3: Expansion (Q4 2026) - "The Model S"**
+- Windows desktop app (if demand warrants)
+- Linux headless mode for developers
+- Enterprise features for teams
+- **Goal:** 20,000+ users across platforms
+
+**Phase 4: Mass Market (2027) - "The Model 3"**
+- Web version (if feasible)
+- Mobile companion apps
+- Community marketplace
+- **Goal:** 100,000+ users, established brand
+
+### Pricing Strategy (Premium Positioning)
+
+**Free Tier (Open Source):**
+- Full core functionality
+- Local execution
+- Community scripts
+- No time limits
+
+**Pro Tier ($9.99/month or $99/year):**
+- Cloud sync for scripts
+- Priority support
+- Advanced features (scheduled runs, team sharing)
+- Early access to new features
+
+**Rationale:**
+- Mac users are willing to pay for quality
+- Premium price signals premium quality and sustainable development
+- But open source core ensures freedom, trust, and community ownership
+
+### Success Metrics
+
+**Phase 1 (First 3 months):**
+- 1,000 active users
+- 100+ GitHub stars
+- 4.5+ star average rating
+- Featured on Product Hunt top 5
+- Mentioned by 3+ Mac influencers
+
+**Phase 2 (Months 4-9):**
+- 5,000 active users
+- 500+ GitHub stars
+- Featured in Mac productivity articles
+- 100+ community scripts
+- 50+ Pro subscribers
+
+### Why This Works
+
+1. **Quality Bar** - Mac users will immediately spot poor UX. Meeting their standards means the product is truly great.
+2. **Feedback Quality** - Mac users provide thoughtful feedback that refines the product before wider release.
+3. **Social Proof** - When Mac users advocate, it creates FOMO for Windows/Linux users, building demand.
+4. **Premium Association** - Starting on Mac creates premium brand perception, even though it's free/open source.
+5. **Sustainable Growth** - Better to have 1,000 passionate Mac users than 10,000 lukewarm users. Passion drives word-of-mouth.
+
+## Product Roadmap
+
+### Version 1.0 (Q1 2026) - **macOS Desktop App**
+- ✅ Native Tauri desktop application
+- ✅ Chrome automation via CDP
+- ✅ Beautiful, eye-candy UI designed for Mac
+- ✅ Real-time execution with visual feedback
 - ✅ Screenshot and text capture
-- ✅ YAML script format
-- ✅ Output management
+- ✅ Voice-driven Markdown script creation
+- ✅ Output management with visual browser
 
-### Version 1.5 (Month 3-4) - **Linux Headless**
-- 🔄 Linux CLI binary
-- 🔄 Headless Chrome support
+### Version 1.5 (Q2-Q3 2026) - **Polish & Refine**
+- 🔄 Community script library
+- 🔄 Template system for common automations
+- 🔄 Enhanced visual feedback and animations
+- 🔄 Performance optimizations
+- 🔄 Mac-specific integrations (Shortcuts, Automator)
+
+### Version 2.0 (Q4 2026) - **Cross-Platform Expansion**
+- 🔄 Windows desktop app (if demand warrants)
+- 🔄 Linux headless mode for developers
+- 🔄 Enterprise features (team sharing, SSO)
 - 🔄 Docker container
-- 🔄 REST API for remote control
-- 🔄 Job queue and scheduler
+- 🔄 REST API
 
-### Version 2.0 (Month 6-8) - **Multi-Browser**
-- 🔄 Firefox support (geckodriver)
-- 🔄 Edge support (msedgedriver)
-- 🔄 Safari support (macOS only)
-- 🔄 Windows desktop app
-- 🔄 Multi-tab/window automation
-
-### Version 2.5 (Month 9-10) - **Visual Builder**
+### Version 2.5 (Q1 2027) - **Visual Builder**
 - 🔄 Drag-and-drop script builder
-- 🔄 Record browser interactions
+- 🔄 Record browser interactions (watch once, automate forever)
 - 🔄 Visual selector picker
 - 🔄 Flow diagram view
 
-### Version 3.0 (Month 12+) - **Cloud & Collaboration**
-- 🔄 Cloud execution platform
+### Version 3.0 (Q2 2027+) - **AI & Collaboration**
+- ✅ Voice-driven script creation (in v1.0)
+- 🔄 Advanced AI features (error recovery, optimization suggestions)
 - 🔄 Team workspaces
-- 🔄 Script sharing and marketplace
-- 🔄 Scheduled runs
-- 🔄 Advanced reporting and analytics
+- 🔄 Community script marketplace
+- 🔄 Scheduled runs and automation
+- 🔄 Multi-browser support (Firefox, Safari, Edge)
 
 ## Competitive Analysis
 
@@ -778,12 +987,12 @@ output/
 |---------|-------------------|------------------|-------------------|-------------------|-------------------|
 | **Target User** | Everyone | API-literate users | Programmers | General users | Programmers |
 | **Visual Feedback** | ✅ Real-time browser | ❌ Log-based | ❌ None | ❌ None | ✅ Real-time |
-| **Learning Curve** | ⭐⭐ YAML scripts | ⭐⭐⭐⭐ API knowledge | ⭐⭐⭐⭐⭐ Programming | ⭐ Natural language | ⭐⭐⭐⭐ Test runners |
+| **Learning Curve** | ⭐ Voice-driven | ⭐⭐⭐⭐ API knowledge | ⭐⭐⭐⭐⭐ Programming | ⭐ Natural language | ⭐⭐⭐⭐ Test runners |
 | **Control** | ✅ Pause/abort/inspect | ❌ Fire & forget | ❌ Black box | ❌ Black box | ✅ Pause/abort |
 | **Local Execution** | ✅ Your device | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only |
 | **Privacy** | ✅ Complete | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud |
 | **Open Source** | ✅ Free & auditable | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
-| **Programming Required** | ❌ YAML only | ⚠️ API knowledge | ✅ Yes | ❌ No | ✅ Yes |
+| **Programming Required** | ❌ Talk only | ⚠️ API knowledge | ✅ Yes | ❌ No | ✅ Yes |
 | **Eye-candy UI** | ✅ Beautiful native | ❌ Functional | ❌ Chat interface | ❌ Chat interface | ✅ Modern web |
 | **Cost** | 🆓 Free | 💰 Subscription | 💰 Subscription | 💰 Subscription | 💰 Subscription |
 
@@ -794,7 +1003,7 @@ output/
 | **UI Quality** | ⭐⭐⭐⭐⭐ Native app | ⭐⭐⭐ Extension | ⭐⭐ CLI | ⭐⭐⭐ DevTools |
 | **Target User** | Non-programmers | QA Engineers | Developers | Developers |
 | **Real-time Status** | ✅ Visual dashboard | ⚠️ Basic logs | ❌ Console only | ❌ Console only |
-| **Script Format** | YAML (simple) | Selenium format | JavaScript/TS | JavaScript |
+| **Script Format** | Markdown (readable) | Selenium format | JavaScript/TS | JavaScript |
 | **Ease of Use** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
 | **Programming** | ❌ Not required | ⚠️ Some scripting | ✅ Required | ✅ Required |
 | **Output Management** | ✅ Visual browser | ❌ Manual | ❌ Manual | ❌ Manual |
@@ -807,7 +1016,7 @@ output/
 4. 🏠 **Local-first** - Your device, your data, your privacy
 5. 🆓 **Open & free** - No vendor lock-in, community-owned
 6. 🎨 **Eye-candy UI** - Beautiful interface makes automation delightful
-7. 📝 **Simple YAML** - Readable by humans, powerful for automation
+7. 🎤 **Voice-driven** - Talk through automation, AI writes Markdown
 
 ## Technical Architecture Overview
 
@@ -949,7 +1158,7 @@ robert google.com --use-profile
 - **Browser Automation**: chromiumoxide (Chrome DevTools Protocol)
 - **Chrome Management**: System Chrome (auto-download)
 - **Async Runtime**: tokio
-- **Script Format**: YAML (serde_yaml)
+- **Script Format**: Markdown with YAML frontmatter (pulldown-cmark + serde_yaml)
 - **Build System**: Cargo + Vite
 
 ### Reference Links

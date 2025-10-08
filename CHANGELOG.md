@@ -1,5 +1,27 @@
 # Changelog
 
+## 2025-10-08 - Product Vision Update & Phase 0 Complete
+
+### Major Product Vision Changes
+- **New Positioning**: "Automation for Everyone" - targeting non-programmers
+- **Voice-Driven Creation**: Users talk through automation, AI writes Markdown scripts
+- **Markdown Scripts**: Replaced YAML with human-readable Markdown format (inspired by Claude agents)
+- **Local-First AI**: 100% on-device inference by default, optional cloud with auto-obfuscation
+- **Privacy Protection**: Multi-layer data obfuscation (text + images) before any cloud transmission
+- **GTM Strategy**: Tesla approach - launch on macOS for discerning users first
+
+### Added
+- **COMPETITION.md** - Comprehensive competitive analysis with Tesla GTM strategy
+- **SCRIPT_FORMAT.md** - Markdown script specification with voice creation examples
+- **SAFETY_PRIVACY.md** - Local-first AI and data obfuscation architecture
+
+### Phase 0 Complete ✅
+- **Chrome DevTools Protocol (CDP)** via spider_chrome
+- **Auto-download Chrome** - Zero manual setup required (~150MB, cached)
+- **Headless mode** and CI/CD support
+- **E2E tests** with visible window (5 second delay) and CI mode
+- **CLI tool** with protocol-optional URLs
+
 ## 2025-10-08 - Documentation Consolidation
 
 ### Added
@@ -41,9 +63,9 @@
 
 ## Project Status
 
-**Phase**: Phase 0 - CLI Prototype (Planning Complete, Ready for Implementation)
+**Phase**: Phase 0 Complete ✅ → Phase 1 Starting
 
-**Next Action**: Begin Phase 0 implementation following PHASE_0_TASKS.md
+**Next Action**: Begin Phase 1 - Tauri desktop app with voice-driven Markdown script creation
 
 ---
 
@@ -51,46 +73,52 @@
 
 ```
 robert/
-├── PRD.md                    # Product Requirements (current)
-├── IMPLEMENTATION_PLAN.md    # Full roadmap (current)
-├── PHASE_0_TASKS.md          # CLI prototype tasks (new)
-├── CHANGELOG.md              # This file (new)
-├── README.md                 # Project overview (updated)
+├── PRD.md                    # Product Requirements
+├── IMPLEMENTATION_PLAN.md    # Full roadmap
+├── COMPETITION.md            # Competitive analysis & GTM strategy
+├── SCRIPT_FORMAT.md          # Markdown script specification
+├── SAFETY_PRIVACY.md         # Privacy & obfuscation architecture
+├── PHASE_0_TASKS.md          # CLI prototype tasks (reference)
+├── CHANGELOG.md              # This file
+├── README.md                 # Project overview
 ├── archive/                  # Deprecated docs
-│   ├── browser-automation-prd.md
-│   ├── browser-automation-implementation-plan.md
-│   └── consistency-review.md
-└── crates/                   # To be created in Phase 0
-    ├── robert-webdriver/
-    ├── robert-cli/
-    └── robert-app/
+└── crates/                   # Phase 0 complete ✅
+    ├── robert-webdriver/     # Core automation library (CDP)
+    ├── robert-cli/           # CLI tool
+    └── robert-app/           # Tauri app (placeholder)
 ```
 
 ---
 
 ## Technology Stack (Confirmed)
 
-- **Desktop Framework**: Tauri 2.0
+- **Desktop Framework**: Tauri 2.0 (planned for Phase 1)
 - **Frontend**: Svelte + TypeScript + Tailwind CSS
 - **Backend**: Rust 1.70+
-- **Browser Automation**: thirtyfour (WebDriver)
-- **Target Platform**: macOS first, Linux headless later
+- **Browser Automation**: spider_chrome (Chrome DevTools Protocol)
+- **Chrome Management**: Auto-download via spider_chromiumoxide_fetcher
+- **Script Format**: Markdown with YAML frontmatter (inspired by Claude agents)
+- **AI Integration**: Local-first inference + optional cloud
+- **Target Platform**: macOS first (Tesla GTM strategy)
 
 ---
 
 ## Key Decisions
 
-1. **Svelte over React**: Smaller bundle size, better performance, less boilerplate
-2. **Phase 0 Prototype**: Validate approach before full desktop app
-3. **Multi-crate Workspace**: Separation of concerns, reusable library
-4. **thirtyfour over chromiumoxide**: Multi-browser support for future
-5. **CodeMirror over Monaco**: Lighter weight for Svelte integration
+1. **Voice-Driven over Manual Coding**: Talk through automation, AI writes scripts
+2. **Markdown over YAML**: Human-readable format, no scary syntax
+3. **Local-First AI**: 100% on-device by default, privacy-first approach
+4. **CDP over WebDriver**: Direct Chrome control via spider_chrome
+5. **Auto-download Chrome**: Zero manual setup required
+6. **macOS First (Tesla GTM)**: Target discerning users, signal quality
+7. **Svelte over React**: Smaller bundle size, better performance
+8. **Multi-crate Workspace**: Separation of concerns, reusable library
 
 ---
 
 ## Timeline
 
-- **Phase 0**: 2-3 days (CLI prototype)
-- **Phase 1-7**: 7 weeks (macOS desktop app)
-- **v1.5**: Months 3-4 (Linux headless)
-- **v2.0+**: Months 6+ (Multi-browser, Windows, etc.)
+- **Phase 0**: Complete ✅ (CLI prototype with CDP and auto-download)
+- **Phase 1-7**: 7 weeks (macOS desktop app with voice-driven creation)
+- **v1.5**: Months 3-4 (Linux headless + Docker)
+- **v2.0+**: Months 6+ (Multi-browser, Windows, visual builder)
