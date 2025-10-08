@@ -1,3 +1,4 @@
+// spider_chrome re-exports chromiumoxide API
 use crate::error::{BrowserError, Result};
 use chromiumoxide::browser::{Browser, BrowserConfig};
 use futures::StreamExt;
@@ -166,7 +167,7 @@ impl ChromeDriver {
     }
 
     /// Close the browser connection
-    pub async fn close(mut self) -> Result<()> {
+    pub async fn close(self) -> Result<()> {
         self.browser
             .close()
             .await
