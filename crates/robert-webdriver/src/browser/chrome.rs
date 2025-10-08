@@ -1,7 +1,9 @@
 // spider_chrome re-exports chromiumoxide API
 use crate::error::{BrowserError, Result};
 use chromiumoxide::browser::{Browser, BrowserConfig};
+use chromiumoxide_fetcher::{BrowserFetcher, BrowserFetcherOptions};
 use futures::StreamExt;
+use std::path::{Path, PathBuf};
 
 pub struct ChromeDriver {
     browser: Browser,
@@ -41,44 +43,54 @@ impl ChromeDriver {
                 // Launch Chrome with visible UI
                 let mut config = BrowserConfig::builder().with_head();
 
-                // Use custom Chrome path if provided
+                // Use custom Chrome path if provided, otherwise try auto-download
                 if let Some(path) = chrome_path {
                     config = config.chrome_executable(path);
+                } else {
+                    // Try to auto-download Chrome if not found
+                    match Self::ensure_chrome_installed().await {
+                        Ok(path) => {
+                            config = config.chrome_executable(path);
+                        }
+                        Err(e) => {
+                            // If auto-download fails, let chromiumoxide try to find system Chrome
+                            eprintln!(
+                                "Note: Auto-download failed ({}), trying system Chrome...",
+                                e
+                            );
+                        }
+                    }
                 }
 
-                let (browser, mut handler) = Browser::launch(
-                    config
-                        .build()
-                        .map_err(|e| {
-                            BrowserError::LaunchFailed(format!(
-                                "{}. \n\n\
-                                 Chrome/Chromium not found. Please install:\n\
+                let (browser, mut handler) = Browser::launch(config.build().map_err(|e| {
+                    BrowserError::LaunchFailed(format!(
+                        "{}. \n\n\
+                                 Chrome not found. You can:\n\
+                                 - Install Chrome: https://www.google.com/chrome/\n\
                                  - Ubuntu/Debian: sudo apt install chromium-browser\n\
                                  - Fedora: sudo dnf install chromium\n\
                                  - macOS: brew install --cask google-chrome\n\
-                                 - Or specify path: --chrome-path /path/to/chrome\n\
-                                 - Or download from: https://www.google.com/chrome/",
-                                e
-                            ))
-                        })?,
-                )
+                                 - Or specify path: --chrome-path /path/to/chrome",
+                        e
+                    ))
+                })?)
                 .await
                 .map_err(|e| {
                     BrowserError::LaunchFailed(format!(
                         "{}. \n\n\
-                         Chrome/Chromium not found. Please install:\n\
+                         Chrome not found. You can:\n\
+                         - Install Chrome: https://www.google.com/chrome/\n\
                          - Ubuntu/Debian: sudo apt install chromium-browser\n\
                          - Fedora: sudo dnf install chromium\n\
                          - macOS: brew install --cask google-chrome\n\
-                         - Or specify path: --chrome-path /path/to/chrome\n\
-                         - Or download from: https://www.google.com/chrome/",
+                         - Or specify path: --chrome-path /path/to/chrome",
                         e
                     ))
                 })?;
 
                 // Spawn handler task
                 tokio::spawn(async move {
-                    while let Some(_) = handler.next().await {
+                    while (handler.next().await).is_some() {
                         // Handle browser events
                     }
                 });
@@ -87,19 +99,17 @@ impl ChromeDriver {
             }
             ConnectionMode::DebugPort(port) => {
                 let url = format!("http://localhost:{}", port);
-                let (browser, mut handler) = Browser::connect(&url)
-                    .await
-                    .map_err(|e| {
-                        BrowserError::ConnectionFailed(format!(
-                            "Failed to connect to Chrome on port {}. \
+                let (browser, mut handler) = Browser::connect(&url).await.map_err(|e| {
+                    BrowserError::ConnectionFailed(format!(
+                        "Failed to connect to Chrome on port {}. \
                              Make sure Chrome is running with --remote-debugging-port={}: {}",
-                            port, port, e
-                        ))
-                    })?;
+                        port, port, e
+                    ))
+                })?;
 
                 // Spawn handler task
                 tokio::spawn(async move {
-                    while let Some(_) = handler.next().await {
+                    while (handler.next().await).is_some() {
                         // Handle browser events
                     }
                 });
@@ -209,5 +219,71 @@ impl ChromeDriver {
             .await
             .map_err(|e| BrowserError::Other(e.to_string()))?;
         Ok(())
+    }
+
+    /// Ensure Chrome is installed, downloading if necessary
+    async fn ensure_chrome_installed() -> Result<PathBuf> {
+        let cache_dir = dirs::cache_dir()
+            .ok_or_else(|| BrowserError::Other("Cannot determine cache directory".to_string()))?
+            .join("robert")
+            .join("chrome");
+
+        // Create cache directory if it doesn't exist
+        tokio::fs::create_dir_all(&cache_dir)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to create cache dir: {}", e)))?;
+
+        // Check if Chrome already downloaded
+        let revision_info_path = cache_dir.join(".downloaded");
+        if revision_info_path.exists() {
+            // Chrome already downloaded, find the executable
+            if let Some(executable) = Self::find_chrome_in_cache(&cache_dir).await {
+                return Ok(executable);
+            }
+        }
+
+        // Download Chrome
+        eprintln!("📥 Downloading Chrome for Testing (first time only, ~150MB)...");
+        let fetcher = BrowserFetcher::new(
+            BrowserFetcherOptions::builder()
+                .with_path(&cache_dir)
+                .build()
+                .map_err(|e| BrowserError::Other(format!("Fetcher config failed: {}", e)))?,
+        );
+
+        let info = fetcher
+            .fetch()
+            .await
+            .map_err(|e| BrowserError::Other(format!("Chrome download failed: {}", e)))?;
+
+        // Mark as downloaded
+        tokio::fs::write(&revision_info_path, "downloaded")
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to write marker: {}", e)))?;
+
+        eprintln!("✅ Chrome downloaded successfully!");
+
+        Ok(info.executable_path)
+    }
+
+    /// Find Chrome executable in cache directory
+    async fn find_chrome_in_cache(cache_dir: &Path) -> Option<PathBuf> {
+        // Look for Chrome executable in various possible locations
+        let possible_paths = vec![
+            cache_dir.join("chrome"),
+            cache_dir.join("chrome.exe"),
+            cache_dir.join("Google Chrome.app/Contents/MacOS/Google Chrome"),
+            cache_dir.join("chrome-linux/chrome"),
+            cache_dir.join("chrome-mac/Chromium.app/Contents/MacOS/Chromium"),
+            cache_dir.join("chrome-win/chrome.exe"),
+        ];
+
+        for path in possible_paths {
+            if path.exists() {
+                return Some(path);
+            }
+        }
+
+        None
     }
 }

@@ -16,6 +16,7 @@ serde_json = "1.0"
 
 # Browser automation - spider_chrome (maintained fork of chromiumoxide)
 spider_chrome = "2.37"
+spider_chromiumoxide_fetcher = "0.7"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
