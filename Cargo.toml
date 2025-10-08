@@ -14,8 +14,12 @@ thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Browser automation
-thirtyfour = "0.32"
+# Browser automation - chromiumoxide for CDP
+chromiumoxide = { version = "0.7", features = ["tokio-runtime"] }
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }
+
+# Utilities
+dirs = "5.0"
+futures = "0.3"

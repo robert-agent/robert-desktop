@@ -53,30 +53,14 @@ jobs:
         with:
           chrome-version: stable
 
-      - name: Install ChromeDriver
-        run: |
-          # Get Chrome version
-          CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d. -f1)
-          echo "Chrome version: $CHROME_VERSION"
-
-          # Download matching chromedriver
-          CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_$CHROME_VERSION")
-          echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
-
-          # Download and install chromedriver
-          wget -q "https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
-          unzip -q chromedriver-linux64.zip
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
-
-          # Verify installation
-          chromedriver --version
-
       - name: Run unit tests
         run: cargo test --workspace --lib
 
       - name: Run integration tests
         run: cargo test --workspace --test '*' -- --nocapture
+        env:
+          # spider_chrome will use system Chrome
+          CHROME_PATH: /usr/bin/google-chrome
 
       - name: Upload test results
         if: failure()

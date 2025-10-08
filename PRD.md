@@ -720,32 +720,121 @@ output/
 │  ┌────────────────────┐      ┌────────────────────┐    │
 │  │  Svelte Frontend   │ IPC  │   Rust Backend     │    │
 │  │                    │◄────►│                    │    │
-│  │  - Script Editor   │      │  - Browser Driver  │    │
-│  │  - Execution UI    │      │  - Script Executor │    │
-│  │  - Output Browser  │      │  - Capture Engine  │    │
-│  │  - Settings Panel  │      │  - Storage Manager │    │
+│  │  - Script Editor   │      │  - chromiumoxide   │    │
+│  │  - Execution UI    │      │  - System Chrome  │    │
+│  │  - Output Browser  │      │  - Script Executor │    │
+│  │  - Settings Panel  │      │  - Capture Engine  │    │
 │  └────────────────────┘      └──────────┬─────────┘    │
 │                                          │              │
 └──────────────────────────────────────────┼──────────────┘
                                            │
-                                           │ WebDriver Protocol
-                                           │
-                                    ┌──────▼────────┐
-                                    │  chromedriver │
-                                    └──────┬────────┘
-                                           │ Chrome DevTools Protocol
-                                           │
-                                    ┌──────▼────────┐
-                                    │ Chrome Browser│
-                                    │   (Visible)   │
-                                    └───────────────┘
+                              ┌────────────┴──────────────┐
+                              │                           │
+                        Sandboxed Mode           Advanced Mode
+                              │                           │
+                    ┌─────────▼──────────┐    ┌──────────▼─────────┐
+                    │ System Chrome     │    │ Connect to         │
+                    │ Auto-download      │    │ localhost:9222     │
+                    │ Chrome to          │    │                    │
+                    │ ~/.robert/chrome/  │    │ (User's Chrome     │
+                    └─────────┬──────────┘    │  with debug port)  │
+                              │               └──────────┬─────────┘
+                              │                          │
+                              │ Chrome DevTools Protocol │
+                              │                          │
+                    ┌─────────▼──────────────────────────▼─────────┐
+                    │            Chrome Browser                     │
+                    │         (Visible or Headless)                 │
+                    └───────────────────────────────────────────────┘
 ```
+
+## Browser Automation Approach
+
+### Chrome DevTools Protocol (CDP) via chromiumoxide
+
+The application uses **Chrome DevTools Protocol (CDP)** directly through the `chromiumoxide` Rust library, eliminating the need for ChromeDriver. This provides:
+
+- **Zero external dependencies** for end users
+- **Automatic Chrome download** for sandboxed execution
+- **Two operation modes** for different use cases
+
+### Operation Modes
+
+#### 1. Sandboxed Mode (Default)
+- **Target**: General users, testing, isolated automation
+- **Chrome Source**: Auto-downloaded via System Chrome to `~/.robert/chrome/`
+- **Profile**: Fresh, isolated session (no user data)
+- **Setup**: Zero - app handles everything
+- **Use Case**: Testing, automation scripts, CI/CD
+
+**Features:**
+```rust
+// First run: Auto-downloads Chrome binary
+let fetcher = System Chrome::new(
+    System ChromeOptions::builder()
+        .with_path("~/.robert/chrome")
+        .build()
+);
+let info = fetcher.fetch().await?;
+
+// Launch isolated Chrome instance
+let browser = Browser::launch(
+    BrowserConfig::builder()
+        .chrome_executable(info.executable_path)
+        .headless(false)  // Desktop app shows browser
+        .build()
+).await?;
+```
+
+#### 2. Advanced Mode (Power Users)
+- **Target**: Power users needing existing sessions/cookies
+- **Chrome Source**: User's installed Chrome with active profile
+- **Profile**: User's real profile (logged-in accounts, history, cookies)
+- **Setup**: User starts Chrome with `--remote-debugging-port=9222`
+- **Use Case**: Authenticated workflows, personal automation
+
+**User Workflow:**
+```bash
+# User restarts their Chrome with debug flag
+chrome --remote-debugging-port=9222 \
+       --user-data-dir="$HOME/Library/Application Support/Google/Chrome/Default"
+```
+
+**App Connects:**
+```rust
+// Connect to existing Chrome on debug port
+let browser = Browser::connect("http://localhost:9222").await?;
+// Now automating user's real browser with their session
+```
+
+**CLI Flags:**
+```bash
+# Sandboxed mode (default)
+robert google.com
+
+# Advanced mode - connect to debug port
+robert google.com --debug-port 9222
+
+# Or let app launch Chrome with user profile
+robert google.com --use-profile
+```
+
+### Why CDP Instead of WebDriver?
+
+| Aspect | CDP (chromiumoxide) | WebDriver (chromedriver) |
+|--------|---------------------|-------------------------|
+| **External Binary** | None | Requires chromedriver |
+| **User Setup** | Zero | Must install/manage chromedriver |
+| **Version Compatibility** | Automatic | Version matching required |
+| **Chrome Download** | Built-in fetcher | Manual installation |
+| **Performance** | Direct protocol | Extra abstraction layer |
+| **Real Browser Control** | Native support | Limited |
 
 ## Dependencies
 
-### External
-- **Chrome browser** - User installation (auto-detected)
-- **chromedriver** - Auto-downloaded by app
+### External (End Users)
+- **None** - App downloads Chrome automatically in sandboxed mode
+- **Chrome browser** (optional) - For advanced mode with user profile
 
 ### Development Tools
 - **Rust** 1.70+
@@ -759,22 +848,25 @@ output/
 - **Desktop Framework**: Tauri 2.0
 - **Frontend**: Svelte + TypeScript + Tailwind CSS
 - **Backend**: Rust 1.70+
-- **Browser Automation**: thirtyfour (WebDriver)
+- **Browser Automation**: chromiumoxide (Chrome DevTools Protocol)
+- **Chrome Management**: System Chrome (auto-download)
 - **Async Runtime**: tokio
 - **Script Format**: YAML (serde_yaml)
 - **Build System**: Cargo + Vite
 
 ### Reference Links
 - Tauri: https://v2.tauri.app/
-- thirtyfour: https://github.com/Vrtgs/thirtyfour
+- chromiumoxide: https://github.com/spider-rs/chromiumoxide
 - Chrome DevTools Protocol: https://chromedevtools.github.io/devtools-protocol/
-- WebDriver W3C Spec: https://www.w3.org/TR/webdriver/
+- Chrome for Testing: https://developer.chrome.com/blog/chrome-for-testing
 
 ### Glossary
 - **Tauri**: Desktop app framework using Rust backend and web frontend
-- **WebDriver**: W3C standard for browser automation
-- **thirtyfour**: Rust WebDriver client library
-- **chromedriver**: WebDriver implementation for Chrome
+- **CDP (Chrome DevTools Protocol)**: Low-level protocol for controlling Chrome browsers
+- **chromiumoxide**: Rust library for browser automation via CDP
+- **System Chrome**: Component that auto-downloads Chrome binaries
+- **Sandboxed Mode**: Isolated Chrome instance with auto-downloaded binary
+- **Advanced Mode**: Connect to user's existing Chrome via debug port
 - **IPC**: Inter-Process Communication (between Tauri frontend/backend)
 - **DMG**: macOS disk image for app distribution
 - **Notarization**: Apple's security verification for macOS apps

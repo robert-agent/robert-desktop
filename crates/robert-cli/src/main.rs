@@ -9,9 +9,10 @@ struct Cli {
     /// URL to navigate to
     url: String,
 
-    /// Chromedriver port
-    #[arg(short, long, default_value = "9515")]
-    port: u16,
+    /// Connect to existing Chrome debug port (advanced mode)
+    /// Example: --debug-port 9222
+    #[arg(long)]
+    debug_port: Option<u16>,
 
     /// Output format: html or text
     #[arg(short = 'f', long, default_value = "html")]
@@ -36,14 +37,30 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("Robert CLI v0.1.0");
     println!("================\n");
 
-    // Connect to Chrome
-    println!("🔌 Connecting to Chrome on port {}...", cli.port);
-    let driver = ChromeDriver::connect(cli.port).await.map_err(|e| {
-        format!(
-            "Failed to connect to Chrome. Is chromedriver running on port {}?\n  Error: {}",
-            cli.port, e
-        )
-    })?;
+    // Connect to Chrome (sandboxed or debug port)
+    let driver = if let Some(port) = cli.debug_port {
+        println!("🔌 Connecting to Chrome debug port {}...", port);
+        println!("   (Advanced Mode - using your existing Chrome browser)\n");
+        ChromeDriver::connect_debug_port(port).await.map_err(|e| {
+            format!(
+                "Failed to connect to Chrome on port {}.\n\
+                 Make sure Chrome is running with: --remote-debugging-port={}\n\
+                 Error: {}",
+                port, port, e
+            )
+        })?
+    } else {
+        println!("🚀 Launching Chrome in sandboxed mode...");
+        println!("   (Using system Chrome - isolated session)\n");
+        ChromeDriver::launch_sandboxed().await.map_err(|e| {
+            format!(
+                "Failed to launch Chrome.\n\
+                 Make sure Chrome or Chromium is installed on your system.\n\
+                 Error: {}",
+                e
+            )
+        })?
+    };
 
     // Navigate
     println!("🌐 Navigating to {}...", cli.url);
@@ -68,6 +85,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     println!("{}", content);
+
+    // Close browser
+    driver.close().await?;
 
     Ok(())
 }
