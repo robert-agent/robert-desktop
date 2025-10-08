@@ -28,30 +28,38 @@ Robert is a desktop application that enables users to automate browser interacti
 
 ```
 robert/
-├── docs/
-│   ├── browser-automation-prd.md                  # Original PRD
-│   ├── browser-automation-implementation-plan.md  # Original plan
-│   ├── browser-automation-prd-revised.md          # Updated PRD
-│   ├── browser-automation-revised-plan.md         # Updated implementation plan
-│   └── consistency-review.md                      # Document consistency review
-└── README.md
+├── PRD.md                    # Product Requirements Document
+├── IMPLEMENTATION_PLAN.md   # 7+ week development roadmap
+├── PHASE_0_TASKS.md         # CLI prototype task breakdown
+├── README.md                # This file
+├── archive/                 # Deprecated documents
+└── crates/                  # Rust workspace (to be created)
+    ├── robert-webdriver/    # Browser automation library
+    ├── robert-cli/          # CLI tool
+    └── robert-app/          # Tauri desktop app
 ```
 
 ## Documentation
 
-- **[PRD (Revised)](browser-automation-prd-revised.md)** - Complete product requirements
-- **[Implementation Plan (Revised)](browser-automation-revised-plan.md)** - 7-week development roadmap
-- **[Consistency Review](consistency-review.md)** - Documentation audit results
+- **[PRD](PRD.md)** - Complete product requirements document
+- **[Implementation Plan](IMPLEMENTATION_PLAN.md)** - 7+ week development roadmap with Phase 0 CLI prototype
+- **[Phase 0 Tasks](PHASE_0_TASKS.md)** - Detailed task breakdown for CLI prototype (2-3 days)
 
 ## Roadmap
 
+### Phase 0 (Days 1-3) - CLI Prototype
+- 🚧 Cargo workspace with 3 crates
+- 🚧 Basic browser automation library
+- 🚧 CLI tool: navigate and fetch content
+- 🚧 Validate thirtyfour integration
+
 ### Version 1.0 (Weeks 1-7) - macOS Desktop App
-- ✅ Tauri desktop application
-- ✅ Chrome automation via thirtyfour
-- ✅ Real-time execution UI
-- ✅ Screenshot and text capture
-- ✅ YAML script format
-- ✅ Output management
+- 🔄 Tauri desktop application
+- 🔄 Chrome automation via thirtyfour
+- 🔄 Real-time execution UI
+- 🔄 Screenshot and text capture
+- 🔄 YAML script format
+- 🔄 Output management
 
 ### Version 1.5 (Months 3-4) - Linux Headless
 - 🔄 Linux CLI binary
@@ -92,24 +100,50 @@ steps:
 
 ## Getting Started
 
-### Prerequisites
+### Phase 0: CLI Prototype (Current)
 
+**Prerequisites:**
 - Rust 1.70+
+- Chrome browser
+- chromedriver (`brew install chromedriver`)
+
+**Quick Start:**
+```bash
+# 1. Start chromedriver
+chromedriver --port=9515
+
+# 2. Run CLI prototype (after Phase 0 implementation)
+cargo run --bin robert -- https://example.com
+
+# Output HTML
+cargo run --bin robert -- https://example.com --format html
+
+# Output text
+cargo run --bin robert -- https://example.com --format text
+```
+
+### Phase 1+: Desktop App (Future)
+
+**Additional Prerequisites:**
 - Node.js 18+
 - macOS 11+ (for v1.0)
-- Chrome browser
 
-### Installation
+Implementation begins after Phase 0 validation.
 
-Coming soon - project not yet implemented.
+## Development Status
 
-## Development
+**Current Phase**: Phase 0 - CLI Prototype (Planning Complete)
 
-This project is currently in the planning phase. Implementation will begin after:
+### Next Steps:
+1. ✅ Planning documents finalized
+2. 🚧 **Start Phase 0 implementation** (see [PHASE_0_TASKS.md](PHASE_0_TASKS.md))
+3. 🔄 Validate browser automation approach
+4. 🔄 Begin Phase 1: Tauri desktop app
 
-1. Document consistency review completion
-2. Final PRD approval
-3. Team formation and resource allocation
+### Phase 0 Timeline:
+- Day 1: Workspace setup + basic connection
+- Day 2: Navigation + content extraction
+- Day 3: CLI interface + testing
 
 ## Contributing
 
