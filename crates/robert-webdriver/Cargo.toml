@@ -1,0 +1,15 @@
+[package]
+name = "robert-webdriver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thirtyfour = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+warp = "0.3"
+tokio = { workspace = true }
+serde_json = { workspace = true }
