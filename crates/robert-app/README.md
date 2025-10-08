@@ -131,18 +131,20 @@ bun install
 ### Run in Development Mode
 
 ```bash
-bun run tauri dev
+bun run dev
 ```
 
-This will:
-1. Start the Vite dev server (http://localhost:1420)
-2. Launch the Tauri app
-3. Enable hot-reload for frontend changes
+This runs `bunx tauri dev` which:
+1. Starts the Vite dev server (http://localhost:1420)
+2. Compiles the Rust backend
+3. Launches the Tauri app window
+4. Enables hot-reload for frontend changes
+5. Watches for backend changes
 
 ### Build for Production
 
 ```bash
-bun run tauri build
+bun run build
 ```
 
 Outputs:
@@ -176,16 +178,24 @@ Edit `src-tauri/tauri.conf.json`:
 ```
 
 ### Browser Mode
-The app uses **headless mode** for Linux compatibility. To change:
+The app uses **auto-detection** mode:
+- **CI environments**: Launches headless automatically
+- **Desktop**: Launches with visible window
 
-Edit `src-tauri/src/commands/mod.rs`:
+To change behavior, edit `src-tauri/src/commands/mod.rs`:
 
 ```rust
-// Headless (current)
-BrowserDriver::launch_headless().await
+// Auto-detection (current - detects CI environment)
+ChromeDriver::launch_auto().await
 
-// Visible window
-BrowserDriver::launch_sandboxed().await
+// Always visible window
+ChromeDriver::launch_sandboxed().await
+
+// Always headless
+ChromeDriver::launch_with_path(path, false, true).await
+
+// No sandbox (Linux AppArmor workaround)
+ChromeDriver::launch_no_sandbox().await
 ```
 
 ## Troubleshooting

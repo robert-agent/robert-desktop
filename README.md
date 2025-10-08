@@ -148,7 +148,22 @@ Get text from price elements
 
 **No programming. No YAML. No syntax.** Just talk through what you want, Robert writes it in readable Markdown, and you watch it work.
 
-## Quick Start (CLI Prototype)
+## Quick Start
+
+### Desktop App (Tauri)
+
+**See [BUILD.md](BUILD.md) for complete build instructions.**
+
+Quick start:
+```bash
+cd crates/robert-app
+bun install
+bun run dev
+```
+
+**Prerequisites:** Rust 1.70+, Bun, system GTK libraries (Linux). See [BUILD.md](BUILD.md) for details.
+
+### CLI Prototype
 
 **Prerequisites:** Just Rust 1.70+. Chrome downloads automatically!
 
@@ -224,7 +239,7 @@ Implementation begins after Phase 0 validation.
 
 ## Development Status
 
-**Current Phase**: Phase 0 Complete ✅ → Ready for Phase 1
+**Current Phase**: Phase 1 Complete ✅ → Tauri Desktop App Ready for Testing
 
 ### Completed:
 1. ✅ Planning documents finalized
@@ -234,13 +249,18 @@ Implementation begins after Phase 0 validation.
 5. ✅ robert-webdriver library with auto-download Chrome
 6. ✅ robert-cli with headless mode and CI support
 7. ✅ E2E tests with 5-second visible window
+8. ✅ **Tauri desktop app implemented** (see [crates/robert-app/README.md](crates/robert-app/README.md))
+9. ✅ Real-time debug view with color-coded logs
+10. ✅ URL input with auto-browser launch
+11. ✅ Event system with 11 event types
+12. ✅ Modern UI with TypeScript/Svelte
 
 ### Next Steps:
-1. 🔄 Begin Phase 1: Tauri desktop app
+1. 🔄 Test on desktop environment with GUI
 2. 🔄 Implement voice-driven agent creator
 3. 🔄 Implement Markdown script parser
-4. 🔄 Build execution status UI with real-time visual feedback
-5. 🔄 Add screenshot capture functionality
+4. 🔄 Add screenshot capture functionality
+5. 🔄 Add navigation history
 
 ### Phase 0 Summary:
 - **Workspace**: Cargo multi-crate workspace with shared dependencies

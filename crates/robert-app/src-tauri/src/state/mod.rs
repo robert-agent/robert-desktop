@@ -1,10 +1,10 @@
-use robert_webdriver::BrowserDriver;
+use robert_webdriver::ChromeDriver;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 /// Application state that holds the browser driver
 pub struct AppState {
-    pub driver: Arc<Mutex<Option<BrowserDriver>>>,
+    pub driver: Arc<Mutex<Option<ChromeDriver>>>,
 }
 
 impl AppState {

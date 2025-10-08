@@ -1,7 +1,0 @@
-[package]
-name = "robert-app"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-# Will be populated in Phase 1
