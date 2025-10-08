@@ -28,8 +28,7 @@ async fn start_test_server() -> (SocketAddr, JoinHandle<()>) {
     let routes = index.or(api);
 
     // Bind to a random port
-    let (addr, server) = warp::serve(routes)
-        .bind_ephemeral(([127, 0, 0, 1], 0));
+    let (addr, server) = warp::serve(routes).bind_ephemeral(([127, 0, 0, 1], 0));
 
     let handle = tokio::spawn(server);
 

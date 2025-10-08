@@ -1,5 +1,5 @@
-use thirtyfour::prelude::*;
 use crate::error::{BrowserError, Result};
+use thirtyfour::prelude::*;
 
 pub struct ChromeDriver {
     driver: WebDriver,
@@ -20,7 +20,8 @@ impl ChromeDriver {
 
     /// Navigate to a URL
     pub async fn navigate(&self, url: &str) -> Result<()> {
-        self.driver.goto(url)
+        self.driver
+            .goto(url)
             .await
             .map_err(|e| BrowserError::NavigationFailed(e.to_string()))?;
         Ok(())
@@ -46,7 +47,8 @@ impl ChromeDriver {
 
     /// Get visible page text
     pub async fn get_page_text(&self) -> Result<String> {
-        let body = self.driver
+        let body = self
+            .driver
             .find(By::Tag("body"))
             .await
             .map_err(|e| BrowserError::ElementNotFound(e.to_string()))?;
@@ -57,7 +59,8 @@ impl ChromeDriver {
 
     /// Get text from specific element
     pub async fn get_element_text(&self, selector: &str) -> Result<String> {
-        let element = self.driver
+        let element = self
+            .driver
             .find(By::Css(selector))
             .await
             .map_err(|_e| BrowserError::ElementNotFound(selector.to_string()))?;
