@@ -38,13 +38,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // Connect to Chrome
     println!("🔌 Connecting to Chrome on port {}...", cli.port);
-    let driver = ChromeDriver::connect(cli.port)
-        .await
-        .map_err(|e| format!("Failed to connect to Chrome. Is chromedriver running on port {}?\n  Error: {}", cli.port, e))?;
+    let driver = ChromeDriver::connect(cli.port).await.map_err(|e| {
+        format!(
+            "Failed to connect to Chrome. Is chromedriver running on port {}?\n  Error: {}",
+            cli.port, e
+        )
+    })?;
 
     // Navigate
     println!("🌐 Navigating to {}...", cli.url);
-    driver.navigate(&cli.url)
+    driver
+        .navigate(&cli.url)
         .await
         .map_err(|e| format!("Failed to navigate to {}:\n  Error: {}", cli.url, e))?;
 
