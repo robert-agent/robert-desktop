@@ -17,8 +17,8 @@ pub enum BrowserError {
     #[error("No page available")]
     NoPage,
 
-    #[error("Chromiumoxide error: {0}")]
-    ChromiumoxideError(#[from] chromiumoxide::error::CdpError),
+    #[error("CDP error: {0}")]
+    CdpError(#[from] chromiumoxide::error::CdpError),
 
     #[error("Other error: {0}")]
     Other(String),
