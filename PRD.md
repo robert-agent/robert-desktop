@@ -54,7 +54,7 @@ Democratize browser automation by providing a visual, user-friendly desktop appl
 - ✅ **Native .app bundle** with DMG installer
 
 #### User Interface
-- ✅ **Tauri-based desktop app** with React frontend
+- ✅ **Tauri-based desktop app** with Svelte frontend
 - ✅ **Script editor** with YAML syntax highlighting
 - ✅ **Real-time execution dashboard**
 - ✅ **Live step progress** and status indicators
@@ -200,7 +200,7 @@ Democratize browser automation by providing a visual, user-friendly desktop appl
 - **NFR1.3**: Browser launch < 5 seconds
 - **NFR1.4**: Screenshot capture < 2 seconds
 - **NFR1.5**: UI responsiveness < 100ms for interactions
-- **NFR1.6**: Memory footprint < 500MB (app + browser combined < 1.5GB)
+- **NFR1.6**: Memory footprint < 100MB (app only), app + browser combined < 1.5GB
 - **NFR1.7**: Smooth 60fps UI animations
 
 #### NFR2: Reliability
@@ -636,7 +636,7 @@ output/
 
 ### Technical Metrics
 - 99% uptime (local execution reliability)
-- <100MB memory footprint (app only)
+- <100MB memory footprint (app only), <1.5GB with browser
 - <50ms UI latency
 
 ## Risks and Mitigations
@@ -718,7 +718,7 @@ output/
 │                   Tauri Desktop App                     │
 │                                                          │
 │  ┌────────────────────┐      ┌────────────────────┐    │
-│  │   React Frontend   │ IPC  │   Rust Backend     │    │
+│  │  Svelte Frontend   │ IPC  │   Rust Backend     │    │
 │  │                    │◄────►│                    │    │
 │  │  - Script Editor   │      │  - Browser Driver  │    │
 │  │  - Execution UI    │      │  - Script Executor │    │

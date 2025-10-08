@@ -393,6 +393,224 @@ export async function setupEventListeners() {
 
 ## Implementation Phases (Revised)
 
+### Phase 0: CLI Prototype (Week 0 - Proof of Concept)
+
+**Goal**: Validate browser automation approach with a minimal CLI tool before building the full desktop app.
+
+#### Milestone 0.1: Workspace Setup
+
+**Tasks:**
+1. Initialize Cargo workspace with multi-crate structure
+2. Create three crates:
+   - `robert-webdriver` - Core browser automation library
+   - `robert-cli` - Command-line interface binary
+   - `robert-app` - Tauri desktop application (placeholder)
+3. Configure workspace dependencies
+4. Setup shared types and traits
+
+**Project Structure:**
+```
+robert/
+├── Cargo.toml                    # Workspace root
+├── crates/
+│   ├── robert-webdriver/         # Library crate
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── browser/
+│   │       │   ├── mod.rs
+│   │       │   └── chrome.rs
+│   │       ├── navigation.rs
+│   │       └── error.rs
+│   ├── robert-cli/               # CLI binary crate
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── main.rs
+│   └── robert-app/               # Tauri app (future)
+│       └── Cargo.toml
+└── docs/
+```
+
+**Deliverables:**
+- Cargo workspace compiles
+- All three crates created
+- Workspace dependency sharing configured
+
+#### Milestone 0.2: Basic CLI - Navigate and Fetch
+
+**Tasks:**
+1. Implement basic browser automation in `robert-webdriver`:
+   ```rust
+   // Core functionality
+   - ChromeDriver::connect() - Connect to existing Chrome instance
+   - navigate(url) - Go to URL
+   - get_page_content() - Fetch HTML content
+   - get_text() - Extract visible text
+   ```
+2. Implement CLI in `robert-cli`:
+   - Parse command-line arguments (URL)
+   - Connect to Chrome via WebDriver
+   - Navigate to URL
+   - Print page content to stdout
+3. Setup chromedriver connection (assumes chromedriver running)
+4. Add basic error handling
+
+**CLI Usage:**
+```bash
+# Start chromedriver in one terminal
+chromedriver --port=9515
+
+# Run CLI in another terminal
+cargo run --bin robert-cli -- https://example.com
+
+# Output:
+# Connecting to Chrome...
+# Navigating to https://example.com...
+# Page loaded: Example Domain
+#
+# <full page HTML content>
+```
+
+**Code Example:**
+```rust
+// crates/robert-webdriver/src/browser/chrome.rs
+use thirtyfour::prelude::*;
+
+pub struct ChromeDriver {
+    driver: WebDriver,
+}
+
+impl ChromeDriver {
+    /// Connect to existing Chrome instance via chromedriver
+    pub async fn connect(port: u16) -> Result<Self, BrowserError> {
+        let caps = DesiredCapabilities::chrome();
+        let driver = WebDriver::new(
+            &format!("http://localhost:{}", port),
+            caps
+        ).await?;
+
+        Ok(Self { driver })
+    }
+
+    pub async fn navigate(&self, url: &str) -> Result<(), BrowserError> {
+        self.driver.goto(url).await?;
+        Ok(())
+    }
+
+    pub async fn get_page_source(&self) -> Result<String, BrowserError> {
+        let source = self.driver.source().await?;
+        Ok(source)
+    }
+
+    pub async fn get_page_text(&self) -> Result<String, BrowserError> {
+        let body = self.driver.find(By::Tag("body")).await?;
+        let text = body.text().await?;
+        Ok(text)
+    }
+}
+```
+
+```rust
+// crates/robert-cli/src/main.rs
+use robert_webdriver::browser::ChromeDriver;
+use clap::Parser;
+
+#[derive(Parser)]
+#[command(name = "robert")]
+#[command(about = "Browser automation CLI prototype")]
+struct Cli {
+    /// URL to navigate to
+    url: String,
+
+    /// Chromedriver port
+    #[arg(short, long, default_value = "9515")]
+    port: u16,
+
+    /// Output format: html or text
+    #[arg(short, long, default_value = "html")]
+    format: String,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
+
+    println!("🔌 Connecting to Chrome on port {}...", cli.port);
+    let driver = ChromeDriver::connect(cli.port).await?;
+
+    println!("🌐 Navigating to {}...", cli.url);
+    driver.navigate(&cli.url).await?;
+
+    println!("✅ Page loaded!\n");
+
+    let content = match cli.format.as_str() {
+        "text" => driver.get_page_text().await?,
+        _ => driver.get_page_source().await?,
+    };
+
+    println!("{}", content);
+
+    Ok(())
+}
+```
+
+**Dependencies (robert-webdriver):**
+```toml
+[dependencies]
+thirtyfour = "0.32"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+thiserror = "1.0"
+```
+
+**Dependencies (robert-cli):**
+```toml
+[dependencies]
+robert-webdriver = { path = "../robert-webdriver" }
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+```
+
+**Deliverables:**
+- CLI tool that connects to running Chrome
+- Can navigate to any URL
+- Prints page content (HTML or text)
+- Works with visible Chrome window
+- Basic error messages
+
+**Testing:**
+```bash
+# 1. Install and start chromedriver
+brew install chromedriver
+chromedriver --port=9515
+
+# 2. Run CLI
+cargo run --bin robert-cli -- https://example.com
+cargo run --bin robert-cli -- https://example.com --format text
+
+# 3. Should see page content printed
+```
+
+**Success Criteria:**
+- [ ] Workspace structure created
+- [ ] Three crates compile successfully
+- [ ] CLI connects to Chrome via chromedriver
+- [ ] CLI navigates to provided URL
+- [ ] Page content displayed in terminal
+- [ ] Works with visible Chrome (not headless)
+- [ ] Basic error handling (connection failed, navigation timeout)
+
+**Duration**: 2-3 days
+
+**Why This Phase?**
+- ✅ Validates thirtyfour integration before GUI work
+- ✅ Tests Chrome connection approach
+- ✅ Creates reusable library crate for Tauri app
+- ✅ Quick feedback loop for debugging
+- ✅ Foundation for all future browser automation
+
+---
+
 ### Phase 1: Tauri Setup & Basic Browser Control (Week 1)
 
 #### Milestone 1.1: Tauri Project Setup
@@ -403,7 +621,7 @@ export async function setupEventListeners() {
    - Window size (1280x800)
    - macOS permissions (file access, network)
    - Build settings
-3. Setup React frontend with Vite
+3. Setup Svelte frontend with Vite
 4. Install dependencies (Rust + npm)
 5. Test basic Tauri app launch
 
@@ -484,7 +702,7 @@ impl ChromeDriver {
 **Tasks:**
 1. Implement YAML script parser
 2. Add Tauri commands: `load_script`, `validate_script`
-3. Frontend: Script editor with syntax highlighting (monaco-editor)
+3. Frontend: Script editor with syntax highlighting (CodeMirror)
 4. File picker for loading scripts
 5. Script validation UI
 
@@ -734,27 +952,27 @@ impl Executor {
 ## Success Criteria
 
 ### Functional
-- [x] Tauri app launches on macOS
-- [x] Chrome automation working
-- [x] Script loading and parsing
-- [x] Real-time execution status display
-- [x] Screenshot and text capture
-- [x] Output management and viewing
-- [x] All interaction actions working
+- [ ] Tauri app launches on macOS
+- [ ] Chrome automation working
+- [ ] Script loading and parsing
+- [ ] Real-time execution status display
+- [ ] Screenshot and text capture
+- [ ] Output management and viewing
+- [ ] All interaction actions working
 
 ### UX
-- [x] Intuitive UI (user testing)
-- [x] Real-time feedback
-- [x] Clear error messages
-- [x] Native macOS feel
-- [x] Responsive performance
+- [ ] Intuitive UI (user testing)
+- [ ] Real-time feedback
+- [ ] Clear error messages
+- [ ] Native macOS feel
+- [ ] Responsive performance
 
 ### Technical
-- [x] <3 second app launch
-- [x] <2 second screenshot capture
-- [x] <500MB memory footprint
-- [x] >70% test coverage
-- [x] No memory leaks
+- [ ] <3 second app launch
+- [ ] <2 second screenshot capture
+- [ ] <100MB app memory footprint
+- [ ] >70% test coverage
+- [ ] No memory leaks
 
 ## Key Differences from Original Plan
 
