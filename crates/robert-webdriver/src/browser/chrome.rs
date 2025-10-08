@@ -8,10 +8,40 @@ pub struct ChromeDriver {
 impl ChromeDriver {
     /// Connect to an existing Chrome instance via chromedriver
     pub async fn connect(port: u16) -> Result<Self> {
-        let caps = DesiredCapabilities::chrome();
+        Self::connect_with_options(port, false).await
+    }
+
+    /// Connect to Chrome with custom options
+    pub async fn connect_with_options(port: u16, headless: bool) -> Result<Self> {
+        let mut caps = DesiredCapabilities::chrome();
+
+        if headless {
+            caps.add_arg("--headless")?;
+            caps.add_arg("--no-sandbox")?;
+            caps.add_arg("--disable-dev-shm-usage")?;
+            caps.add_arg("--disable-gpu")?;
+        }
 
         let url = format!("http://localhost:{}", port);
         let driver = WebDriver::new(&url, caps)
+            .await
+            .map_err(|e| BrowserError::ConnectionFailed(e.to_string()))?;
+
+        Ok(Self { driver })
+    }
+
+    /// Connect to Chrome via custom URL (e.g., Selenium Grid)
+    pub async fn connect_url(url: &str, headless: bool) -> Result<Self> {
+        let mut caps = DesiredCapabilities::chrome();
+
+        if headless {
+            caps.add_arg("--headless")?;
+            caps.add_arg("--no-sandbox")?;
+            caps.add_arg("--disable-dev-shm-usage")?;
+            caps.add_arg("--disable-gpu")?;
+        }
+
+        let driver = WebDriver::new(url, caps)
             .await
             .map_err(|e| BrowserError::ConnectionFailed(e.to_string()))?;
 
