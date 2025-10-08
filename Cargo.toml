@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "crates/robert-webdriver",
     "crates/robert-cli",
-    "crates/robert-app",
+    "crates/robert-app/src-tauri",
 ]
 
 [workspace.dependencies]
