@@ -4,7 +4,7 @@ A user-friendly browser automation tool with a native macOS desktop application 
 
 ## Project Status
 
-🚧 **Planning Phase** - Not yet implemented
+✅ **Phase 0 Complete** - CLI Prototype Implemented
 
 ## Overview
 
@@ -32,11 +32,19 @@ robert/
 ├── IMPLEMENTATION_PLAN.md   # 7+ week development roadmap
 ├── PHASE_0_TASKS.md         # CLI prototype task breakdown
 ├── README.md                # This file
+├── CHANGELOG.md             # Version history
+├── Cargo.toml               # Workspace configuration
 ├── archive/                 # Deprecated documents
-└── crates/                  # Rust workspace (to be created)
+└── crates/                  # Rust workspace
     ├── robert-webdriver/    # Browser automation library
-    ├── robert-cli/          # CLI tool
-    └── robert-app/          # Tauri desktop app
+    │   ├── src/
+    │   │   ├── browser/     # Chrome driver implementation
+    │   │   ├── error.rs     # Error types
+    │   │   └── lib.rs
+    │   └── tests/           # Integration tests with warp server
+    ├── robert-cli/          # CLI tool (implemented)
+    │   └── src/main.rs
+    └── robert-app/          # Tauri desktop app (placeholder)
 ```
 
 ## Documentation
@@ -47,11 +55,12 @@ robert/
 
 ## Roadmap
 
-### Phase 0 (Days 1-3) - CLI Prototype
-- 🚧 Cargo workspace with 3 crates
-- 🚧 Basic browser automation library
-- 🚧 CLI tool: navigate and fetch content
-- 🚧 Validate thirtyfour integration
+### Phase 0 (Days 1-3) - CLI Prototype ✅ COMPLETE
+- ✅ Cargo workspace with 3 crates
+- ✅ Basic browser automation library
+- ✅ CLI tool: navigate and fetch content
+- ✅ Validated thirtyfour integration
+- ✅ Integration tests with warp test server
 
 ### Version 1.0 (Weeks 1-7) - macOS Desktop App
 - 🔄 Tauri desktop application
@@ -109,17 +118,37 @@ steps:
 
 **Quick Start:**
 ```bash
-# 1. Start chromedriver
+# 1. Start chromedriver in a separate terminal
 chromedriver --port=9515
 
-# 2. Run CLI prototype (after Phase 0 implementation)
+# 2. Run CLI prototype
 cargo run --bin robert -- https://example.com
 
-# Output HTML
+# Output HTML (default)
 cargo run --bin robert -- https://example.com --format html
 
-# Output text
+# Output visible text only
 cargo run --bin robert -- https://example.com --format text
+
+# Extract text from specific element
+cargo run --bin robert -- https://example.com --selector "h1"
+
+# Use different chromedriver port
+cargo run --bin robert -- https://example.com --port 9516
+```
+
+**Running Tests:**
+```bash
+# Run unit tests
+cargo test --workspace --lib
+
+# Run integration tests (requires chromedriver running)
+cargo test -p robert-webdriver --test integration_test -- --ignored
+
+# Run all workspace checks
+cargo check --workspace
+cargo clippy --workspace
+cargo fmt --all -- --check
 ```
 
 ### Phase 1+: Desktop App (Future)
@@ -132,18 +161,29 @@ Implementation begins after Phase 0 validation.
 
 ## Development Status
 
-**Current Phase**: Phase 0 - CLI Prototype (Planning Complete)
+**Current Phase**: Phase 0 Complete ✅ → Ready for Phase 1
+
+### Completed:
+1. ✅ Planning documents finalized
+2. ✅ **Phase 0 implementation complete** (see [PHASE_0_TASKS.md](PHASE_0_TASKS.md))
+3. ✅ Browser automation approach validated
+4. ✅ Workspace with 3 crates created
+5. ✅ robert-webdriver library implemented
+6. ✅ robert-cli working with Chrome via chromedriver
+7. ✅ Integration tests with warp test server
 
 ### Next Steps:
-1. ✅ Planning documents finalized
-2. 🚧 **Start Phase 0 implementation** (see [PHASE_0_TASKS.md](PHASE_0_TASKS.md))
-3. 🔄 Validate browser automation approach
-4. 🔄 Begin Phase 1: Tauri desktop app
+1. 🔄 Begin Phase 1: Tauri desktop app
+2. 🔄 Implement YAML script parser
+3. 🔄 Build execution status UI
+4. 🔄 Add screenshot capture functionality
 
-### Phase 0 Timeline:
-- Day 1: Workspace setup + basic connection
-- Day 2: Navigation + content extraction
-- Day 3: CLI interface + testing
+### Phase 0 Summary:
+- **Workspace**: Cargo multi-crate workspace with shared dependencies
+- **robert-webdriver**: Core browser automation library using thirtyfour
+- **robert-cli**: CLI tool that connects to Chrome and fetches content
+- **robert-app**: Placeholder for future Tauri application
+- **Tests**: Integration tests with local warp HTTP server
 
 ## Contributing
 
