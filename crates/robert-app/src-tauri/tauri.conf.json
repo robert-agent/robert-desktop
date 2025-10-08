@@ -2,11 +2,11 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Robert",
   "version": "0.1.0",
-  "identifier": "com.robert.app",
+  "identifier": "com.robert",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "bun run frontend:dev",
+    "beforeBuildCommand": "bun run frontend:build",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
     "frontendDist": "../build"
   },
   "app": {

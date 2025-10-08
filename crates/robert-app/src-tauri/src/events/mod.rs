@@ -85,18 +85,6 @@ pub fn emit_chrome_downloading(app: &AppHandle, message: impl Into<String>) -> R
     .emit(app)
 }
 
-pub fn emit_chrome_downloaded(
-    app: &AppHandle,
-    path: impl Into<String>,
-    version: impl Into<String>,
-) -> Result<(), String> {
-    DebugEvent::ChromeDownloaded {
-        path: path.into(),
-        version: version.into(),
-    }
-    .emit(app)
-}
-
 pub fn emit_chrome_launching(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ChromeLaunching {
         message: message.into(),
