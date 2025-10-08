@@ -4,9 +4,11 @@ A command-line interface for browser automation using Chrome DevTools Protocol (
 
 ## Installation
 
-Requires Chrome or Chromium to be installed on your system.
+**No installation required!** Robert automatically downloads Chrome for Testing on first run (~150MB).
 
-### Install Chrome/Chromium
+Optionally, you can use your system Chrome installation.
+
+### Optional: Install Chrome/Chromium
 
 **Ubuntu/Debian:**
 ```bash
@@ -27,17 +29,21 @@ brew install --cask google-chrome
 
 ## Usage
 
-### Basic Usage (Auto-detect Chrome)
+### Basic Usage (Auto-download Chrome)
 
 ```bash
-# Navigate to a URL and print HTML
+# Navigate to a URL and print HTML (URL protocol optional)
+cargo run --bin robert -- example.com
 cargo run --bin robert -- https://example.com
 
 # Print visible text only
-cargo run --bin robert -- https://example.com --format text
+cargo run --bin robert -- example.com --format text
 
 # Extract specific element
-cargo run --bin robert -- https://example.com --selector "h1"
+cargo run --bin robert -- example.com --selector "h1"
+
+# Run in headless mode (no visible window)
+cargo run --bin robert -- example.com --headless
 ```
 
 ### Custom Chrome Path
@@ -66,23 +72,34 @@ cargo run --bin robert -- https://example.com --debug-port 9222
 robert <URL> [OPTIONS]
 
 Arguments:
-  <URL>  URL to navigate to
+  <URL>  URL to navigate to (https:// prefix optional)
 
 Options:
   --debug-port <PORT>       Connect to existing Chrome debug port (advanced mode)
   --chrome-path <PATH>      Path to Chrome/Chromium executable
+  --headless                Run Chrome in headless mode (no visible window)
+  --no-sandbox              Disable Chrome sandbox (Linux AppArmor workaround)
   -f, --format <FORMAT>     Output format: html or text [default: html]
   -s, --selector <SELECTOR> CSS selector for specific element
   -h, --help                Print help
   -V, --version             Print version
 ```
 
+## CI/CD Support
+
+Robert automatically detects CI environments and runs in headless mode with `--no-sandbox`:
+- GitHub Actions (`GITHUB_ACTIONS`)
+- GitLab CI (`GITLAB_CI`)
+- Jenkins (`JENKINS_HOME`)
+- CircleCI (`CIRCLECI`)
+- Generic CI (`CI`)
+
 ## Modes
 
 ### 1. Sandboxed Mode (Default)
-- Uses system Chrome installation
+- Auto-downloads Chrome for Testing (first run only, cached at `~/.cache/robert/chrome`)
 - Isolated session (no cookies/history)
-- Auto-detects Chrome location
+- Visible browser window (unless `--headless` specified)
 - Best for: Testing, automation, scripts
 
 ### 2. Advanced Mode (--debug-port)
@@ -96,34 +113,55 @@ Options:
 - Useful when multiple versions installed
 - Useful when Chrome not in standard location
 
+### 4. Headless Mode (--headless)
+- No visible browser window
+- Faster execution
+- Required for CI/CD environments (auto-enabled)
+
+### 5. No Sandbox Mode (--no-sandbox)
+- Disables Chrome sandbox (reduces security)
+- Required on Ubuntu 23.10+ and systems with AppArmor restrictions
+- Auto-enabled in CI/CD environments
+
 ## Examples
 
 ```bash
-# Basic navigation
+# Basic navigation (protocol optional)
+robert github.com
 robert https://github.com
 
 # Get page title area
-robert https://github.com --selector "title"
+robert github.com --selector "title"
+
+# Headless mode
+robert github.com --headless
+
+# Get visible text only
+robert github.com --format text
 
 # Use specific Chrome
-robert https://github.com --chrome-path /usr/bin/chromium
+robert github.com --chrome-path /usr/bin/chromium
+
+# Linux with AppArmor restrictions
+robert github.com --no-sandbox
 
 # Connect to running Chrome (macOS)
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 &
-robert https://github.com --debug-port 9222
+robert github.com --debug-port 9222
 
-# Get visible text only
-robert https://github.com --format text
+# CI/CD usage (auto-detects CI environment)
+CI=true robert example.com  # Runs headless with --no-sandbox
 ```
 
 ## Troubleshooting
 
 **Error: "Chrome/Chromium not found"**
 
-Solution:
-1. Install Chrome/Chromium (see Installation above)
-2. Or specify path: `--chrome-path /path/to/chrome`
-3. Or use advanced mode: `--debug-port 9222`
+This should rarely happen as Chrome auto-downloads. If it does:
+1. Check cache: `ls ~/.cache/robert/chrome`
+2. Manually install Chrome (see Installation above)
+3. Specify path: `--chrome-path /path/to/chrome`
+4. Use advanced mode: `--debug-port 9222`
 
 **Error: "Failed to connect to Chrome on port 9222"**
 
@@ -131,6 +169,19 @@ Solution:
 1. Make sure Chrome is running with: `chrome --remote-debugging-port=9222`
 2. Check no other process is using port 9222
 3. Try a different port number
+
+**Error: "Browser process exited" or "No usable sandbox"**
+
+Linux (Ubuntu 23.10+) AppArmor issue. Solutions:
+1. Use `--no-sandbox` flag: `robert example.com --no-sandbox`
+2. Or set CI env var: `CI=true robert example.com`
+
+**Chrome opens and closes immediately**
+
+Make sure to include URL protocol or let Robert add it automatically:
+- ✅ `robert example.com` (auto-adds https://)
+- ✅ `robert https://example.com`
+- ❌ `robert example.com` (if protocol detection fails)
 
 ## Technology
 

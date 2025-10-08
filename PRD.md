@@ -1,47 +1,127 @@
-# Browser Automation Tool - Product Requirements Document (Revised)
-## Tauri Desktop App for macOS
+# Robert - Automation for Everyone
+## Product Requirements Document
 
 ## Executive Summary
 
-A user-friendly browser automation tool delivered as a **native macOS desktop application** built with Tauri. Users can create, edit, and run automation scripts while observing browser interactions in real-time through an intuitive visual interface. The tool captures screenshots, extracts text, and provides live execution status with comprehensive output management.
+**Robert** is an open-source, local-first browser automation tool that brings the power of automation to everyone—not just programmers. While tools like Zapier and IFTTT require API knowledge, Claude agents are complex to create, and GPT's interface provides no visibility, Robert lets users **watch automation happen in real-time**, learn by observation, and maintain full control with the ability to abort operations at any moment.
+
+Built with eye-candy visual feedback and delivered as a native desktop application, Robert runs entirely on your device with optional cloud inference. Unlike centralized alternatives (Herd, Monitoro) that require programming knowledge and lock you into their platforms, Robert is free, open, and designed for **visual learners who want to see their automation work**.
 
 ## Product Vision
 
-Democratize browser automation by providing a visual, user-friendly desktop application that makes scripted web interactions accessible to both technical and non-technical users. Enable observable automation with real-time feedback, making testing, data collection, and workflow automation simple and reliable.
+**Automation for everyone, powered by local execution and visual feedback.**
+
+We believe automation should be:
+- **Visual**: Watch automation happen, don't just hope it works
+- **Learnable**: See what's happening, understand by observation
+- **Controllable**: Abort operations, pause, inspect state
+- **Local-first**: Run on your device, own your data and privacy
+- **Open**: Free, auditable, community-driven
+- **Beautiful**: Eye-candy UI that makes automation delightful
+
+### The Problem
+
+**Current automation tools have critical flaws:**
+
+1. **API-based tools (Zapier, IFTTT)** require understanding APIs, webhooks, and integration points
+2. **AI agents (Claude, GPT)** are black boxes—you don't see what they're doing until it's done (or wrong)
+3. **Programming tools (Playwright, Selenium)** require coding skills and test-runner mindsets
+4. **Centralized platforms (Herd, Monitoro)** lock you into their ecosystem and require programming knowledge
+
+**What users actually need:**
+- Visual confirmation that automation is working
+- Ability to learn by watching
+- Control to stop operations mid-flight
+- Privacy through local execution
+- Freedom from vendor lock-in
+
+### Our Solution
+
+**Browser automation as the universal interface:**
+- The browser is the universal app—everything happens there
+- Visual feedback shows exactly what's happening
+- Users can watch, learn, and build confidence
+- Local execution keeps data private and secure
+- Open source ensures freedom and transparency
+
+### Competitive Landscape
+
+**Tools like Herd and Monitoro** are moving in the right direction with visual feedback and eye-candy interfaces. However, they:
+- ❌ Require programming/test-runner knowledge
+- ❌ Run on centralized infrastructure
+- ❌ Lock users into proprietary platforms
+- ❌ Charge for what should be free
+
+**Robert's differentiators:**
+- ✅ **No programming required** - Visual, YAML-based scripting
+- ✅ **Local-first execution** - Runs on your device, your control
+- ✅ **Open source** - Free, auditable, community-owned
+- ✅ **Optional cloud** - Send inference to cloud when you choose
+- ✅ **Visual feedback** - Watch automation happen in real-time
+- ✅ **Eye-candy UI** - Beautiful, delightful, confidence-inspiring
+
+### Vision Statement
+
+> "Make automation as easy as watching a recording, as powerful as programming, and as trustworthy as doing it yourself—all while running on your own device."
 
 ## Target Users
 
-### Primary Users (v1.0 - macOS Desktop)
-- **QA Engineers**: Visual testing and regression detection
-- **Product Managers**: Creating user flow documentation
-- **Data Analysts**: Collecting structured web data
-- **Researchers**: Archiving web content with metadata
-- **Designers**: Capturing UI states and screenshots
-- **Marketing Teams**: Monitoring competitor websites
+### Primary Users - "Automation Curious"
+**Non-programmers who need automation but lack technical skills:**
+- **Small business owners**: Automate repetitive web tasks (data entry, monitoring)
+- **Content creators**: Schedule social media, monitor analytics, capture content
+- **Researchers**: Collect data from websites without coding
+- **Journalists**: Track news sites, archive content, monitor changes
+- **Students**: Automate research workflows, collect academic data
+- **Marketers**: Monitor competitors, track campaigns, capture screenshots
 
-### Secondary Users (Future - Linux Headless)
-- **DevOps Engineers**: CI/CD integration
-- **Backend Developers**: Scheduled automation tasks
-- **System Administrators**: Server-based monitoring
+**Key characteristics:**
+- Visual learners who need to see automation work
+- Want control and transparency (not black-box AI)
+- Value privacy and local execution
+- Willing to learn simple YAML, not programming languages
+- Need immediate feedback and error visibility
+
+### Secondary Users - "Power Users"
+**Technical users who want better tools:**
+- **QA Engineers**: Visual testing without test-runner complexity
+- **Product Managers**: Document user flows without engineering help
+- **Designers**: Capture UI states across workflows
+- **Data Analysts**: Extract web data without scraping frameworks
+- **DevOps Engineers**: CI/CD integration (future headless mode)
+
+**Key characteristics:**
+- Comfortable with technical tools but want better UX
+- Appreciate visual feedback even though they can code
+- Value open source and local execution
+- Need reliable, auditable automation
 
 ## Goals
 
-### Primary Goals (v1.0)
-1. ✅ Provide a **native macOS desktop app** with visual UI
-2. ✅ Enable **observable browser automation** (visible Chrome window)
-3. ✅ Show **real-time execution status** with step-by-step progress
-4. ✅ Support **script-driven automation** via YAML
-5. ✅ Capture **screenshots and text** during automation
-6. ✅ Provide **organized output** with visual file browser
-7. ✅ Deliver **user-friendly error handling** and guidance
+### Primary Goals (v1.0) - "Watch It Work"
+1. ✅ **Visual automation everyone can understand** - No programming required
+2. ✅ **Real-time visual feedback** - Watch browser automation happen with eye-candy UI
+3. ✅ **Local-first execution** - Runs on your device, complete privacy
+4. ✅ **Full control** - Pause, abort, inspect state at any moment
+5. ✅ **Simple YAML scripts** - Readable by non-programmers, powerful for experts
+6. ✅ **Beautiful UI** - Eye-candy that makes automation delightful
+7. ✅ **Open source** - Free, auditable, community-owned
+
+### Secondary Goals (v1.0)
+1. ✅ **Observable browser** - Visible Chrome window showing automation
+2. ✅ **Step-by-step progress** - See exactly where automation is
+3. ✅ **Screenshot & text capture** - Collect data visually
+4. ✅ **Organized output** - Visual file browser for results
+5. ✅ **User-friendly errors** - Learn from failures with clear guidance
 
 ### Future Goals (Roadmap)
-1. 🔄 **Linux headless mode** for server deployments
-2. 🔄 **Multi-browser support** (Firefox, Edge, Safari)
-3. 🔄 **Cloud execution** and distributed processing
-4. 🔄 **Visual script builder** (drag-and-drop)
-5. 🔄 **AI-assisted script generation**
-6. 🔄 **Team collaboration** features
+1. 🔄 **AI-assisted script generation** - Natural language to YAML (optional cloud inference)
+2. 🔄 **Visual script builder** - Drag-and-drop for non-technical users
+3. 🔄 **Record & replay** - Watch once, automate forever
+4. 🔄 **Community script library** - Share and discover automations
+5. 🔄 **Linux headless mode** - CI/CD and server deployments
+6. 🔄 **Multi-browser support** - Firefox, Edge, Safari
+7. 🔄 **Optional cloud inference** - Send LLM requests to cloud when desired
 
 ## Product Scope
 
@@ -692,24 +772,42 @@ output/
 
 ## Competitive Analysis
 
-| Feature | Our Tool (v1.0) | Selenium IDE | Playwright Inspector | Puppeteer Recorder |
-|---------|-----------------|--------------|----------------------|--------------------|
-| **Platform** | macOS native app | Browser extension | Node.js CLI | Chrome DevTools |
-| **UI Quality** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| **Real-time Status** | ✅ Visual dashboard | ❌ Basic logs | ❌ Console only | ❌ Console only |
+### Automation Platforms
+
+| Feature | **Robert (v1.0)** | **Zapier/IFTTT** | **Claude Agents** | **GPT Interface** | **Herd/Monitoro** |
+|---------|-------------------|------------------|-------------------|-------------------|-------------------|
+| **Target User** | Everyone | API-literate users | Programmers | General users | Programmers |
+| **Visual Feedback** | ✅ Real-time browser | ❌ Log-based | ❌ None | ❌ None | ✅ Real-time |
+| **Learning Curve** | ⭐⭐ YAML scripts | ⭐⭐⭐⭐ API knowledge | ⭐⭐⭐⭐⭐ Programming | ⭐ Natural language | ⭐⭐⭐⭐ Test runners |
+| **Control** | ✅ Pause/abort/inspect | ❌ Fire & forget | ❌ Black box | ❌ Black box | ✅ Pause/abort |
+| **Local Execution** | ✅ Your device | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only |
+| **Privacy** | ✅ Complete | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud |
+| **Open Source** | ✅ Free & auditable | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
+| **Programming Required** | ❌ YAML only | ⚠️ API knowledge | ✅ Yes | ❌ No | ✅ Yes |
+| **Eye-candy UI** | ✅ Beautiful native | ❌ Functional | ❌ Chat interface | ❌ Chat interface | ✅ Modern web |
+| **Cost** | 🆓 Free | 💰 Subscription | 💰 Subscription | 💰 Subscription | 💰 Subscription |
+
+### Developer Tools
+
+| Feature | **Robert (v1.0)** | **Selenium IDE** | **Playwright** | **Puppeteer** |
+|---------|-------------------|------------------|----------------|---------------|
+| **UI Quality** | ⭐⭐⭐⭐⭐ Native app | ⭐⭐⭐ Extension | ⭐⭐ CLI | ⭐⭐⭐ DevTools |
+| **Target User** | Non-programmers | QA Engineers | Developers | Developers |
+| **Real-time Status** | ✅ Visual dashboard | ⚠️ Basic logs | ❌ Console only | ❌ Console only |
 | **Script Format** | YAML (simple) | Selenium format | JavaScript/TS | JavaScript |
-| **Multi-Browser** | Chrome only (v1) | ✅ All browsers | ✅ Chrome/FF/WebKit | Chrome only |
-| **Ease of Use** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| **Performance** | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **Ease of Use** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
+| **Programming** | ❌ Not required | ⚠️ Some scripting | ✅ Required | ✅ Required |
 | **Output Management** | ✅ Visual browser | ❌ Manual | ❌ Manual | ❌ Manual |
-| **macOS Native** | ✅ Tauri app | ❌ | ❌ | ❌ |
+| **Local Execution** | ✅ Always | ✅ Yes | ✅ Yes | ✅ Yes |
 
 **Unique Selling Points:**
-1. 🎨 **Beautiful native macOS UI** - Feels like a Mac app
-2. 👁️ **Real-time visual feedback** - See automation as it happens
-3. 📝 **Simple YAML scripts** - Non-programmers can create automation
-4. 📦 **Output management built-in** - Browse, preview, export easily
-5. 🚀 **Fast and lightweight** - Tauri keeps it small and fast
+1. 🌍 **Automation for everyone** - No programming or API knowledge required
+2. 👁️ **Watch it work** - Real-time visual feedback builds confidence
+3. 🎮 **Full control** - Pause, abort, inspect at any moment
+4. 🏠 **Local-first** - Your device, your data, your privacy
+5. 🆓 **Open & free** - No vendor lock-in, community-owned
+6. 🎨 **Eye-candy UI** - Beautiful interface makes automation delightful
+7. 📝 **Simple YAML** - Readable by humans, powerful for automation
 
 ## Technical Architecture Overview
 
