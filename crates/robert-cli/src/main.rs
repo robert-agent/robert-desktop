@@ -120,12 +120,19 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         })?
     };
 
+    // Normalize URL - add https:// if no protocol specified
+    let url = if cli.url.starts_with("http://") || cli.url.starts_with("https://") {
+        cli.url.clone()
+    } else {
+        format!("https://{}", cli.url)
+    };
+
     // Navigate
-    println!("🌐 Navigating to {}...", cli.url);
+    println!("🌐 Navigating to {}...", url);
     driver
-        .navigate(&cli.url)
+        .navigate(&url)
         .await
-        .map_err(|e| format!("Failed to navigate to {}:\n  Error: {}", cli.url, e))?;
+        .map_err(|e| format!("Failed to navigate to {}:\n  Error: {}", url, e))?;
 
     // Get page info
     let title = driver.title().await?;
