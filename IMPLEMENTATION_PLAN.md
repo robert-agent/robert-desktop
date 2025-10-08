@@ -41,8 +41,8 @@ A user-friendly browser automation tool with a **Tauri desktop app** for macOS, 
 - **Desktop Framework**: Tauri 2.0
 - **Frontend**: Svelte + TypeScript
 - **Backend/Engine**: Rust 1.70+
-- **Browser Automation**: thirtyfour (WebDriver)
-- **Browser Driver**: chromedriver
+- **Browser Automation**: chromiumoxide (Chrome DevTools Protocol)
+- **Chrome Management**: System Chrome (auto-download Chrome)
 - **Async Runtime**: tokio
 - **IPC**: Tauri commands (built-in)
 - **State Management**: Svelte stores + Tauri state
@@ -57,7 +57,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Browser automation
-thirtyfour = "0.32"
+chromiumoxide = { version = "0.1", features = ["fetcher"] }
 tokio = { version = "1.0", features = ["full"] }
 futures = "0.3"
 
@@ -442,26 +442,27 @@ robert/
 1. Implement basic browser automation in `robert-webdriver`:
    ```rust
    // Core functionality
-   - ChromeDriver::connect() - Connect to existing Chrome instance
+   - ChromeDriver::launch_sandboxed() - Auto-download and launch Chrome
+   - ChromeDriver::connect_debug_port() - Connect to existing Chrome
    - navigate(url) - Go to URL
    - get_page_content() - Fetch HTML content
    - get_text() - Extract visible text
    ```
 2. Implement CLI in `robert-cli`:
-   - Parse command-line arguments (URL)
-   - Connect to Chrome via WebDriver
+   - Parse command-line arguments (URL, mode flags)
+   - Launch sandboxed Chrome OR connect to debug port
    - Navigate to URL
    - Print page content to stdout
-3. Setup chromedriver connection (assumes chromedriver running)
+3. Two modes: sandboxed (default) and advanced (debug port)
 4. Add basic error handling
 
 **CLI Usage:**
 ```bash
-# Start chromedriver in one terminal
-chromedriver --port=9515
-
-# Run CLI in another terminal
+# Sandboxed mode (default) - auto-downloads Chrome
 cargo run --bin robert-cli -- https://example.com
+
+# Advanced mode - connect to user's Chrome on debug port
+cargo run --bin robert-cli -- https://example.com --debug-port 9222
 
 # Output:
 # Connecting to Chrome...
@@ -474,37 +475,67 @@ cargo run --bin robert-cli -- https://example.com
 **Code Example:**
 ```rust
 // crates/robert-webdriver/src/browser/chrome.rs
-use thirtyfour::prelude::*;
+use chromiumoxide::{Browser, BrowserConfig};
+use chromiumoxide::fetcher::{System Chrome, System ChromeOptions};
 
 pub struct ChromeDriver {
-    driver: WebDriver,
+    browser: Browser,
+}
+
+pub enum ConnectionMode {
+    Sandboxed,
+    DebugPort(u16),
 }
 
 impl ChromeDriver {
-    /// Connect to existing Chrome instance via chromedriver
-    pub async fn connect(port: u16) -> Result<Self, BrowserError> {
-        let caps = DesiredCapabilities::chrome();
-        let driver = WebDriver::new(
-            &format!("http://localhost:{}", port),
-            caps
+    /// Launch sandboxed Chrome (auto-downloads if needed)
+    pub async fn launch_sandboxed() -> Result<Self, BrowserError> {
+        // Auto-download Chrome on first run
+        let cache_dir = dirs::home_dir()
+            .ok_or(BrowserError::NoCacheDir)?
+            .join(".robert/chrome");
+
+        let fetcher = System Chrome::new(
+            System ChromeOptions::builder()
+                .with_path(cache_dir)
+                .build()
+        );
+
+        let info = fetcher.fetch().await
+            .map_err(|e| BrowserError::FetchFailed(e.to_string()))?;
+
+        let browser = Browser::launch(
+            BrowserConfig::builder()
+                .chrome_executable(info.executable_path)
+                .build()
         ).await?;
 
-        Ok(Self { driver })
+        Ok(Self { browser })
+    }
+
+    /// Connect to existing Chrome on debug port
+    pub async fn connect_debug_port(port: u16) -> Result<Self, BrowserError> {
+        let url = format!("http://localhost:{}", port);
+        let browser = Browser::connect(&url).await?;
+        Ok(Self { browser })
     }
 
     pub async fn navigate(&self, url: &str) -> Result<(), BrowserError> {
-        self.driver.goto(url).await?;
+        let page = self.browser.new_page(url).await?;
         Ok(())
     }
 
     pub async fn get_page_source(&self) -> Result<String, BrowserError> {
-        let source = self.driver.source().await?;
-        Ok(source)
+        let pages = self.browser.get_pages().await?;
+        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let html = page.get_content().await?;
+        Ok(html)
     }
 
     pub async fn get_page_text(&self) -> Result<String, BrowserError> {
-        let body = self.driver.find(By::Tag("body")).await?;
-        let text = body.text().await?;
+        let pages = self.browser.get_pages().await?;
+        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let text = page.get_inner_text("body").await?;
         Ok(text)
     }
 }
@@ -522,12 +553,12 @@ struct Cli {
     /// URL to navigate to
     url: String,
 
-    /// Chromedriver port
-    #[arg(short, long, default_value = "9515")]
-    port: u16,
+    /// Connect to existing Chrome debug port (advanced mode)
+    #[arg(long)]
+    debug_port: Option<u16>,
 
     /// Output format: html or text
-    #[arg(short, long, default_value = "html")]
+    #[arg(short = 'f', long, default_value = "html")]
     format: String,
 }
 
@@ -535,8 +566,14 @@ struct Cli {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    println!("🔌 Connecting to Chrome on port {}...", cli.port);
-    let driver = ChromeDriver::connect(cli.port).await?;
+    // Connect to Chrome (sandboxed or debug port)
+    let driver = if let Some(port) = cli.debug_port {
+        println!("🔌 Connecting to Chrome debug port {}...", port);
+        ChromeDriver::connect_debug_port(port).await?
+    } else {
+        println!("🚀 Launching sandboxed Chrome (auto-downloading if needed)...");
+        ChromeDriver::launch_sandboxed().await?
+    };
 
     println!("🌐 Navigating to {}...", cli.url);
     driver.navigate(&cli.url).await?;
@@ -557,10 +594,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 **Dependencies (robert-webdriver):**
 ```toml
 [dependencies]
-thirtyfour = "0.32"
+chromiumoxide = { version = "0.1", features = ["fetcher"] }
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 thiserror = "1.0"
+dirs = "5.0"  # For cache directory
 ```
 
 **Dependencies (robert-cli):**
@@ -572,7 +610,9 @@ tokio = { version = "1.0", features = ["full"] }
 ```
 
 **Deliverables:**
-- CLI tool that connects to running Chrome
+- CLI tool with two modes: sandboxed and advanced
+- Auto-downloads Chrome on first run (sandboxed mode)
+- Can connect to user's Chrome via debug port (advanced mode)
 - Can navigate to any URL
 - Prints page content (HTML or text)
 - Works with visible Chrome window
@@ -580,31 +620,37 @@ tokio = { version = "1.0", features = ["full"] }
 
 **Testing:**
 ```bash
-# 1. Install and start chromedriver
-brew install chromedriver
-chromedriver --port=9515
-
-# 2. Run CLI
+# 1. Test sandboxed mode (no setup required!)
 cargo run --bin robert-cli -- https://example.com
 cargo run --bin robert-cli -- https://example.com --format text
 
-# 3. Should see page content printed
+# 2. Test advanced mode (requires Chrome with debug port)
+# First, start Chrome with debug flag:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+
+# Then connect:
+cargo run --bin robert-cli -- https://example.com --debug-port 9222
+
+# 3. Should see page content printed in both modes
 ```
 
 **Success Criteria:**
 - [ ] Workspace structure created
 - [ ] Three crates compile successfully
-- [ ] CLI connects to Chrome via chromedriver
+- [ ] Sandboxed mode auto-downloads Chrome on first run
+- [ ] Sandboxed mode launches Chrome successfully
+- [ ] Advanced mode connects to Chrome debug port
 - [ ] CLI navigates to provided URL
 - [ ] Page content displayed in terminal
 - [ ] Works with visible Chrome (not headless)
-- [ ] Basic error handling (connection failed, navigation timeout)
+- [ ] Basic error handling (connection failed, navigation timeout, download failed)
 
 **Duration**: 2-3 days
 
 **Why This Phase?**
-- ✅ Validates thirtyfour integration before GUI work
-- ✅ Tests Chrome connection approach
+- ✅ Validates chromiumoxide integration before GUI work
+- ✅ Tests both connection modes (sandboxed and advanced)
+- ✅ Proves zero-dependency approach works
 - ✅ Creates reusable library crate for Tauri app
 - ✅ Quick feedback loop for debugging
 - ✅ Foundation for all future browser automation
@@ -632,56 +678,69 @@ cargo run --bin robert-cli -- https://example.com --format text
 
 #### Milestone 1.2: Rust Backend - Browser Control
 **Tasks:**
-1. Add thirtyfour to Cargo.toml
-2. Implement `browser/chrome.rs` with thirtyfour
-3. Setup chromedriver auto-download or bundling
+1. Add chromiumoxide to Cargo.toml with fetcher feature
+2. Implement `browser/chrome.rs` with chromiumoxide
+3. Implement both modes: sandboxed and advanced
 4. Implement browser launch/close
-5. Add Tauri commands: `launch_browser`, `close_browser`
-6. Handle macOS Chrome path detection
+5. Add Tauri commands: `launch_browser_sandboxed`, `launch_browser_advanced`, `close_browser`
+6. Handle Chrome auto-download and caching
 
 **Code Example:**
 ```rust
 // src-tauri/browser/chrome.rs
-use thirtyfour::prelude::*;
+use chromiumoxide::{Browser, BrowserConfig};
+use chromiumoxide::fetcher::{System Chrome, System ChromeOptions};
 
 pub struct ChromeDriver {
-    driver: WebDriver,
+    browser: Browser,
+}
+
+pub enum BrowserMode {
+    Sandboxed,
+    Advanced { debug_port: u16 },
 }
 
 impl ChromeDriver {
-    pub async fn new() -> Result<Self, BrowserError> {
-        let mut caps = DesiredCapabilities::chrome();
-        caps.set_window_size(1280, 1024)?;
+    pub async fn new(mode: BrowserMode) -> Result<Self, BrowserError> {
+        let browser = match mode {
+            BrowserMode::Sandboxed => {
+                // Auto-download Chrome for Testing
+                let cache_dir = dirs::home_dir()
+                    .ok_or(BrowserError::NoCacheDir)?
+                    .join(".robert/chrome");
 
-        // macOS Chrome paths
-        let chrome_path = Self::find_chrome_macos()?;
-        caps.add_chrome_arg(&format!("--binary={}", chrome_path))?;
+                let fetcher = System Chrome::new(
+                    System ChromeOptions::builder()
+                        .with_path(cache_dir)
+                        .build()
+                );
 
-        let driver = WebDriver::new("http://localhost:9515", caps).await?;
-        Ok(Self { driver })
-    }
+                let info = fetcher.fetch().await?;
 
-    fn find_chrome_macos() -> Result<String, BrowserError> {
-        let paths = vec![
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            "/Applications/Chromium.app/Contents/MacOS/Chromium",
-        ];
-
-        for path in paths {
-            if std::path::Path::new(path).exists() {
-                return Ok(path.to_string());
+                Browser::launch(
+                    BrowserConfig::builder()
+                        .chrome_executable(info.executable_path)
+                        .window_size(1280, 1024)
+                        .build()
+                ).await?
             }
-        }
+            BrowserMode::Advanced { debug_port } => {
+                let url = format!("http://localhost:{}", debug_port);
+                Browser::connect(&url).await?
+            }
+        };
 
-        Err(BrowserError::ChromeNotFound)
+        Ok(Self { browser })
     }
 }
 ```
 
 **Deliverables:**
-- Chrome launches from Tauri app
-- Frontend button to launch/close browser
-- Error handling for Chrome not found
+- Chrome launches from Tauri app (sandboxed mode)
+- Can connect to user's Chrome (advanced mode)
+- Frontend buttons for both modes
+- Chrome auto-download on first launch
+- Error handling for connection failures
 
 #### Milestone 1.3: Navigation & Basic Commands
 **Tasks:**
@@ -989,13 +1048,14 @@ impl Executor {
 
 ### Rust Crates
 - `tauri` - Desktop framework
-- `thirtyfour` - Browser automation
+- `chromiumoxide` - Browser automation via CDP (with `fetcher` feature)
 - `tokio` - Async runtime
 - `serde`, `serde_json`, `serde_yaml` - Serialization
 - `uuid`, `chrono` - Utilities
 - `tracing` - Logging
 - `image`, `base64` - Image handling
 - `anyhow`, `thiserror` - Error handling
+- `dirs` - Cross-platform directory paths
 
 ### Frontend (npm)
 - `@tauri-apps/api` - Tauri bindings
@@ -1006,15 +1066,17 @@ impl Executor {
 - Native Svelte stores - State management
 
 ### External
-- `chromedriver` - WebDriver for Chrome
-- Chrome browser (user installation)
+- **None** (sandboxed mode) - Chrome auto-downloaded via System Chrome
+- Chrome browser (optional, for advanced mode only)
 
 ## Risk Mitigation
 
 | Risk | Mitigation |
 |------|------------|
-| Chrome not found | Path detection + manual configuration |
-| chromedriver version mismatch | Auto-download compatible version |
+| Chrome not found (sandboxed) | Auto-download via System Chrome on first run |
+| Chrome not found (advanced) | Clear error message, guide to start Chrome with debug port |
+| Chrome download fails | Retry logic, fallback to system Chrome detection |
+| Debug port connection fails | Check if Chrome running with debug flag, clear instructions |
 | Tauri learning curve | Extensive examples in docs |
 | IPC complexity | Abstraction layer for commands |
 | macOS signing issues | Clear documentation, CI setup |
@@ -1022,10 +1084,11 @@ impl Executor {
 
 ## Next Steps
 
-1. **Initialize Tauri project**
-2. **Setup basic browser automation** with thirtyfour
-3. **Implement core IPC** commands
-4. **Build execution status UI**
-5. **Iterate with user testing**
+1. **Complete Phase 0 CLI** with chromiumoxide (both modes)
+2. **Initialize Tauri project**
+3. **Setup basic browser automation** with chromiumoxide
+4. **Implement core IPC** commands for both modes
+5. **Build execution status UI**
+6. **Iterate with user testing**
 
-This revised plan delivers a much more user-friendly experience with visual feedback, making browser automation accessible to non-technical users while maintaining the power of scripted automation.
+This revised plan delivers a much more user-friendly experience with visual feedback and zero external dependencies, making browser automation accessible to all users while maintaining the power of scripted automation and advanced features for power users.

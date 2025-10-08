@@ -2,8 +2,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum BrowserError {
-    #[error("Failed to connect to chromedriver: {0}")]
+    #[error("Failed to connect to Chrome: {0}")]
     ConnectionFailed(String),
+
+    #[error("Failed to launch Chrome: {0}")]
+    LaunchFailed(String),
 
     #[error("Navigation failed: {0}")]
     NavigationFailed(String),
@@ -11,8 +14,11 @@ pub enum BrowserError {
     #[error("Element not found: {0}")]
     ElementNotFound(String),
 
-    #[error("WebDriver error: {0}")]
-    WebDriverError(#[from] thirtyfour::error::WebDriverError),
+    #[error("No page available")]
+    NoPage,
+
+    #[error("Chromiumoxide error: {0}")]
+    ChromiumoxideError(#[from] chromiumoxide::error::CdpError),
 
     #[error("Other error: {0}")]
     Other(String),

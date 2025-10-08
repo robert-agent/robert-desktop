@@ -4,14 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-thirtyfour = { workspace = true }
+chromiumoxide = { version = "0.7", features = ["tokio-runtime"] }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+dirs = { workspace = true }
+futures = { workspace = true }
 
 [dev-dependencies]
 warp = "0.3"
 tokio = { workspace = true }
 serde_json = { workspace = true }
-bollard = "0.18"
-futures-util = "0.3"
