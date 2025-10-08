@@ -3,7 +3,11 @@
 
 ## Overview
 
-A user-friendly browser automation tool with a **Tauri desktop app** for macOS, featuring real-time automation status viewing and visual feedback.
+A user-friendly browser automation tool with a **Tauri desktop app** for macOS, featuring:
+- **Voice-driven automation creation** - Talk through your automation, AI writes Markdown scripts
+- **Real-time visual feedback** - Watch automation happen in visible browser
+- **Local-first AI** - All inference runs on-device by default
+- **Privacy protection** - Auto-obfuscates sensitive data if using cloud AI (optional)
 
 ## Architecture
 
@@ -64,7 +68,7 @@ futures = "0.3"
 # Utilities
 anyhow = "1.0"
 thiserror = "1.0"
-serde_yaml = "0.9"
+pulldown-cmark = "0.9"  # Markdown parsing
 tracing = "0.1"
 tracing-subscriber = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
@@ -98,7 +102,7 @@ inferno/
 │       │   │   └── lifecycle.rs
 │       │   ├── script/
 │       │   │   ├── mod.rs
-│       │   │   ├── parser.rs        # YAML parser
+│       │   │   ├── parser.rs        # Markdown script parser
 │       │   │   ├── executor.rs      # Script executor with events
 │       │   │   └── actions.rs
 │       │   ├── capture/
@@ -132,8 +136,8 @@ inferno/
 │       ├── public/
 │       │   └── icons/
 │       ├── examples/
-│       │   ├── basic_navigation.yaml
-│       │   └── form_interaction.yaml
+│       │   ├── basic_navigation.md
+│       │   └── form_interaction.md
 │       ├── tests/
 │       │   ├── integration/
 │       │   └── unit/
@@ -180,7 +184,7 @@ inferno/
 ┌─────────────────────────────────────────────────────────────┐
 │  Execution Progress                                          │
 ├─────────────────────────────────────────────────────────────┤
-│  Script: login_flow.yaml                                     │
+│  Script: login_flow.md                                       │
 │  Started: 10:30:45                                           │
 │  Status: Running                                             │
 │                                                               │
@@ -759,14 +763,14 @@ impl ChromeDriver {
 
 #### Milestone 2.1: Script Parser
 **Tasks:**
-1. Implement YAML script parser
+1. Implement Markdown script parser (with YAML frontmatter)
 2. Add Tauri commands: `load_script`, `validate_script`
 3. Frontend: Script editor with syntax highlighting (CodeMirror)
 4. File picker for loading scripts
 5. Script validation UI
 
 **Deliverables:**
-- Load and parse YAML scripts
+- Load and parse Markdown scripts
 - Visual validation feedback
 - Example scripts included
 
@@ -1050,7 +1054,8 @@ impl Executor {
 - `tauri` - Desktop framework
 - `chromiumoxide` - Browser automation via CDP (with `fetcher` feature)
 - `tokio` - Async runtime
-- `serde`, `serde_json`, `serde_yaml` - Serialization
+- `serde`, `serde_json` - Serialization
+- `pulldown-cmark` - Markdown parsing
 - `uuid`, `chrono` - Utilities
 - `tracing` - Logging
 - `image`, `base64` - Image handling
@@ -1061,7 +1066,7 @@ impl Executor {
 - `@tauri-apps/api` - Tauri bindings
 - `svelte` - UI framework
 - `tailwindcss` - Styling
-- `@codemirror/lang-yaml` - Script editor
+- `@codemirror/lang-markdown` - Script editor
 - `lucide-svelte` - Icons
 - Native Svelte stores - State management
 
