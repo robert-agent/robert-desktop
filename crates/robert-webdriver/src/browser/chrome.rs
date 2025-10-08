@@ -10,7 +10,7 @@ pub struct ChromeDriver {
 /// Connection mode for Chrome browser
 pub enum ConnectionMode {
     /// Sandboxed mode - launches Chrome using system installation
-    Sandboxed,
+    Sandboxed { chrome_path: Option<String> },
     /// Advanced mode - connects to existing Chrome on debug port
     DebugPort(u16),
 }
@@ -18,7 +18,15 @@ pub enum ConnectionMode {
 impl ChromeDriver {
     /// Launch Chrome in sandboxed mode (uses system Chrome)
     pub async fn launch_sandboxed() -> Result<Self> {
-        Self::new(ConnectionMode::Sandboxed).await
+        Self::new(ConnectionMode::Sandboxed { chrome_path: None }).await
+    }
+
+    /// Launch Chrome in sandboxed mode with custom path
+    pub async fn launch_with_path(chrome_path: String) -> Result<Self> {
+        Self::new(ConnectionMode::Sandboxed {
+            chrome_path: Some(chrome_path),
+        })
+        .await
     }
 
     /// Connect to existing Chrome on debug port (advanced mode)
@@ -29,16 +37,44 @@ impl ChromeDriver {
     /// Create new ChromeDriver with specified connection mode
     pub async fn new(mode: ConnectionMode) -> Result<Self> {
         let browser = match mode {
-            ConnectionMode::Sandboxed => {
+            ConnectionMode::Sandboxed { chrome_path } => {
                 // Launch Chrome with visible UI
+                let mut config = BrowserConfig::builder().with_head();
+
+                // Use custom Chrome path if provided
+                if let Some(path) = chrome_path {
+                    config = config.chrome_executable(path);
+                }
+
                 let (browser, mut handler) = Browser::launch(
-                    BrowserConfig::builder()
-                        .with_head() // Show browser window
+                    config
                         .build()
-                        .map_err(|e| BrowserError::LaunchFailed(e.to_string()))?,
+                        .map_err(|e| {
+                            BrowserError::LaunchFailed(format!(
+                                "{}. \n\n\
+                                 Chrome/Chromium not found. Please install:\n\
+                                 - Ubuntu/Debian: sudo apt install chromium-browser\n\
+                                 - Fedora: sudo dnf install chromium\n\
+                                 - macOS: brew install --cask google-chrome\n\
+                                 - Or specify path: --chrome-path /path/to/chrome\n\
+                                 - Or download from: https://www.google.com/chrome/",
+                                e
+                            ))
+                        })?,
                 )
                 .await
-                .map_err(|e| BrowserError::LaunchFailed(e.to_string()))?;
+                .map_err(|e| {
+                    BrowserError::LaunchFailed(format!(
+                        "{}. \n\n\
+                         Chrome/Chromium not found. Please install:\n\
+                         - Ubuntu/Debian: sudo apt install chromium-browser\n\
+                         - Fedora: sudo dnf install chromium\n\
+                         - macOS: brew install --cask google-chrome\n\
+                         - Or specify path: --chrome-path /path/to/chrome\n\
+                         - Or download from: https://www.google.com/chrome/",
+                        e
+                    ))
+                })?;
 
                 // Spawn handler task
                 tokio::spawn(async move {
