@@ -126,16 +126,16 @@ E2E tests use CDP commands directly (not high-level `navigate()`) because:
 ## Quick Commands
 
 ```bash
-# All tests (recommended)
-cargo test --package robert-webdriver -- --test-threads=1
+# All tests (fully parallel, no restrictions!)
+cargo test --package robert-webdriver
 
 # Fast tests only (no Chrome, ~instant)
 cargo test --package robert-webdriver validation
 cargo test --package robert-webdriver --test meta_infrastructure_test
 
 # Chrome tests only
-cargo test --package robert-webdriver --test e2e -- --test-threads=1
-cargo test --package robert-webdriver --test headless_integration -- --test-threads=1
+cargo test --package robert-webdriver --test e2e
+cargo test --package robert-webdriver --test headless_integration
 
 # Linting
 cargo clippy --workspace --all-targets --all-features -- -D warnings
@@ -143,15 +143,12 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 ---
 
-## Test Isolation
+## Test Isolation ✅
 
-**Why `--test-threads=1`?**
-Chrome instances share profile directories. Running tests sequentially prevents:
-```
-ERROR:process_singleton_posix.cc(340)] Failed to create SingletonLock
-```
+**Full parallel execution supported!** Each test gets:
+- ✅ Own test server on random port
+- ✅ Unique Chrome profile directory (timestamp-based)
+- ✅ Clean Chrome instance with isolated user data
+- ✅ Automatic cleanup on test completion
 
-**Each test gets**:
-- Own test server on random port
-- Clean Chrome instance
-- Isolated execution environment
+**No `--test-threads=1` required!** The previous issue with shared profile directories has been fixed by using unique temporary directories for each Chrome instance.

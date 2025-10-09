@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 pub struct ChromeDriver {
     browser: Browser,
+    temp_dir: Option<PathBuf>,
 }
 
 /// Connection mode for Chrome browser
@@ -79,18 +80,33 @@ impl ChromeDriver {
 
     /// Create new ChromeDriver with specified connection mode
     pub async fn new(mode: ConnectionMode) -> Result<Self> {
-        let browser = match mode {
+        let (browser, temp_dir) = match mode {
             ConnectionMode::Sandboxed {
                 chrome_path,
                 no_sandbox,
                 headless,
             } => {
+                // Create a unique temporary directory for this browser instance
+                // This ensures parallel tests don't share profile data
+                // Using timestamp in nanoseconds ensures uniqueness across threads
+                let unique_id = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos();
+                let temp_dir = std::env::temp_dir().join(format!("chromiumoxide-{}", unique_id));
+                std::fs::create_dir_all(&temp_dir).map_err(|e| {
+                    BrowserError::LaunchFailed(format!("Failed to create temp directory: {}", e))
+                })?;
+
                 // Launch Chrome with visible UI or headless
                 let mut config = if headless {
                     BrowserConfig::builder()
                 } else {
                     BrowserConfig::builder().with_head()
                 };
+
+                // Set unique user data directory for test isolation
+                config = config.user_data_dir(&temp_dir);
 
                 // Add no-sandbox flag if requested (Linux AppArmor workaround)
                 if no_sandbox {
@@ -151,7 +167,7 @@ impl ChromeDriver {
                     }
                 });
 
-                browser
+                (browser, Some(temp_dir))
             }
             ConnectionMode::DebugPort(port) => {
                 let url = format!("http://localhost:{}", port);
@@ -170,11 +186,11 @@ impl ChromeDriver {
                     }
                 });
 
-                browser
+                (browser, None)
             }
         };
 
-        Ok(Self { browser })
+        Ok(Self { browser, temp_dir })
     }
 
     /// Navigate to a URL
@@ -564,4 +580,15 @@ impl ChromeDriver {
             .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))
     }
 
+}
+
+impl Drop for ChromeDriver {
+    fn drop(&mut self) {
+        // Clean up temporary directory if it exists
+        if let Some(temp_dir) = &self.temp_dir {
+            if temp_dir.exists() {
+                let _ = std::fs::remove_dir_all(temp_dir);
+            }
+        }
+    }
 }
