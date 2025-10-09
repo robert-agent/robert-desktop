@@ -1,90 +1,166 @@
 //! Integration tests for CDP script execution
+//! Tests programmatic CDP script execution without file dependencies
 
-use robert_webdriver::{CdpScript, ChromeDriver};
-use std::path::Path;
+mod test_server;
+
+use robert_webdriver::{CdpCommand, CdpScript, ChromeDriver, ConnectionMode};
+use test_server::TestServer;
 
 #[tokio::test]
-#[ignore] // Run manually: cargo test --test cdp_script_execution_test -- --ignored
-async fn test_execute_basic_navigation_script() -> anyhow::Result<()> {
-    // Launch browser
-    let driver = ChromeDriver::launch_auto().await?;
+async fn test_execute_navigation_and_screenshot() {
+    // Start local test server
+    let server = TestServer::start().await;
+    server.wait_ready().await.expect("Server failed to start");
+    let url = server.url();
 
-    // Execute CDP script
-    let script_path = Path::new("examples/cdp-scripts/basic-navigation.json");
-    let report = driver.execute_cdp_script(script_path).await?;
+    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+        chrome_path: None,
+        no_sandbox: true,
+        headless: true,
+    })
+    .await
+    .expect("Failed to launch Chrome");
 
-    println!("Execution Report:");
-    println!("  Script: {}", report.script_name);
-    println!("  Total commands: {}", report.total_commands);
-    println!("  Successful: {}", report.successful);
-    println!("  Failed: {}", report.failed);
-    println!("  Success rate: {:.1}%", report.success_rate());
+    // Create script programmatically
+    let script = CdpScript {
+        name: "navigation-screenshot-test".to_string(),
+        description: "Navigate and take screenshot".to_string(),
+        created: None,
+        author: Some("Test".to_string()),
+        tags: vec!["screenshot".to_string()],
+        cdp_commands: vec![
+            CdpCommand {
+                method: "Page.navigate".to_string(),
+                params: serde_json::json!({"url": url}),
+                save_as: None,
+                description: Some("Navigate to test server".to_string()),
+            },
+            CdpCommand {
+                method: "Page.captureScreenshot".to_string(),
+                params: serde_json::json!({}),
+                save_as: Some("test-execution-screenshot.png".to_string()),
+                description: Some("Capture screenshot".to_string()),
+            },
+        ],
+    };
 
-    // Check results
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+
+    println!("📊 Navigation + Screenshot Test:");
+    println!("   Script: {}", report.script_name);
+    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!("   Success rate: {:.1}%", report.success_rate());
+
     assert!(report.is_success(), "Script execution should succeed");
     assert_eq!(report.successful, 2, "Should execute 2 commands");
 
     // Verify screenshot was saved
     assert!(
-        Path::new("example-homepage.png").exists(),
+        std::path::Path::new("test-execution-screenshot.png").exists(),
         "Screenshot should be saved"
     );
 
-    // Cleanup
-    driver.close().await?;
-    tokio::fs::remove_file("example-homepage.png").await.ok();
+    println!("✅ Navigation + screenshot test passed!");
 
-    Ok(())
+    // Cleanup
+    driver.close().await.expect("Failed to close browser");
+    tokio::fs::remove_file("test-execution-screenshot.png").await.ok();
 }
 
 #[tokio::test]
-#[ignore]
-async fn test_execute_extract_title_script() -> anyhow::Result<()> {
-    // Launch browser
-    let driver = ChromeDriver::launch_auto().await?;
+async fn test_execute_data_extraction() {
+    // Start local test server
+    let server = TestServer::start().await;
+    server.wait_ready().await.expect("Server failed to start");
+    let url = server.url();
 
-    // Execute CDP script
-    let script_path = Path::new("examples/cdp-scripts/extract-title.json");
-    let report = driver.execute_cdp_script(script_path).await?;
+    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+        chrome_path: None,
+        no_sandbox: true,
+        headless: true,
+    })
+    .await
+    .expect("Failed to launch Chrome");
 
-    println!("Execution Report:");
-    println!("  Script: {}", report.script_name);
-    println!("  Total commands: {}", report.total_commands);
-    println!("  Successful: {}", report.successful);
-    println!("  Duration: {:?}", report.total_duration);
+    // Create script to extract title and heading
+    let script = CdpScript {
+        name: "data-extraction-test".to_string(),
+        description: "Extract page data".to_string(),
+        created: None,
+        author: Some("Test".to_string()),
+        tags: vec!["extraction".to_string()],
+        cdp_commands: vec![
+            CdpCommand {
+                method: "Page.navigate".to_string(),
+                params: serde_json::json!({"url": url}),
+                save_as: None,
+                description: Some("Navigate".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.title",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-exec-title.json".to_string()),
+                description: Some("Get title".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.querySelector('h1').textContent",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-exec-heading.json".to_string()),
+                description: Some("Get heading".to_string()),
+            },
+        ],
+    };
 
-    // Check results
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+
+    println!("📊 Data Extraction Test:");
+    println!("   Total commands: {}", report.total_commands);
+    println!("   Successful: {}", report.successful);
+    println!("   Duration: {:?}", report.total_duration);
+
     assert!(report.is_success(), "Script execution should succeed");
     assert_eq!(report.successful, 3, "Should execute 3 commands");
 
     // Verify extracted data was saved
-    assert!(
-        Path::new("page-title.json").exists(),
-        "Title should be saved"
-    );
-    assert!(
-        Path::new("main-heading.json").exists(),
-        "Heading should be saved"
-    );
-
-    // Read and verify content
-    let title_content = tokio::fs::read_to_string("page-title.json").await?;
+    let title_content = tokio::fs::read_to_string("test-exec-title.json")
+        .await
+        .expect("Title file should exist");
     println!("Extracted title: {}", title_content);
     assert!(title_content.contains("Example"), "Title should contain 'Example'");
 
-    // Cleanup
-    driver.close().await?;
-    tokio::fs::remove_file("page-title.json").await.ok();
-    tokio::fs::remove_file("main-heading.json").await.ok();
+    let heading_content = tokio::fs::read_to_string("test-exec-heading.json")
+        .await
+        .expect("Heading file should exist");
+    assert!(heading_content.contains("Example Domain"), "Heading should contain 'Example Domain'");
 
-    Ok(())
+    println!("✅ Data extraction test passed!");
+
+    // Cleanup
+    driver.close().await.expect("Failed to close browser");
+    tokio::fs::remove_file("test-exec-title.json").await.ok();
+    tokio::fs::remove_file("test-exec-heading.json").await.ok();
 }
 
 #[tokio::test]
-#[ignore]
-async fn test_execute_cdp_script_direct() -> anyhow::Result<()> {
-    // Launch browser
-    let driver = ChromeDriver::launch_auto().await?;
+async fn test_execute_programmatic_script() {
+    // Start local test server
+    let server = TestServer::start().await;
+    server.wait_ready().await.expect("Server failed to start");
+    let url = server.url();
+
+    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+        chrome_path: None,
+        no_sandbox: true,
+        headless: true,
+    })
+    .await
+    .expect("Failed to launch Chrome");
 
     // Create script programmatically
     let script = CdpScript {
@@ -94,15 +170,13 @@ async fn test_execute_cdp_script_direct() -> anyhow::Result<()> {
         author: Some("Test".to_string()),
         tags: vec!["test".to_string()],
         cdp_commands: vec![
-            robert_webdriver::CdpCommand {
+            CdpCommand {
                 method: "Page.navigate".to_string(),
-                params: serde_json::json!({
-                    "url": "https://example.com"
-                }),
+                params: serde_json::json!({"url": url}),
                 save_as: None,
-                description: Some("Navigate to example".to_string()),
+                description: Some("Navigate to test server".to_string()),
             },
-            robert_webdriver::CdpCommand {
+            CdpCommand {
                 method: "Runtime.evaluate".to_string(),
                 params: serde_json::json!({
                     "expression": "document.title",
@@ -115,23 +189,29 @@ async fn test_execute_cdp_script_direct() -> anyhow::Result<()> {
     };
 
     // Execute the script
-    let report = driver.execute_cdp_script_direct(&script).await?;
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
 
-    println!("Programmatic script execution:");
-    println!("  Total commands: {}", report.total_commands);
-    println!("  Successful: {}", report.successful);
+    println!("📊 Programmatic Script Execution:");
+    println!("   Total commands: {}", report.total_commands);
+    println!("   Successful: {}", report.successful);
 
     assert!(report.is_success(), "Script should succeed");
+    assert_eq!(report.total_commands, 2, "Should have 2 commands");
 
-    driver.close().await?;
+    println!("✅ Programmatic script test passed!");
 
-    Ok(())
+    driver.close().await.expect("Failed to close browser");
 }
 
 #[tokio::test]
-#[ignore]
-async fn test_invalid_cdp_command() -> anyhow::Result<()> {
-    let driver = ChromeDriver::launch_auto().await?;
+async fn test_invalid_cdp_command() {
+    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+        chrome_path: None,
+        no_sandbox: true,
+        headless: true,
+    })
+    .await
+    .expect("Failed to launch Chrome");
 
     let script = CdpScript {
         name: "invalid-command-test".to_string(),
@@ -139,7 +219,7 @@ async fn test_invalid_cdp_command() -> anyhow::Result<()> {
         created: None,
         author: None,
         tags: vec![],
-        cdp_commands: vec![robert_webdriver::CdpCommand {
+        cdp_commands: vec![CdpCommand {
             method: "Invalid.command".to_string(),
             params: serde_json::json!({}),
             save_as: None,
@@ -147,7 +227,11 @@ async fn test_invalid_cdp_command() -> anyhow::Result<()> {
         }],
     };
 
-    let report = driver.execute_cdp_script_direct(&script).await?;
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution completed");
+
+    println!("📊 Invalid Command Test:");
+    println!("   Failed: {}", report.failed);
+    println!("   Error: {:?}", report.results[0].error);
 
     // Should fail with unsupported command error
     assert!(!report.is_success(), "Invalid command should fail");
@@ -161,7 +245,58 @@ async fn test_invalid_cdp_command() -> anyhow::Result<()> {
         "Error should mention unsupported command"
     );
 
-    driver.close().await?;
+    println!("✅ Invalid command test passed!");
 
-    Ok(())
+    driver.close().await.expect("Failed to close browser");
+}
+
+#[tokio::test]
+async fn test_execute_cdp_script_from_file() {
+    // Test file-based CDP script execution
+    // Create a temporary script file
+    let script_content = serde_json::json!({
+        "name": "file-based-test",
+        "description": "Test loading script from file",
+        "author": "Test",
+        "tags": ["file", "test"],
+        "cdp_commands": [
+            {
+                "method": "Page.navigate",
+                "params": {"url": "about:blank"},
+                "description": "Navigate to blank page"
+            }
+        ]
+    });
+
+    // Write script to temp file
+    let script_path = std::path::Path::new("test-script.json");
+    tokio::fs::write(script_path, serde_json::to_string_pretty(&script_content).unwrap())
+        .await
+        .expect("Failed to write script file");
+
+    // Launch driver
+    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+        chrome_path: None,
+        no_sandbox: true,
+        headless: true,
+    })
+    .await
+    .expect("Failed to launch Chrome");
+
+    // Execute script from file
+    let report = driver.execute_cdp_script(script_path).await.expect("Failed to execute script from file");
+
+    println!("📊 File-based Script Execution:");
+    println!("   Script: {}", report.script_name);
+    println!("   Commands: {}/{}", report.successful, report.total_commands);
+
+    assert!(report.is_success(), "File-based script should succeed");
+    assert_eq!(report.script_name, "file-based-test");
+    assert_eq!(report.total_commands, 1);
+
+    println!("✅ File-based script test passed!");
+
+    // Cleanup
+    driver.close().await.expect("Failed to close browser");
+    tokio::fs::remove_file(script_path).await.ok();
 }

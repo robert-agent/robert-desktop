@@ -371,33 +371,28 @@ impl ChromeDriver {
     /// - `Input.dispatchMouseEvent` - Simulate mouse events
     /// - `Input.dispatchKeyEvent` - Simulate keyboard events
     ///
-    /// # Example - Set Geolocation
-    /// ```ignore
+    /// # Example - Runtime.evaluate (Supported)
+    /// ```no_run
     /// use serde_json::json;
-    /// use robert_webdriver::ChromeDriver;
+    /// use robert_webdriver::{ChromeDriver, ConnectionMode};
     ///
-    /// # async fn example(driver: &ChromeDriver) -> anyhow::Result<()> {
-    /// let params = json!({
-    ///     "latitude": 37.7749,
-    ///     "longitude": -122.4194,
-    ///     "accuracy": 100
-    /// });
-    /// driver.send_cdp_command("Emulation.setGeolocationOverride", params).await?;
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+    ///     chrome_path: None,
+    ///     no_sandbox: true,
+    ///     headless: true,
+    /// }).await?;
+    ///
+    /// let params = json!({"expression": "2 + 2"});
+    /// let result = driver.send_cdp_command("Runtime.evaluate", params).await?;
+    /// println!("Result: {}", result);
     /// # Ok(())
     /// # }
     /// ```
     ///
-    /// # Example - Get Cookies
-    /// ```ignore
-    /// use serde_json::json;
-    /// use robert_webdriver::ChromeDriver;
-    ///
-    /// # async fn example(driver: &ChromeDriver) -> anyhow::Result<()> {
-    /// let result = driver.send_cdp_command("Network.getCookies", json!({})).await?;
-    /// println!("Cookies: {}", result);
-    /// # Ok(())
-    /// # }
-    /// ```
+    /// # Note
+    /// For other CDP commands (Emulation, Network, etc.), use `driver.current_page()` to access
+    /// chromiumoxide's typed CDP API. See tests in `tests/cdp_execution_test.rs` for examples.
     pub async fn send_cdp_command(
         &self,
         method: &str,
@@ -539,11 +534,25 @@ impl ChromeDriver {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```no_run
+    /// use robert_webdriver::{ChromeDriver, ConnectionMode};
+    /// use std::path::Path;
+    ///
+    /// # async fn example() -> anyhow::Result<()> {
+    /// let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
+    ///     chrome_path: None,
+    ///     no_sandbox: true,
+    ///     headless: true,
+    /// }).await?;
+    ///
     /// let report = driver.execute_cdp_script(Path::new("script.json")).await?;
     /// println!("Executed {} commands, {} successful",
     ///     report.total_commands, report.successful);
+    /// # Ok(())
+    /// # }
     /// ```
+    ///
+    /// See `tests/cdp_script_execution_test.rs::test_execute_cdp_script_from_file` for a complete example.
     pub async fn execute_cdp_script(
         &self,
         script_path: &std::path::Path,

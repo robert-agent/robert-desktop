@@ -1,152 +1,16 @@
-//! Integration tests for CDP script generation with Claude
+//! Unit tests for CDP script generation and validation
+//!
+//! Note: AI-based generation tests are excluded because they require external Claude CLI
+//! and may have non-deterministic results. The validation tests verify the structure
+//! and correctness of generated scripts.
 
-use robert_webdriver::{CdpScriptGenerator, ChromeDriver};
-use std::path::Path;
-
-#[tokio::test]
-#[ignore] // Requires Claude CLI: cargo test --test cdp_generator_test -- --ignored
-async fn test_generate_screenshot_script() -> anyhow::Result<()> {
-    let generator = CdpScriptGenerator::new();
-
-    // Generate script from natural language
-    let script = generator
-        .generate("Take a screenshot of example.com and save it as test-screenshot.png")
-        .await?;
-
-    println!("Generated script: {}", script.name);
-    println!("Commands: {}", script.cdp_commands.len());
-
-    // Validate script structure
-    assert!(!script.name.is_empty());
-    assert!(!script.cdp_commands.is_empty());
-    assert!(script.validate().is_ok());
-
-    // Execute the generated script
-    let driver = ChromeDriver::launch_auto().await?;
-    let report = driver.execute_cdp_script_direct(&script).await?;
-
-    println!("Execution successful: {}", report.is_success());
-    assert!(report.is_success());
-
-    driver.close().await?;
-
-    // Cleanup
-    if Path::new("test-screenshot.png").exists() {
-        tokio::fs::remove_file("test-screenshot.png").await.ok();
-    }
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_generate_data_extraction_script() -> anyhow::Result<()> {
-    let generator = CdpScriptGenerator::new();
-
-    // Generate data extraction script
-    let script = generator
-        .generate(
-            "Go to example.com and extract the page title and main heading text, save to data.json",
-        )
-        .await?;
-
-    println!("Generated script: {}", script.name);
-    println!("Description: {}", script.description);
-
-    // Should have navigate + evaluate commands
-    assert!(script.cdp_commands.len() >= 2);
-
-    // Execute
-    let driver = ChromeDriver::launch_auto().await?;
-    let report = driver.execute_cdp_script_direct(&script).await?;
-
-    println!("Total commands: {}", report.total_commands);
-    println!("Successful: {}", report.successful);
-
-    driver.close().await?;
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_generate_complex_automation() -> anyhow::Result<()> {
-    let generator = CdpScriptGenerator::new();
-
-    let script = generator
-        .generate(
-            "Navigate to httpbin.org/forms/post, fill out the form with test data, and submit it",
-        )
-        .await?;
-
-    println!("Generated script: {}", script.name);
-    println!("Commands:");
-    for (i, cmd) in script.cdp_commands.iter().enumerate() {
-        println!("  {}. {} - {:?}", i + 1, cmd.method, cmd.description);
-    }
-
-    // Validate
-    assert!(script.validate().is_ok());
-    assert!(script.cdp_commands.len() >= 3); // navigate, fill, submit
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_generate_with_retry() -> anyhow::Result<()> {
-    let generator = CdpScriptGenerator::new();
-
-    // Test retry mechanism
-    let script = generator
-        .generate_with_retry("Screenshot example.com", 3)
-        .await?;
-
-    println!("Generated with retry: {}", script.name);
-    assert!(script.validate().is_ok());
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_generator_various_scenarios() -> anyhow::Result<()> {
-    let generator = CdpScriptGenerator::new();
-
-    let scenarios = vec![
-        "Take a screenshot of google.com",
-        "Extract all links from a webpage",
-        "Set geolocation to San Francisco and reload the page",
-        "Get all cookies from the current page",
-        "Emulate a mobile device and take a screenshot",
-    ];
-
-    for scenario in scenarios {
-        println!("\n=== Testing scenario: {} ===", scenario);
-
-        match generator.generate(scenario).await {
-            Ok(script) => {
-                println!("✓ Generated: {}", script.name);
-                println!("  Commands: {}", script.cdp_commands.len());
-                assert!(script.validate().is_ok());
-            }
-            Err(e) => {
-                println!("✗ Failed: {}", e);
-                // Don't fail the test, just report
-            }
-        }
-    }
-
-    Ok(())
-}
+use robert_webdriver::cdp::validate_generated_script;
 
 #[test]
-fn test_script_validation() {
-    // Test validation logic
-    use robert_webdriver::cdp::validate_generated_script;
-
+fn test_script_validation_valid() {
+    // Test validation logic with valid script
     let valid_json = r#"{
-        "name": "test",
+        "name": "test-script",
         "description": "Test script",
         "cdp_commands": [
             {
@@ -157,8 +21,11 @@ fn test_script_validation() {
     }"#;
 
     let result = validate_generated_script(valid_json);
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Valid script should pass validation");
+}
 
+#[test]
+fn test_script_validation_unknown_command() {
     // Test with unknown command
     let invalid_json = r#"{
         "name": "test",
@@ -172,5 +39,98 @@ fn test_script_validation() {
     }"#;
 
     let result = validate_generated_script(invalid_json);
-    assert!(result.is_err());
+    assert!(result.is_err(), "Unknown command should fail validation");
+
+    let error = result.unwrap_err();
+    assert!(error.to_string().contains("unknown") || error.to_string().contains("Unknown"),
+            "Error should mention unknown command");
+}
+
+#[test]
+fn test_script_validation_malformed_json() {
+    // Test with malformed JSON
+    let malformed_json = r#"{
+        "name": "test",
+        "cdp_commands": [
+            {
+                "method": "Page.navigate"
+                // Missing comma
+                "params": {}
+            }
+        ]
+    }"#;
+
+    let result = validate_generated_script(malformed_json);
+    assert!(result.is_err(), "Malformed JSON should fail validation");
+}
+
+#[test]
+fn test_script_validation_missing_required_fields() {
+    // Test with missing required fields
+    let missing_fields_json = r#"{
+        "name": "test",
+        "cdp_commands": [
+            {
+                "method": "Page.navigate"
+            }
+        ]
+    }"#;
+
+    let result = validate_generated_script(missing_fields_json);
+    assert!(result.is_err(), "Missing required params should fail validation");
+}
+
+#[test]
+fn test_script_validation_multiple_commands() {
+    // Test with multiple valid commands
+    let multi_command_json = r#"{
+        "name": "multi-command-test",
+        "description": "Test multiple commands",
+        "cdp_commands": [
+            {
+                "method": "Page.navigate",
+                "params": {"url": "https://example.com"}
+            },
+            {
+                "method": "Runtime.evaluate",
+                "params": {
+                    "expression": "document.title",
+                    "returnByValue": true
+                }
+            },
+            {
+                "method": "Page.captureScreenshot",
+                "params": {}
+            }
+        ]
+    }"#;
+
+    let result = validate_generated_script(multi_command_json);
+    assert!(result.is_ok(), "Multiple valid commands should pass validation");
+}
+
+#[test]
+fn test_script_validation_with_save_as() {
+    // Test with save_as field
+    let json_with_save = r#"{
+        "name": "save-test",
+        "description": "Test save_as functionality",
+        "cdp_commands": [
+            {
+                "method": "Page.navigate",
+                "params": {"url": "https://example.com"}
+            },
+            {
+                "method": "Runtime.evaluate",
+                "params": {
+                    "expression": "document.title",
+                    "returnByValue": true
+                },
+                "save_as": "output.json"
+            }
+        ]
+    }"#;
+
+    let result = validate_generated_script(json_with_save);
+    assert!(result.is_ok(), "Script with save_as should pass validation");
 }
