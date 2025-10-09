@@ -204,27 +204,6 @@ mod tests {
         assert_eq!(cleaned, r#"{"name": "test"}"#);
     }
 
-    #[tokio::test]
-    #[ignore] // Requires Claude CLI to be installed
-    async fn test_generate_script() {
-        let generator = CdpScriptGenerator::new();
-        let result = generator
-            .generate("Take a screenshot of example.com")
-            .await;
-
-        match result {
-            Ok(script) => {
-                println!("Generated script: {}", script.name);
-                assert!(!script.cdp_commands.is_empty());
-            }
-            Err(e) => {
-                // If Claude CLI not available, that's okay for this test
-                if e.to_string().contains("not installed") {
-                    println!("Claude CLI not available, skipping test");
-                } else {
-                    panic!("Generation failed: {}", e);
-                }
-            }
-        }
-    }
+    // Note: Integration tests for generation are in tests/cdp_generator_test.rs
+    // They require external Claude CLI and are excluded from CI
 }

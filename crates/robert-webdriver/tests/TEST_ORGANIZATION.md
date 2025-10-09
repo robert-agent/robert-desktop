@@ -65,38 +65,69 @@ cargo test --package robert-webdriver --test headless_integration -- --test-thre
 
 ---
 
-### 🚫 Ignored Tests (Manual Only)
-
-#### CDP Generator Tests (`cdp_generator_test.rs`)
-**Status**: `#[ignore]` - Requires AI integration
-**Tests**: 5
-
-#### CDP Script Execution Tests (`cdp_script_execution_test.rs`)
-**Status**: `#[ignore]` - Depends on external files
-**Tests**: 4
+### 🧪 CDP API Tests
 
 #### CDP Execution Tests (`cdp_execution_test.rs`)
-**Status**: `#[ignore]` - Low-level manual tests
-**Tests**: 2
+**Purpose**: Test ChromeDriver CDP API
+**Chrome Required**: ✅ Yes (auto-downloads)
+**Tests**: 4
+
+- `test_cdp_page_access` - Verify CDP page access
+- `test_cdp_navigation` - Test CDP navigation commands
+- `test_send_cdp_command_evaluate` - Test send_cdp_command API with Runtime.evaluate
+- `test_send_cdp_command_unsupported` - Test error handling for unsupported CDP commands
 
 ```bash
-# Run all ignored tests
-cargo test --package robert-webdriver -- --ignored
+cargo test --package robert-webdriver --test cdp_execution_test
+```
+
+---
+
+#### CDP Script Execution Tests (`cdp_script_execution_test.rs`)
+**Purpose**: Test programmatic CDP script execution
+**Chrome Required**: ✅ Yes (auto-downloads)
+**Tests**: 5
+
+- `test_execute_navigation_and_screenshot` - Navigate + screenshot
+- `test_execute_data_extraction` - Extract title and heading
+- `test_execute_programmatic_script` - Programmatic script creation
+- `test_invalid_cdp_command` - Error handling for invalid commands
+- `test_execute_cdp_script_from_file` - File-based script execution
+
+```bash
+cargo test --package robert-webdriver --test cdp_script_execution_test
+```
+
+---
+
+#### CDP Generator Tests (`cdp_generator_test.rs`)
+**Purpose**: Unit tests for CDP validation
+**Chrome Required**: ❌ No
+**Tests**: 6
+
+Tests the CDP script validation system without Chrome or AI integration.
+
+```bash
+cargo test --package robert-webdriver --test cdp_generator_test
 ```
 
 ---
 
 ## Test Summary
 
-| Category | Count | Chrome | Always Run |
-|----------|-------|--------|------------|
-| Meta/Infrastructure | 4 | ❌ | ✅ |
-| Validation | 20 | ❌ | ✅ |
-| Library Unit | 15 | ❌ | ✅ |
-| E2E | 3 | ✅ | ✅ |
-| Headless Integration | 5 | ✅ | ✅ |
-| **Total Active** | **47** | - | ✅ |
-| Ignored (Manual) | 11 | ✅ | ❌ |
+| Category | Count | Chrome | Status |
+|----------|-------|--------|--------|
+| Meta/Infrastructure | 4 | ❌ | ✅ All Pass |
+| Validation | 20 | ❌ | ✅ All Pass |
+| Library Unit | 15 | ❌ | ✅ All Pass |
+| CDP Execution | 4 | ✅ | ✅ All Pass |
+| CDP Script Execution | 5 | ✅ | ✅ All Pass |
+| CDP Generator/Validation | 6 | ❌ | ✅ All Pass |
+| E2E | 3 | ✅ | ✅ All Pass |
+| Headless Integration | 5 | ✅ | ✅ All Pass |
+| **Total** | **53** | - | **✅ 53/53** |
+| Doc Tests | 2 | ❌ | ✅ All Pass |
+| **Grand Total** | **55** | - | **✅ 55/55** |
 
 ---
 
@@ -116,10 +147,17 @@ E2E tests use CDP commands directly (not high-level `navigate()`) because:
 - Better control over navigation
 - Consistent across environments
 
-### No Duplicates
+### Test Organization Improvements
 - ✅ Removed duplicate test_server tests (were running 3x)
 - ✅ Created separate `meta_infrastructure_test.rs` for infrastructure tests
+- ✅ Converted all ignored tests to use uniform patterns (local server, CDP commands)
+- ✅ Removed external file dependencies from tests
+- ✅ Separated AI-based generation tests from validation tests
+- ✅ Converted ignored doc tests to proper integration tests
 - ✅ Each test has clear, distinct purpose
+- ✅ **All 53 tests now pass without any #[ignore] attributes**
+- ✅ **All 2 doc tests pass (previously ignored)**
+- ✅ **55 total tests passing**
 
 ---
 
