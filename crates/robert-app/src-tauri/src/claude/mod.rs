@@ -4,39 +4,30 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 pub use health::{ClaudeHealthCheck, HealthStatus};
 
 /// Configuration for Claude CLI invocation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ClaudeConfig {
     /// Path to the claude CLI executable (defaults to "claude" in PATH)
     pub claude_path: Option<PathBuf>,
     /// Whether to skip permissions (use only in trusted sandboxes)
+    #[allow(dead_code)]
     pub skip_permissions: bool,
     /// Model to use (e.g., "sonnet", "opus", or full model name)
     pub model: Option<String>,
     /// Additional directories to allow tool access to
+    #[allow(dead_code)]
     pub allowed_dirs: Vec<PathBuf>,
     /// Tools to allow (e.g., ["Bash(git:*)", "Edit"])
+    #[allow(dead_code)]
     pub allowed_tools: Vec<String>,
     /// Tools to disallow
+    #[allow(dead_code)]
     pub disallowed_tools: Vec<String>,
-}
-
-impl Default for ClaudeConfig {
-    fn default() -> Self {
-        Self {
-            claude_path: None,
-            skip_permissions: false,
-            model: None,
-            allowed_dirs: Vec::new(),
-            allowed_tools: Vec::new(),
-            disallowed_tools: Vec::new(),
-        }
-    }
 }
 
 /// Input message for Claude CLI
@@ -64,6 +55,7 @@ pub struct ClaudeResponse {
 /// Streaming response chunk from Claude CLI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct ClaudeStreamChunk {
     /// Type of chunk (e.g., "content", "metadata")
     #[serde(rename = "type")]
@@ -105,6 +97,7 @@ impl ClaudeClient {
     }
 
     /// Execute Claude CLI with streaming output
+    #[allow(dead_code)]
     pub async fn execute_streaming<F>(&self, input: ClaudeInput, mut callback: F) -> Result<()>
     where
         F: FnMut(ClaudeStreamChunk) -> Result<()>,
@@ -160,7 +153,7 @@ impl ClaudeClient {
                     image_path.display()
                 ));
             }
-            prompt.push_str("\n");
+            prompt.push('\n');
         }
 
         // Add HTML content if provided
@@ -168,7 +161,8 @@ impl ClaudeClient {
             prompt.push_str("Here is the HTML content of the page:\n\n");
             prompt.push_str("```html\n");
             prompt.push_str(html);
-            prompt.push_str("\n```\n\n");
+            prompt.push_str("\n```\n");
+            prompt.push('\n');
         }
 
         // Add the main prompt
@@ -250,6 +244,7 @@ impl ClaudeClient {
     }
 
     /// Spawn a streaming command
+    #[allow(dead_code)]
     async fn spawn_streaming_command(&self, input: &ClaudeInput) -> Result<tokio::process::Child> {
         let claude_cmd = self
             .config

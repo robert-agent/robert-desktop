@@ -1,5 +1,5 @@
 use crate::claude::{
-    ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse, ClaudeStreamChunk,
+    ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse,
 };
 use crate::events::*;
 use crate::state::AppState;
