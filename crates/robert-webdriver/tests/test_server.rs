@@ -62,6 +62,12 @@ impl TestServer {
         format!("http://{}", self.addr)
     }
 
+    /// Get the socket address (for meta tests)
+    #[allow(dead_code)]
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
+    }
+
     /// Wait for the server to be ready by making a test request
     pub async fn wait_ready(&self) -> anyhow::Result<()> {
         let url = self.url();
@@ -96,40 +102,5 @@ impl Drop for TestServer {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(());
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_server_starts() {
-        let server = TestServer::start().await;
-        assert!(server.addr.port() > 0);
-        println!("Test server running on: {}", server.url());
-    }
-
-    #[tokio::test]
-    async fn test_server_serves_html() {
-        let server = TestServer::start().await;
-        let url = server.url();
-
-        // Make HTTP request to verify it works
-        let response = reqwest::get(&url).await.unwrap();
-        assert!(response.status().is_success());
-
-        let body = response.text().await.unwrap();
-        assert!(body.contains("Example Domain"));
-        assert!(body.contains("<h1>"));
-    }
-
-    #[tokio::test]
-    async fn test_multiple_servers_different_ports() {
-        let server1 = TestServer::start().await;
-        let server2 = TestServer::start().await;
-
-        // Each server should have a different port
-        assert_ne!(server1.addr.port(), server2.addr.port());
     }
 }
