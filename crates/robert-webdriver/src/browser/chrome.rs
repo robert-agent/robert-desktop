@@ -179,16 +179,29 @@ impl ChromeDriver {
 
     /// Navigate to a URL
     pub async fn navigate(&self, url: &str) -> Result<()> {
-        let page = self
-            .browser
-            .new_page(url)
-            .await
-            .map_err(|e| BrowserError::NavigationFailed(e.to_string()))?;
+        // Get the existing page instead of creating a new one
+        let pages = self.browser.pages().await?;
+        let page = if let Some(page) = pages.first() {
+            // Use existing page
+            page.clone()
+        } else {
+            // No page exists, create a new one
+            self.browser
+                .new_page("about:blank")
+                .await
+                .map_err(|e| BrowserError::NavigationFailed(e.to_string()))?
+        };
 
-        // Wait for page to load
-        page.wait_for_navigation()
+        // Navigate to the URL using the goto command
+        // goto() returns a Page, which we can then use to wait for navigation
+        let navigated_page = page.goto(url)
             .await
-            .map_err(|e| BrowserError::NavigationFailed(e.to_string()))?;
+            .map_err(|e| BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", url, e)))?;
+
+        // Wait for the navigation to complete
+        navigated_page.wait_for_navigation()
+            .await
+            .map_err(|e| BrowserError::NavigationFailed(format!("Navigation timeout for {}: {}", url, e)))?;
 
         Ok(())
     }

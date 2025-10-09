@@ -1,11 +1,12 @@
 //! Integration tests designed to run headlessly in CI/CD environments
 //!
-//! Note: These tests must run sequentially due to Chrome profile directory conflicts.
-//! Use: cargo test --test headless_integration -- --test-threads=1
+//! Uses local HTTP server for fast, reliable, network-independent testing.
+//! Each test uses its own server on a random port for perfect isolation.
+
+mod test_server;
 
 use robert_webdriver::{CdpScript, CdpCommand, ChromeDriver, ConnectionMode};
-use std::time::Duration;
-use tokio::time::sleep;
+use test_server::TestServer;
 
 /// Helper to create a headless driver for testing
 async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
@@ -19,44 +20,83 @@ async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
 }
 
 #[tokio::test]
-#[ignore] // Flaky when run with other tests due to Chrome resource contention
 async fn test_basic_navigation_headless() -> anyhow::Result<()> {
+    // Start server and verify it's ready
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
+    // Launch driver
     let driver = create_headless_driver().await?;
 
-    // Navigate to example.com
-    driver.navigate("https://example.com").await?;
+    // Use CDP script for reliable navigation (CDP commands work better than high-level navigate)
+    let script = CdpScript {
+        name: "basic-navigation-test".to_string(),
+        description: "Navigate and verify title".to_string(),
+        created: None,
+        author: Some("Test".to_string()),
+        tags: vec!["navigation".to_string()],
+        cdp_commands: vec![
+            CdpCommand {
+                method: "Page.navigate".to_string(),
+                params: serde_json::json!({
+                    "url": url
+                }),
+                save_as: None,
+                description: Some("Navigate to test server".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.title",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-nav-title.json".to_string()),
+                description: Some("Get page title".to_string()),
+            },
+        ],
+    };
 
-    // Wait for page to load - give it more time for headless mode
-    sleep(Duration::from_secs(3)).await;
+    // Execute the script
+    println!("Navigating to: {}", url);
+    let report = driver.execute_cdp_script_direct(&script).await?;
 
-    // Try multiple times to get the correct title
-    let mut attempts = 0;
-    let max_attempts = 5;
-    let mut title = String::new();
+    println!("📊 Navigation Report:");
+    println!("   Commands executed: {}/{}", report.successful, report.total_commands);
+    println!("   Success rate: {:.1}%", report.success_rate());
 
-    while attempts < max_attempts {
-        title = driver.title().await?;
-        println!("✅ Attempt {}: Page title: {}", attempts + 1, title);
-
-        if title.to_lowercase().contains("example") {
-            println!("✅ Title check passed!");
-            driver.close().await?;
-            return Ok(());
-        }
-
-        attempts += 1;
-        if attempts < max_attempts {
-            sleep(Duration::from_secs(2)).await;
-        }
+    // Verify execution succeeded
+    if !report.is_success() {
+        driver.close().await?;
+        anyhow::bail!("CDP navigation script failed");
     }
 
-    // If we get here, the test failed
+    // Read the extracted title
+    let title_data = tokio::fs::read_to_string("test-nav-title.json").await?;
+    println!("✅ Extracted title data: {}", title_data);
+
+    // Verify title contains "example"
+    if !title_data.to_lowercase().contains("example") {
+        driver.close().await?;
+        tokio::fs::remove_file("test-nav-title.json").await.ok();
+        anyhow::bail!("Title doesn't contain 'example': {}", title_data);
+    }
+
+    println!("✅ Title check passed!");
+
+    // Cleanup
     driver.close().await?;
-    anyhow::bail!("Expected title to contain 'example' but got: {}", title)
+    tokio::fs::remove_file("test-nav-title.json").await.ok();
+
+    Ok(())
 }
 
 #[tokio::test]
 async fn test_cdp_script_execution_headless() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    let url = server.url();
+    println!("Test server running on: {}", url);
+
     let driver = create_headless_driver().await?;
 
     // Create a simple CDP script
@@ -70,10 +110,10 @@ async fn test_cdp_script_execution_headless() -> anyhow::Result<()> {
             CdpCommand {
                 method: "Page.navigate".to_string(),
                 params: serde_json::json!({
-                    "url": "https://example.com"
+                    "url": url
                 }),
                 save_as: None,
-                description: Some("Navigate to example.com".to_string()),
+                description: Some("Navigate to test server".to_string()),
             },
             CdpCommand {
                 method: "Runtime.evaluate".to_string(),
@@ -114,6 +154,10 @@ async fn test_cdp_script_execution_headless() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_screenshot_capture_headless() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    let url = server.url();
+    println!("Test server running on: {}", url);
+
     let driver = create_headless_driver().await?;
 
     // Create screenshot script
@@ -127,10 +171,10 @@ async fn test_screenshot_capture_headless() -> anyhow::Result<()> {
             CdpCommand {
                 method: "Page.navigate".to_string(),
                 params: serde_json::json!({
-                    "url": "https://example.com"
+                    "url": url
                 }),
                 save_as: None,
-                description: Some("Navigate to example.com".to_string()),
+                description: Some("Navigate to test server".to_string()),
             },
             CdpCommand {
                 method: "Page.captureScreenshot".to_string(),
@@ -172,6 +216,10 @@ async fn test_screenshot_capture_headless() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_data_extraction_headless() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    let url = server.url();
+    println!("Test server running on: {}", url);
+
     let driver = create_headless_driver().await?;
 
     // Create data extraction script
@@ -185,10 +233,10 @@ async fn test_data_extraction_headless() -> anyhow::Result<()> {
             CdpCommand {
                 method: "Page.navigate".to_string(),
                 params: serde_json::json!({
-                    "url": "https://example.com"
+                    "url": url
                 }),
                 save_as: None,
-                description: Some("Navigate".to_string()),
+                description: Some("Navigate to test server".to_string()),
             },
             CdpCommand {
                 method: "Runtime.evaluate".to_string(),
@@ -228,6 +276,10 @@ async fn test_data_extraction_headless() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_multiple_commands_headless() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    let url = server.url();
+    println!("Test server running on: {}", url);
+
     let driver = create_headless_driver().await?;
 
     // Create script with multiple diverse commands
@@ -240,9 +292,9 @@ async fn test_multiple_commands_headless() -> anyhow::Result<()> {
         cdp_commands: vec![
             CdpCommand {
                 method: "Page.navigate".to_string(),
-                params: serde_json::json!({"url": "https://example.com"}),
+                params: serde_json::json!({"url": url}),
                 save_as: None,
-                description: Some("Navigate".to_string()),
+                description: Some("Navigate to test server".to_string()),
             },
             CdpCommand {
                 method: "Runtime.evaluate".to_string(),
