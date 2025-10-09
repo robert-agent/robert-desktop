@@ -49,6 +49,13 @@ yarn-error.log*
 coverage/
 .nyc_output/
 
+# Rust code coverage (tarpaulin, llvm-cov)
+*.profraw
+*.profdata
+cobertura.xml
+tarpaulin-report.*
+lcov.info
+
 # Tauri
 **/target/
 **/dist/

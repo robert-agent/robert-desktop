@@ -101,7 +101,10 @@ fn test_missing_required_fields() {
     let result1 = validator.validate_json(json1);
     assert!(!result1.is_valid, "Empty name should fail");
     assert!(
-        result1.errors.iter().any(|e| e.location.field_path == "name"),
+        result1
+            .errors
+            .iter()
+            .any(|e| e.location.field_path == "name"),
         "Should error on name field"
     );
     println!("✅ Caught empty script name");
@@ -283,10 +286,7 @@ fn test_command_specific_validation() {
 
     let result1 = validator.validate_json(json1);
     assert!(!result1.is_valid);
-    assert!(result1
-        .errors
-        .iter()
-        .any(|e| e.message.contains("url")));
+    assert!(result1.errors.iter().any(|e| e.message.contains("url")));
     println!("✅ Page.navigate validation works");
 
     // Runtime.evaluate requires expression
@@ -423,10 +423,7 @@ fn test_validation_error_location_information() {
         );
 
         if let Some(cmd_index) = error.location.command_index {
-            assert!(
-                cmd_index < 2,
-                "Command index should be valid"
-            );
+            assert!(cmd_index < 2, "Command index should be valid");
         }
 
         assert!(!error.message.is_empty(), "Error should have message");
@@ -438,7 +435,10 @@ fn test_validation_error_location_information() {
         .iter()
         .find(|e| e.error_type == ValidationErrorType::UnknownCommand);
 
-    assert!(unknown_cmd_error.is_some(), "Should have unknown command error");
+    assert!(
+        unknown_cmd_error.is_some(),
+        "Should have unknown command error"
+    );
     assert_eq!(
         unknown_cmd_error.unwrap().location.command_index,
         Some(1),
@@ -502,7 +502,10 @@ fn test_warnings_for_non_critical_issues() {
     let result = validator.validate_json(json);
 
     // Script should still be valid despite warnings
-    assert!(result.is_valid, "Script with warnings should still be valid");
+    assert!(
+        result.is_valid,
+        "Script with warnings should still be valid"
+    );
 
     // But should have warnings
     assert!(
@@ -537,10 +540,7 @@ fn test_all_supported_commands() {
         ),
         ("Input.dispatchKeyEvent", r#"{"type": "keyDown"}"#),
         ("Network.getCookies", r#"{}"#),
-        (
-            "Network.setCookie",
-            r#"{"name": "test", "value": "value"}"#,
-        ),
+        ("Network.setCookie", r#"{"name": "test", "value": "value"}"#),
         ("Network.deleteCookies", r#"{"name": "test"}"#),
         (
             "Emulation.setGeolocationOverride",
@@ -566,11 +566,7 @@ fn test_all_supported_commands() {
         );
 
         let result = validator.validate_json(&json);
-        assert!(
-            result.is_valid,
-            "{} should be recognized and valid",
-            method
-        );
+        assert!(result.is_valid, "{} should be recognized and valid", method);
         println!("✅ {} command validated successfully", method);
     }
 }

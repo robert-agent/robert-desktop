@@ -21,7 +21,10 @@ async fn test_cdp_page_access() {
     let page = driver.current_page().await.expect("Failed to get page");
 
     // Page implements Command trait execution
-    println!("✅ Successfully got page: {}", std::any::type_name_of_val(&page));
+    println!(
+        "✅ Successfully got page: {}",
+        std::any::type_name_of_val(&page)
+    );
 
     driver.close().await.expect("Failed to close browser");
 }
@@ -67,10 +70,16 @@ async fn test_cdp_navigation() {
         ],
     };
 
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 CDP Navigation Test:");
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
 
     assert!(report.is_success(), "CDP navigation should succeed");
 
@@ -78,7 +87,10 @@ async fn test_cdp_navigation() {
     let url_data = tokio::fs::read_to_string("test-cdp-url.json")
         .await
         .expect("Failed to read URL file");
-    assert!(url_data.contains("127.0.0.1"), "URL should contain localhost IP");
+    assert!(
+        url_data.contains("127.0.0.1"),
+        "URL should contain localhost IP"
+    );
 
     println!("✅ CDP navigation check passed!");
 
@@ -105,16 +117,17 @@ async fn test_send_cdp_command_evaluate() {
         created: None,
         author: Some("Test".to_string()),
         tags: vec![],
-        cdp_commands: vec![
-            CdpCommand {
-                method: "Page.navigate".to_string(),
-                params: serde_json::json!({"url": "about:blank"}),
-                save_as: None,
-                description: Some("Navigate to blank page".to_string()),
-            },
-        ],
+        cdp_commands: vec![CdpCommand {
+            method: "Page.navigate".to_string(),
+            params: serde_json::json!({"url": "about:blank"}),
+            save_as: None,
+            description: Some("Navigate to blank page".to_string()),
+        }],
     };
-    driver.execute_cdp_script_direct(&script).await.expect("Failed to setup page");
+    driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Failed to setup page");
 
     // Test Runtime.evaluate (the only command currently supported by send_cdp_command)
     let params = serde_json::json!({
@@ -124,7 +137,11 @@ async fn test_send_cdp_command_evaluate() {
     let result = driver.send_cdp_command("Runtime.evaluate", params).await;
 
     // send_cdp_command only supports Runtime.evaluate currently
-    assert!(result.is_ok(), "Runtime.evaluate should work via send_cdp_command: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Runtime.evaluate should work via send_cdp_command: {:?}",
+        result
+    );
     let result_value = result.unwrap();
     println!("✅ send_cdp_command result: {}", result_value);
 
@@ -149,14 +166,18 @@ async fn test_send_cdp_command_unsupported() {
         "accuracy": 100
     });
 
-    let result = driver.send_cdp_command("Emulation.setGeolocationOverride", params).await;
+    let result = driver
+        .send_cdp_command("Emulation.setGeolocationOverride", params)
+        .await;
 
     // Should fail with helpful error message
     assert!(result.is_err(), "Unsupported commands should fail");
     let error = result.unwrap_err();
     let error_msg = error.to_string();
-    assert!(error_msg.contains("not directly supported") || error_msg.contains("current_page"),
-            "Error should mention using current_page()");
+    assert!(
+        error_msg.contains("not directly supported") || error_msg.contains("current_page"),
+        "Error should mention using current_page()"
+    );
 
     println!("✅ Unsupported command error: {}", error_msg);
 

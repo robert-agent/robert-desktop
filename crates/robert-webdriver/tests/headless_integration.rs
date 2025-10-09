@@ -5,15 +5,15 @@
 
 mod test_server;
 
-use robert_webdriver::{CdpScript, CdpCommand, ChromeDriver, ConnectionMode};
+use robert_webdriver::{CdpCommand, CdpScript, ChromeDriver, ConnectionMode};
 use test_server::TestServer;
 
 /// Helper to create a headless driver for testing
 async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
     ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
-        no_sandbox: true,  // Required for CI environments
-        headless: true,    // Always headless for these tests
+        no_sandbox: true, // Required for CI environments
+        headless: true,   // Always headless for these tests
     })
     .await
     .map_err(|e| anyhow::anyhow!("Failed to launch Chrome: {}", e))
@@ -62,7 +62,10 @@ async fn test_basic_navigation_headless() -> anyhow::Result<()> {
     let report = driver.execute_cdp_script_direct(&script).await?;
 
     println!("📊 Navigation Report:");
-    println!("   Commands executed: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands executed: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Success rate: {:.1}%", report.success_rate());
 
     // Verify execution succeeded
@@ -193,14 +196,20 @@ async fn test_screenshot_capture_headless() -> anyhow::Result<()> {
 
     println!("📸 Screenshot Test:");
     println!("   Success: {}", report.is_success());
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
 
     // Verify
     assert!(report.is_success(), "Screenshot script should succeed");
 
     // Verify file exists
     let screenshot_path = std::path::Path::new("test-screenshot.png");
-    assert!(screenshot_path.exists(), "Screenshot file should be created");
+    assert!(
+        screenshot_path.exists(),
+        "Screenshot file should be created"
+    );
 
     // Check file size
     let metadata = std::fs::metadata(screenshot_path)?;
@@ -265,11 +274,16 @@ async fn test_data_extraction_headless() -> anyhow::Result<()> {
 
     let content = tokio::fs::read_to_string(data_path).await?;
     println!("   Extracted: {}", content);
-    assert!(content.to_lowercase().contains("example"), "Data should contain 'example'");
+    assert!(
+        content.to_lowercase().contains("example"),
+        "Data should contain 'example'"
+    );
 
     // Cleanup
     driver.close().await?;
-    tokio::fs::remove_file("test-extracted-data.json").await.ok();
+    tokio::fs::remove_file("test-extracted-data.json")
+        .await
+        .ok();
 
     Ok(())
 }
@@ -321,7 +335,10 @@ async fn test_multiple_commands_headless() -> anyhow::Result<()> {
     let report = driver.execute_cdp_script_direct(&script).await?;
 
     println!("🔄 Multi-Command Test:");
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Duration: {:?}", report.total_duration);
 
     // Verify all commands succeeded
@@ -331,7 +348,9 @@ async fn test_multiple_commands_headless() -> anyhow::Result<()> {
 
     // Cleanup
     driver.close().await?;
-    tokio::fs::remove_file("test-multi-screenshot.png").await.ok();
+    tokio::fs::remove_file("test-multi-screenshot.png")
+        .await
+        .ok();
 
     Ok(())
 }

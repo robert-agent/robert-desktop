@@ -59,8 +59,8 @@ impl CdpScriptGenerator {
         let json = self.clean_response(&response);
 
         // Validate and parse
-        let script =
-            validate_generated_script(&json).map_err(|e| anyhow::anyhow!("Validation failed: {}", e))?;
+        let script = validate_generated_script(&json)
+            .map_err(|e| anyhow::anyhow!("Validation failed: {}", e))?;
 
         Ok(script)
     }
@@ -123,10 +123,7 @@ impl CdpScriptGenerator {
                 .write_all(prompt.as_bytes())
                 .await
                 .context("Failed to write prompt to Claude")?;
-            stdin
-                .shutdown()
-                .await
-                .context("Failed to close stdin")?;
+            stdin.shutdown().await.context("Failed to close stdin")?;
         }
 
         // Wait for completion
@@ -142,8 +139,8 @@ impl CdpScriptGenerator {
 
         // Parse Claude's JSON response
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let response: serde_json::Value = serde_json::from_str(&stdout)
-            .context("Failed to parse Claude CLI output as JSON")?;
+        let response: serde_json::Value =
+            serde_json::from_str(&stdout).context("Failed to parse Claude CLI output as JSON")?;
 
         // Extract text from response
         let text = response

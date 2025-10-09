@@ -16,8 +16,8 @@ async fn test_navigate_and_get_title() {
     // Launch Chrome with auto-download
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
-        no_sandbox: true,  // Required for Ubuntu 23.10+ sandbox restrictions
-        headless: true,    // Always headless (no display server required)
+        no_sandbox: true, // Required for Ubuntu 23.10+ sandbox restrictions
+        headless: true,   // Always headless (no display server required)
     })
     .await
     .expect("Failed to launch Chrome");
@@ -61,10 +61,16 @@ async fn test_navigate_and_get_title() {
 
     // Execute the script
     println!("Navigating to: {}", url);
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Navigation and Title Test:");
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Success rate: {:.1}%", report.success_rate());
 
     assert!(report.is_success(), "Script execution should succeed");
@@ -74,14 +80,20 @@ async fn test_navigate_and_get_title() {
         .await
         .expect("Failed to read title file");
     println!("✅ Page title: {}", title_data);
-    assert!(title_data.contains("Example Domain"), "Expected title to contain 'Example Domain'");
+    assert!(
+        title_data.contains("Example Domain"),
+        "Expected title to contain 'Example Domain'"
+    );
 
     // Read the extracted text
     let text_data = tokio::fs::read_to_string("test-nav-text.json")
         .await
         .expect("Failed to read text file");
     println!("✅ Page text extracted");
-    assert!(text_data.contains("Example Domain"), "Expected text to contain 'Example Domain'");
+    assert!(
+        text_data.contains("Example Domain"),
+        "Expected text to contain 'Example Domain'"
+    );
 
     println!("✅ Navigation and title check passed!");
 
@@ -100,8 +112,8 @@ async fn test_get_element_text() {
 
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
-        no_sandbox: true,  // Required for Ubuntu 23.10+ sandbox restrictions
-        headless: true,    // Always headless (no display server required)
+        no_sandbox: true, // Required for Ubuntu 23.10+ sandbox restrictions
+        headless: true,   // Always headless (no display server required)
     })
     .await
     .expect("Failed to launch Chrome");
@@ -136,10 +148,16 @@ async fn test_get_element_text() {
 
     // Execute the script
     println!("Navigating to: {}", url);
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Element Text Test:");
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Success rate: {:.1}%", report.success_rate());
 
     assert!(report.is_success(), "Script execution should succeed");
@@ -150,7 +168,10 @@ async fn test_get_element_text() {
         .expect("Failed to read element text file");
     println!("✅ Extracted h1 text: {}", element_data);
 
-    assert!(element_data.contains("Example Domain"), "Expected h1 to contain 'Example Domain'");
+    assert!(
+        element_data.contains("Example Domain"),
+        "Expected h1 to contain 'Example Domain'"
+    );
 
     println!("✅ Element text check passed!");
 
@@ -168,8 +189,8 @@ async fn test_get_page_source() {
 
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
-        no_sandbox: true,  // Required for Ubuntu 23.10+ sandbox restrictions
-        headless: true,    // Always headless (no display server required)
+        no_sandbox: true, // Required for Ubuntu 23.10+ sandbox restrictions
+        headless: true,   // Always headless (no display server required)
     })
     .await
     .expect("Failed to launch Chrome");
@@ -202,10 +223,16 @@ async fn test_get_page_source() {
 
     // Execute the script
     println!("Navigating to: {}", url);
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Page Source Test:");
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Success rate: {:.1}%", report.success_rate());
 
     assert!(report.is_success(), "Script execution should succeed");
@@ -216,10 +243,19 @@ async fn test_get_page_source() {
         .expect("Failed to read page source file");
 
     println!("Page source length: {} bytes", source_data.len());
-    println!("Page source preview: {}", &source_data[..500.min(source_data.len())]);
+    println!(
+        "Page source preview: {}",
+        &source_data[..500.min(source_data.len())]
+    );
 
-    assert!(source_data.contains("<html") || source_data.contains("<HTML"), "Page source should contain HTML tag");
-    assert!(source_data.to_lowercase().contains("example domain"), "Page source should contain 'Example Domain'");
+    assert!(
+        source_data.contains("<html") || source_data.contains("<HTML"),
+        "Page source should contain HTML tag"
+    );
+    assert!(
+        source_data.to_lowercase().contains("example domain"),
+        "Page source should contain 'Example Domain'"
+    );
 
     println!("✅ Page source check passed!");
 

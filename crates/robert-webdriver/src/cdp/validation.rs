@@ -374,11 +374,7 @@ impl CdpValidator {
     }
 
     /// Validate a parsed CDP script
-    pub fn validate_script(
-        &self,
-        script: &crate::cdp::CdpScript,
-        result: &mut ValidationResult,
-    ) {
+    pub fn validate_script(&self, script: &crate::cdp::CdpScript, result: &mut ValidationResult) {
         // Validate script name
         if script.name.is_empty() {
             result.add_error(ValidationError {
@@ -392,7 +388,11 @@ impl CdpValidator {
                 },
                 suggestion: Some("Add a descriptive name for your script".to_string()),
             });
-        } else if !script.name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        } else if !script
+            .name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+        {
             result.add_warning(
                 "Script name should only contain alphanumeric characters, hyphens, and underscores"
                     .to_string(),
@@ -465,7 +465,9 @@ impl CdpValidator {
                     line: None,
                     column: None,
                 },
-                suggestion: Some("Use format like 'Page.navigate' or 'Runtime.evaluate'".to_string()),
+                suggestion: Some(
+                    "Use format like 'Page.navigate' or 'Runtime.evaluate'".to_string(),
+                ),
             });
             return;
         }
@@ -517,7 +519,9 @@ impl CdpValidator {
                         line: None,
                         column: None,
                     },
-                    suggestion: Some("Params should be a JSON object with key-value pairs".to_string()),
+                    suggestion: Some(
+                        "Params should be a JSON object with key-value pairs".to_string(),
+                    ),
                 });
             }
             return;
@@ -646,8 +650,11 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::MissingField
-            && e.location.field_path == "name"));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::MissingField
+                && e.location.field_path == "name"));
     }
 
     #[test]
@@ -663,7 +670,10 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::UnknownCommand));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::UnknownCommand));
     }
 
     #[test]
@@ -679,7 +689,10 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::InvalidValue));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::InvalidValue));
     }
 
     #[test]
@@ -695,8 +708,11 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::MissingParameter
-            && e.message.contains("url")));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::MissingParameter
+                && e.message.contains("url")));
     }
 
     #[test]
@@ -712,7 +728,10 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::TypeMismatch));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::TypeMismatch));
     }
 
     #[test]
@@ -726,8 +745,11 @@ mod tests {
 
         let result = validator.validate_json(json);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.error_type == ValidationErrorType::MissingField
-            && e.location.field_path == "cdp_commands"));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.error_type == ValidationErrorType::MissingField
+                && e.location.field_path == "cdp_commands"));
     }
 
     #[test]

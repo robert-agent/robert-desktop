@@ -177,8 +177,8 @@ Now generate the CDP script for the user's request. Output ONLY valid JSON, no m
 /// Validate that a JSON string is a valid CDP script
 pub fn validate_generated_script(json: &str) -> Result<crate::cdp::CdpScript, String> {
     // Parse JSON
-    let script: crate::cdp::CdpScript = serde_json::from_str(json)
-        .map_err(|e| format!("Invalid JSON: {}", e))?;
+    let script: crate::cdp::CdpScript =
+        serde_json::from_str(json).map_err(|e| format!("Invalid JSON: {}", e))?;
 
     // Validate using built-in validation
     script

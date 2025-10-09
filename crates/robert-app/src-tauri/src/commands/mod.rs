@@ -1,6 +1,4 @@
-use crate::claude::{
-    ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse,
-};
+use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
 use crate::events::*;
 use crate::state::AppState;
 use robert_webdriver::{CdpValidator, ChromeDriver, ValidationResult};
@@ -451,10 +449,7 @@ pub async fn run_diagnostics(
 
 /// Validate a CDP script from JSON string
 #[tauri::command]
-pub async fn validate_cdp_script(
-    app: AppHandle,
-    json: String,
-) -> Result<ValidationResult, String> {
+pub async fn validate_cdp_script(app: AppHandle, json: String) -> Result<ValidationResult, String> {
     emit_info(&app, "Validating CDP script...").ok();
 
     let validator = CdpValidator::new();

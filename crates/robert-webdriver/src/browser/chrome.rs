@@ -23,6 +23,32 @@ pub enum ConnectionMode {
 }
 
 impl ChromeDriver {
+    /// Helper method to get the current active page, excluding Chrome's new-tab-page
+    async fn get_active_page(&self) -> Result<chromiumoxide::page::Page> {
+        let pages = self.browser.pages().await?;
+
+        // Filter out chrome://new-tab-page/ and return the first real page
+        // If no real pages exist, return the last page (most recently created)
+        for page in pages.iter() {
+            if let Ok(Some(url)) = page.url().await {
+                if !url.starts_with("chrome://") {
+                    return Ok(page.clone());
+                }
+            }
+        }
+
+        // No non-chrome page found, try to use any existing page
+        if let Some(page) = pages.last() {
+            return Ok(page.clone());
+        }
+
+        // No pages at all, create one
+        self.browser
+            .new_page("about:blank")
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to create page: {}", e)))
+    }
+
     /// Launch Chrome in sandboxed mode (uses system Chrome)
     pub async fn launch_sandboxed() -> Result<Self> {
         Self::new(ConnectionMode::Sandboxed {
@@ -195,10 +221,29 @@ impl ChromeDriver {
 
     /// Navigate to a URL
     pub async fn navigate(&self, url: &str) -> Result<()> {
-        // Get the existing page instead of creating a new one
-        let pages = self.browser.pages().await?;
+        use chromiumoxide::cdp::browser_protocol::page::NavigateParams;
+
+        // Always get all pages and work with the first one (or create if none exist)
+        let mut pages = self.browser.pages().await?;
+
+        // Close all but the first page to ensure we only have one page
+        for (i, p) in pages.iter().enumerate() {
+            if i > 0 {
+                let _ = p
+                    .execute(
+                        chromiumoxide::cdp::browser_protocol::target::CloseTargetParams::new(
+                            p.target_id().clone(),
+                        ),
+                    )
+                    .await;
+            }
+        }
+
+        // Refresh page list after closing
+        pages = self.browser.pages().await?;
+
         let page = if let Some(page) = pages.first() {
-            // Use existing page
+            // Use the first (and now only) page
             page.clone()
         } else {
             // No page exists, create a new one
@@ -208,24 +253,41 @@ impl ChromeDriver {
                 .map_err(|e| BrowserError::NavigationFailed(e.to_string()))?
         };
 
-        // Navigate to the URL using the goto command
-        // goto() returns a Page, which we can then use to wait for navigation
-        let navigated_page = page.goto(url)
-            .await
-            .map_err(|e| BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", url, e)))?;
+        // Use CDP Page.navigate command directly (more reliable than goto())
+        // This is what the working headless_integration tests use
+        let params = NavigateParams::builder()
+            .url(url)
+            .build()
+            .map_err(|e| BrowserError::NavigationFailed(format!("Invalid URL {}: {}", url, e)))?;
+        let response = page.execute(params).await.map_err(|e| {
+            BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", url, e))
+        })?;
 
-        // Wait for the navigation to complete
-        navigated_page.wait_for_navigation()
-            .await
-            .map_err(|e| BrowserError::NavigationFailed(format!("Navigation timeout for {}: {}", url, e)))?;
+        // Check if navigation was successful
+        let nav_result = response.result;
+        if let Some(error_text) = nav_result.error_text {
+            return Err(BrowserError::NavigationFailed(format!(
+                "Navigation error: {}",
+                error_text
+            )));
+        }
+
+        // Wait for the page to load using Page.loadEventFired
+        // This is more reliable than arbitrary sleeps
+        use chromiumoxide::cdp::browser_protocol::page::EventLoadEventFired;
+        if let Err(e) = page.event_listener::<EventLoadEventFired>().await {
+            eprintln!("Warning: Could not wait for load event: {}", e);
+        }
+
+        // Additional small delay for page state to stabilize
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
         Ok(())
     }
 
     /// Get current URL
     pub async fn current_url(&self) -> Result<String> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let url = page
             .url()
@@ -238,8 +300,7 @@ impl ChromeDriver {
 
     /// Get page title
     pub async fn title(&self) -> Result<String> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let title = page
             .get_title()
@@ -252,8 +313,7 @@ impl ChromeDriver {
 
     /// Get page HTML source
     pub async fn get_page_source(&self) -> Result<String> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let html = page
             .content()
@@ -265,8 +325,7 @@ impl ChromeDriver {
 
     /// Get visible page text
     pub async fn get_page_text(&self) -> Result<String> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let text = page
             .find_element("body")
@@ -282,8 +341,7 @@ impl ChromeDriver {
 
     /// Get text from specific element
     pub async fn get_element_text(&self, selector: &str) -> Result<String> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let text = page
             .find_element(selector)
@@ -299,8 +357,7 @@ impl ChromeDriver {
 
     /// Take a screenshot of the current page
     pub async fn screenshot(&self) -> Result<Vec<u8>> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let screenshot = page
             .screenshot(chromiumoxide::page::ScreenshotParams::default())
@@ -323,8 +380,7 @@ impl ChromeDriver {
 
     /// Execute arbitrary JavaScript in the page context
     pub async fn execute_script(&self, script: &str) -> Result<serde_json::Value> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let result = page
             .evaluate(script)
@@ -339,8 +395,7 @@ impl ChromeDriver {
         &self,
         script: &str,
     ) -> Result<T> {
-        let pages = self.browser.pages().await?;
-        let page = pages.first().ok_or(BrowserError::NoPage)?;
+        let page = self.get_active_page().await?;
 
         let result = page
             .evaluate(script)
@@ -438,18 +493,9 @@ impl ChromeDriver {
     }
 
     /// Get access to the current page for advanced operations
-    /// Creates a new page if none exists
+    /// Returns the active page (excluding Chrome's new-tab-page)
     pub async fn current_page(&self) -> Result<chromiumoxide::page::Page> {
-        let pages = self.browser.pages().await?;
-        if let Some(page) = pages.first().cloned() {
-            Ok(page)
-        } else {
-            // No pages exist, create one
-            self.browser
-                .new_page("about:blank")
-                .await
-                .map_err(|e| BrowserError::Other(format!("Failed to create page: {}", e)))
-        }
+        self.get_active_page().await
     }
 
     /// Close the browser connection
@@ -588,7 +634,6 @@ impl ChromeDriver {
             .await
             .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))
     }
-
 }
 
 impl Drop for ChromeDriver {

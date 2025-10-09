@@ -26,8 +26,7 @@ async fn main() -> anyhow::Result<()> {
     println!("📝 Step 1: Generating CDP script with Claude AI...");
     println!("   Description: \"Take a screenshot of example.com\"");
 
-    let generator = CdpScriptGenerator::new()
-        .with_model("sonnet".to_string()); // Use Claude Sonnet model
+    let generator = CdpScriptGenerator::new().with_model("sonnet".to_string()); // Use Claude Sonnet model
 
     let script = match generator
         .generate_with_retry("Take a screenshot of example.com", 3)

@@ -23,7 +23,10 @@ async fn meta_test_server_starts() {
 #[tokio::test]
 async fn meta_test_server_serves_html() {
     let server = TestServer::start().await;
-    server.wait_ready().await.expect("Server failed to become ready");
+    server
+        .wait_ready()
+        .await
+        .expect("Server failed to become ready");
     let url = server.url();
 
     // Make HTTP request to verify it works

@@ -43,8 +43,8 @@ impl TestServer {
         let routes = index;
 
         // Bind to random port
-        let (addr, server) = warp::serve(routes)
-            .bind_with_graceful_shutdown(([127, 0, 0, 1], 0), async {
+        let (addr, server) =
+            warp::serve(routes).bind_with_graceful_shutdown(([127, 0, 0, 1], 0), async {
                 shutdown_rx.await.ok();
             });
 
@@ -80,7 +80,11 @@ impl TestServer {
                     return Ok(());
                 }
                 Ok(response) => {
-                    println!("⚠️ Attempt {}: Server returned status {}", attempt, response.status());
+                    println!(
+                        "⚠️ Attempt {}: Server returned status {}",
+                        attempt,
+                        response.status()
+                    );
                 }
                 Err(e) => {
                     println!("⚠️ Attempt {}: Server not ready - {}", attempt, e);
@@ -92,7 +96,10 @@ impl TestServer {
             }
         }
 
-        anyhow::bail!("Server did not become ready after {} attempts", max_attempts)
+        anyhow::bail!(
+            "Server did not become ready after {} attempts",
+            max_attempts
+        )
     }
 }
 
