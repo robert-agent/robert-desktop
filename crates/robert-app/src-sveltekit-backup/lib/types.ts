@@ -11,15 +11,7 @@ export type DebugEventType =
   | { type: "PageParsing"; data: { message: string } }
   | { type: "Info"; data: { message: string } }
   | { type: "Success"; data: { message: string } }
-  | { type: "Error"; data: { message: string; details?: string } }
-  | { type: "ClaudeChecking"; data: { message: string } }
-  | { type: "ClaudeReady"; data: { version: string; path: string; authenticated: boolean } }
-  | { type: "ClaudeNotReady"; data: { issue: string; suggestion: string } }
-  | { type: "ClaudeProcessing"; data: { message: string } }
-  | { type: "ClaudeScreenshot"; data: { path: string } }
-  | { type: "ClaudeHtmlExtracted"; data: { size_kb: number } }
-  | { type: "ClaudeApiCall"; data: { model: string; prompt_preview: string } }
-  | { type: "ClaudeResponse"; data: { preview: string; full_length: number } };
+  | { type: "Error"; data: { message: string; details?: string } };
 
 export interface DebugLogEntry {
   id: string;

@@ -268,6 +268,30 @@ impl ChromeDriver {
         Ok(text)
     }
 
+    /// Take a screenshot of the current page
+    pub async fn screenshot(&self) -> Result<Vec<u8>> {
+        let pages = self.browser.pages().await?;
+        let page = pages.first().ok_or(BrowserError::NoPage)?;
+
+        let screenshot = page
+            .screenshot(chromiumoxide::page::ScreenshotParams::default())
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to take screenshot: {}", e)))?;
+
+        Ok(screenshot)
+    }
+
+    /// Take a screenshot and save to file
+    pub async fn screenshot_to_file(&self, path: &Path) -> Result<()> {
+        let screenshot_data = self.screenshot().await?;
+
+        tokio::fs::write(path, screenshot_data)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to write screenshot: {}", e)))?;
+
+        Ok(())
+    }
+
     /// Close the browser connection
     pub async fn close(self) -> Result<()> {
         self.browser

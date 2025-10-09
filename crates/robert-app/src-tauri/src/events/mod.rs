@@ -36,6 +36,29 @@ pub enum DebugEvent {
         message: String,
         details: Option<String>,
     },
+    /// Claude CLI check started
+    ClaudeChecking { message: String },
+    /// Claude CLI found and validated
+    ClaudeReady {
+        version: String,
+        path: String,
+        authenticated: bool,
+    },
+    /// Claude CLI not found or misconfigured
+    ClaudeNotReady { issue: String, suggestion: String },
+    /// Claude is processing request
+    ClaudeProcessing { message: String },
+    /// Claude screenshot capture
+    ClaudeScreenshot { path: String },
+    /// Claude HTML extraction
+    ClaudeHtmlExtracted { size_kb: usize },
+    /// Claude API call started
+    ClaudeApiCall {
+        model: String,
+        prompt_preview: String,
+    },
+    /// Claude response received
+    ClaudeResponse { preview: String, full_length: usize },
 }
 
 impl DebugEvent {
@@ -111,6 +134,78 @@ pub fn emit_page_loaded(
     DebugEvent::PageLoaded {
         url: url.into(),
         title: title.into(),
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_checking(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
+    DebugEvent::ClaudeChecking {
+        message: message.into(),
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_ready(
+    app: &AppHandle,
+    version: impl Into<String>,
+    path: impl Into<String>,
+    authenticated: bool,
+) -> Result<(), String> {
+    DebugEvent::ClaudeReady {
+        version: version.into(),
+        path: path.into(),
+        authenticated,
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_not_ready(
+    app: &AppHandle,
+    issue: impl Into<String>,
+    suggestion: impl Into<String>,
+) -> Result<(), String> {
+    DebugEvent::ClaudeNotReady {
+        issue: issue.into(),
+        suggestion: suggestion.into(),
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_processing(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
+    DebugEvent::ClaudeProcessing {
+        message: message.into(),
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_screenshot(app: &AppHandle, path: impl Into<String>) -> Result<(), String> {
+    DebugEvent::ClaudeScreenshot { path: path.into() }.emit(app)
+}
+
+pub fn emit_claude_html_extracted(app: &AppHandle, size_kb: usize) -> Result<(), String> {
+    DebugEvent::ClaudeHtmlExtracted { size_kb }.emit(app)
+}
+
+pub fn emit_claude_api_call(
+    app: &AppHandle,
+    model: impl Into<String>,
+    prompt_preview: impl Into<String>,
+) -> Result<(), String> {
+    DebugEvent::ClaudeApiCall {
+        model: model.into(),
+        prompt_preview: prompt_preview.into(),
+    }
+    .emit(app)
+}
+
+pub fn emit_claude_response(
+    app: &AppHandle,
+    preview: impl Into<String>,
+    full_length: usize,
+) -> Result<(), String> {
+    DebugEvent::ClaudeResponse {
+        preview: preview.into(),
+        full_length,
     }
     .emit(app)
 }

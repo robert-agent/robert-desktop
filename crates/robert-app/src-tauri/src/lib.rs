@@ -1,4 +1,5 @@
 // Modules
+mod claude;
 mod commands;
 mod events;
 mod state;
@@ -15,6 +16,11 @@ pub fn run() {
             commands::navigate_to_url,
             commands::get_page_content,
             commands::close_browser,
+            commands::take_screenshot,
+            commands::ask_claude,
+            commands::ask_claude_about_page,
+            commands::check_claude_health,
+            commands::run_diagnostics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
