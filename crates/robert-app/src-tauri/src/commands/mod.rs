@@ -3,7 +3,7 @@ use crate::claude::{
 };
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::ChromeDriver;
+use robert_webdriver::{CdpValidator, ChromeDriver, ValidationResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, State};
@@ -447,4 +447,66 @@ pub async fn run_diagnostics(
     emit_success(&app, "Diagnostics complete").ok();
 
     Ok(diagnostics)
+}
+
+/// Validate a CDP script from JSON string
+#[tauri::command]
+pub async fn validate_cdp_script(
+    app: AppHandle,
+    json: String,
+) -> Result<ValidationResult, String> {
+    emit_info(&app, "Validating CDP script...").ok();
+
+    let validator = CdpValidator::new();
+    let result = validator.validate_json(&json);
+
+    if result.is_valid {
+        emit_success(&app, "CDP script validation passed").ok();
+    } else {
+        let error_count = result.errors.len();
+        let warning_count = result.warnings.len();
+        emit_error(
+            &app,
+            format!(
+                "CDP script validation failed: {} error(s), {} warning(s)",
+                error_count, warning_count
+            ),
+            Some(format!("Found {} validation errors", error_count)),
+        )
+        .ok();
+    }
+
+    Ok(result)
+}
+
+/// Validate a CDP script file
+#[tauri::command]
+pub async fn validate_cdp_script_file(
+    app: AppHandle,
+    file_path: String,
+) -> Result<ValidationResult, String> {
+    emit_info(&app, format!("Validating CDP script file: {}", file_path)).ok();
+
+    // Read the file
+    let json = tokio::fs::read_to_string(&file_path)
+        .await
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    // Validate
+    let validator = CdpValidator::new();
+    let result = validator.validate_json(&json);
+
+    if result.is_valid {
+        emit_success(&app, format!("CDP script file {} is valid", file_path)).ok();
+    } else {
+        let error_count = result.errors.len();
+        emit_error(
+            &app,
+            format!("CDP script file {} has {} error(s)", file_path, error_count),
+            None,
+        )
+        .ok();
+    }
+
+    Ok(result)
 }
