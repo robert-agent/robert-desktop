@@ -42,8 +42,10 @@ fn test_script_validation_unknown_command() {
     assert!(result.is_err(), "Unknown command should fail validation");
 
     let error = result.unwrap_err();
-    assert!(error.to_string().contains("unknown") || error.to_string().contains("Unknown"),
-            "Error should mention unknown command");
+    assert!(
+        error.to_string().contains("unknown") || error.to_string().contains("Unknown"),
+        "Error should mention unknown command"
+    );
 }
 
 #[test]
@@ -77,7 +79,10 @@ fn test_script_validation_missing_required_fields() {
     }"#;
 
     let result = validate_generated_script(missing_fields_json);
-    assert!(result.is_err(), "Missing required params should fail validation");
+    assert!(
+        result.is_err(),
+        "Missing required params should fail validation"
+    );
 }
 
 #[test]
@@ -106,7 +111,10 @@ fn test_script_validation_multiple_commands() {
     }"#;
 
     let result = validate_generated_script(multi_command_json);
-    assert!(result.is_ok(), "Multiple valid commands should pass validation");
+    assert!(
+        result.is_ok(),
+        "Multiple valid commands should pass validation"
+    );
 }
 
 #[test]

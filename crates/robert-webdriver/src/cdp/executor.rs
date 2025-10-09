@@ -35,10 +35,7 @@ impl CdpExecutor {
         // Validate script before execution
         script.validate()?;
 
-        let mut report = ExecutionReport::new(
-            script.name.clone(),
-            script.cdp_commands.len(),
-        );
+        let mut report = ExecutionReport::new(script.name.clone(), script.cdp_commands.len());
 
         for (i, cmd) in script.cdp_commands.iter().enumerate() {
             let step = i + 1;
@@ -103,9 +100,7 @@ impl CdpExecutor {
             "Network.deleteCookies" => self.execute_network_delete_cookies(cmd).await,
 
             // ===== EMULATION DOMAIN =====
-            "Emulation.setGeolocationOverride" => {
-                self.execute_emulation_set_geolocation(cmd).await
-            }
+            "Emulation.setGeolocationOverride" => self.execute_emulation_set_geolocation(cmd).await,
             "Emulation.setDeviceMetricsOverride" => {
                 self.execute_emulation_set_device_metrics(cmd).await
             }
@@ -136,9 +131,8 @@ impl CdpExecutor {
         &self,
         cmd: &CdpCommand,
     ) -> Result<(Value, Option<String>)> {
-        let params: page::CaptureScreenshotParams =
-            serde_json::from_value(cmd.params.clone())
-                .context("Failed to parse Page.captureScreenshot parameters")?;
+        let params: page::CaptureScreenshotParams = serde_json::from_value(cmd.params.clone())
+            .context("Failed to parse Page.captureScreenshot parameters")?;
 
         let response = self
             .page
@@ -149,8 +143,9 @@ impl CdpExecutor {
         // Handle saving screenshot to file
         let saved_file = if let Some(filename) = &cmd.save_as {
             // Decode base64 image data
-            use base64::{Engine as _, engine::general_purpose};
-            let image_data = general_purpose::STANDARD.decode(&response.data)
+            use base64::{engine::general_purpose, Engine as _};
+            let image_data = general_purpose::STANDARD
+                .decode(&response.data)
                 .context("Failed to decode screenshot base64 data")?;
 
             // Save to file
@@ -180,9 +175,8 @@ impl CdpExecutor {
     }
 
     async fn execute_page_go_back(&self, cmd: &CdpCommand) -> Result<(Value, Option<String>)> {
-        let params: page::NavigateToHistoryEntryParams =
-            serde_json::from_value(cmd.params.clone())
-                .context("Failed to parse Page.goBack parameters")?;
+        let params: page::NavigateToHistoryEntryParams = serde_json::from_value(cmd.params.clone())
+            .context("Failed to parse Page.goBack parameters")?;
 
         let response = self
             .page
@@ -194,9 +188,8 @@ impl CdpExecutor {
     }
 
     async fn execute_page_go_forward(&self, cmd: &CdpCommand) -> Result<(Value, Option<String>)> {
-        let params: page::NavigateToHistoryEntryParams =
-            serde_json::from_value(cmd.params.clone())
-                .context("Failed to parse Page.goForward parameters")?;
+        let params: page::NavigateToHistoryEntryParams = serde_json::from_value(cmd.params.clone())
+            .context("Failed to parse Page.goForward parameters")?;
 
         let response = self
             .page
@@ -253,9 +246,8 @@ impl CdpExecutor {
         &self,
         cmd: &CdpCommand,
     ) -> Result<(Value, Option<String>)> {
-        let params: input::DispatchMouseEventParams =
-            serde_json::from_value(cmd.params.clone())
-                .context("Failed to parse Input.dispatchMouseEvent parameters")?;
+        let params: input::DispatchMouseEventParams = serde_json::from_value(cmd.params.clone())
+            .context("Failed to parse Input.dispatchMouseEvent parameters")?;
 
         let response = self
             .page
@@ -311,7 +303,10 @@ impl CdpExecutor {
         Ok((serde_json::to_value(&*response)?, saved_file))
     }
 
-    async fn execute_network_set_cookie(&self, cmd: &CdpCommand) -> Result<(Value, Option<String>)> {
+    async fn execute_network_set_cookie(
+        &self,
+        cmd: &CdpCommand,
+    ) -> Result<(Value, Option<String>)> {
         let params: network::SetCookiesParams = serde_json::from_value(cmd.params.clone())
             .context("Failed to parse Network.setCookie parameters")?;
 

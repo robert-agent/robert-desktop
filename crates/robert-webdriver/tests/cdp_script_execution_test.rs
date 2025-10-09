@@ -44,11 +44,17 @@ async fn test_execute_navigation_and_screenshot() {
         ],
     };
 
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Navigation + Screenshot Test:");
     println!("   Script: {}", report.script_name);
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
     println!("   Success rate: {:.1}%", report.success_rate());
 
     assert!(report.is_success(), "Script execution should succeed");
@@ -64,7 +70,9 @@ async fn test_execute_navigation_and_screenshot() {
 
     // Cleanup
     driver.close().await.expect("Failed to close browser");
-    tokio::fs::remove_file("test-execution-screenshot.png").await.ok();
+    tokio::fs::remove_file("test-execution-screenshot.png")
+        .await
+        .ok();
 }
 
 #[tokio::test]
@@ -117,7 +125,10 @@ async fn test_execute_data_extraction() {
         ],
     };
 
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Data Extraction Test:");
     println!("   Total commands: {}", report.total_commands);
@@ -132,12 +143,18 @@ async fn test_execute_data_extraction() {
         .await
         .expect("Title file should exist");
     println!("Extracted title: {}", title_content);
-    assert!(title_content.contains("Example"), "Title should contain 'Example'");
+    assert!(
+        title_content.contains("Example"),
+        "Title should contain 'Example'"
+    );
 
     let heading_content = tokio::fs::read_to_string("test-exec-heading.json")
         .await
         .expect("Heading file should exist");
-    assert!(heading_content.contains("Example Domain"), "Heading should contain 'Example Domain'");
+    assert!(
+        heading_content.contains("Example Domain"),
+        "Heading should contain 'Example Domain'"
+    );
 
     println!("✅ Data extraction test passed!");
 
@@ -189,7 +206,10 @@ async fn test_execute_programmatic_script() {
     };
 
     // Execute the script
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution failed");
 
     println!("📊 Programmatic Script Execution:");
     println!("   Total commands: {}", report.total_commands);
@@ -227,7 +247,10 @@ async fn test_invalid_cdp_command() {
         }],
     };
 
-    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution completed");
+    let report = driver
+        .execute_cdp_script_direct(&script)
+        .await
+        .expect("Script execution completed");
 
     println!("📊 Invalid Command Test:");
     println!("   Failed: {}", report.failed);
@@ -270,9 +293,12 @@ async fn test_execute_cdp_script_from_file() {
 
     // Write script to temp file
     let script_path = std::path::Path::new("test-script.json");
-    tokio::fs::write(script_path, serde_json::to_string_pretty(&script_content).unwrap())
-        .await
-        .expect("Failed to write script file");
+    tokio::fs::write(
+        script_path,
+        serde_json::to_string_pretty(&script_content).unwrap(),
+    )
+    .await
+    .expect("Failed to write script file");
 
     // Launch driver
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
@@ -284,11 +310,17 @@ async fn test_execute_cdp_script_from_file() {
     .expect("Failed to launch Chrome");
 
     // Execute script from file
-    let report = driver.execute_cdp_script(script_path).await.expect("Failed to execute script from file");
+    let report = driver
+        .execute_cdp_script(script_path)
+        .await
+        .expect("Failed to execute script from file");
 
     println!("📊 File-based Script Execution:");
     println!("   Script: {}", report.script_name);
-    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!(
+        "   Commands: {}/{}",
+        report.successful, report.total_commands
+    );
 
     assert!(report.is_success(), "File-based script should succeed");
     assert_eq!(report.script_name, "file-based-test");
