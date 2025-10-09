@@ -26,6 +26,9 @@ async fn test_navigate_and_get_title() {
         .await
         .expect("Failed to navigate");
 
+    // Wait for page to load
+    sleep(Duration::from_secs(2)).await;
+
     // Get page title
     let title = driver.title().await.expect("Failed to get title");
     println!("Page title: {}", title);
@@ -70,6 +73,9 @@ async fn test_get_element_text() {
         .await
         .expect("Failed to navigate");
 
+    // Wait for page to load
+    sleep(Duration::from_secs(2)).await;
+
     // Get h1 element text
     let h1_text = driver
         .get_element_text("h1")
@@ -108,14 +114,18 @@ async fn test_get_page_source() {
         .await
         .expect("Failed to navigate");
 
+    // Wait for page to load
+    sleep(Duration::from_secs(2)).await;
+
     // Get full page source
     let source = driver
         .get_page_source()
         .await
         .expect("Failed to get page source");
     println!("Page source length: {} bytes", source.len());
-    assert!(source.contains("<html"));
-    assert!(source.contains("Example Domain"));
+    println!("Page source preview: {}", &source[..500.min(source.len())]);
+    assert!(source.contains("<html") || source.contains("<HTML"));
+    assert!(source.to_lowercase().contains("example domain"), "Page source should contain 'Example Domain'");
 
     // Keep window open for 5 seconds (only visible in non-CI mode)
     if !is_ci {

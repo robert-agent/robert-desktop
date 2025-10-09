@@ -21,6 +21,8 @@ pub fn run() {
             commands::ask_claude_about_page,
             commands::check_claude_health,
             commands::run_diagnostics,
+            commands::validate_cdp_script,
+            commands::validate_cdp_script_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
