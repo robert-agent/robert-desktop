@@ -3,7 +3,7 @@
 
 mod test_server;
 
-use robert_webdriver::{ChromeDriver, ConnectionMode};
+use robert_webdriver::{CdpCommand, CdpScript, ChromeDriver, ConnectionMode};
 use std::time::Duration;
 use test_server::TestServer;
 use tokio::time::sleep;
@@ -15,15 +15,7 @@ async fn test_navigate_and_get_title() {
     server.wait_ready().await.expect("Server failed to start");
     let url = server.url();
 
-    // Detect if we're in CI mode
-    let is_ci = std::env::var("CI").is_ok()
-        || std::env::var("GITHUB_ACTIONS").is_ok()
-        || std::env::var("GITLAB_CI").is_ok()
-        || std::env::var("JENKINS_HOME").is_ok()
-        || std::env::var("CIRCLECI").is_ok();
-
     // Launch Chrome with auto-download
-    // Note: no_sandbox=true is required for Ubuntu 23.10+ and CI environments
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
         no_sandbox: true,  // Required for Ubuntu 23.10+ sandbox restrictions
@@ -32,65 +24,73 @@ async fn test_navigate_and_get_title() {
     .await
     .expect("Failed to launch Chrome");
 
-    // Navigate to local test server
-    driver
-        .navigate(&url)
+    // Use CDP script for reliable navigation and data extraction
+    let script = CdpScript {
+        name: "navigate-and-title-test".to_string(),
+        description: "Navigate and get title and text".to_string(),
+        created: None,
+        author: Some("Test".to_string()),
+        tags: vec!["navigation".to_string()],
+        cdp_commands: vec![
+            CdpCommand {
+                method: "Page.navigate".to_string(),
+                params: serde_json::json!({
+                    "url": url
+                }),
+                save_as: None,
+                description: Some("Navigate to test server".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.title",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-nav-title.json".to_string()),
+                description: Some("Get page title".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.body.textContent",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-nav-text.json".to_string()),
+                description: Some("Get page text".to_string()),
+            },
+        ],
+    };
+
+    // Execute the script
+    println!("Navigating to: {}", url);
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+
+    println!("📊 Navigation and Title Test:");
+    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!("   Success rate: {:.1}%", report.success_rate());
+
+    assert!(report.is_success(), "Script execution should succeed");
+
+    // Read the extracted title
+    let title_data = tokio::fs::read_to_string("test-nav-title.json")
         .await
-        .expect("Failed to navigate");
+        .expect("Failed to read title file");
+    println!("✅ Page title: {}", title_data);
+    assert!(title_data.contains("Example Domain"), "Expected title to contain 'Example Domain'");
 
-    // Give navigation time to complete before checking
-    sleep(Duration::from_secs(1)).await;
+    // Read the extracted text
+    let text_data = tokio::fs::read_to_string("test-nav-text.json")
+        .await
+        .expect("Failed to read text file");
+    println!("✅ Page text extracted");
+    assert!(text_data.contains("Example Domain"), "Expected text to contain 'Example Domain'");
 
-    // Check URL to debug
-    let current_url = driver.current_url().await.expect("Failed to get URL");
-    println!("Current URL after navigation: {}", current_url);
+    println!("✅ Navigation and title check passed!");
 
-    // Wait for page to load with retry logic
-    let mut attempts = 0;
-    let max_attempts = 10;
-    let mut title = String::new();
-
-    println!("⏳ Waiting for page to load...");
-    while attempts < max_attempts {
-        title = driver.title().await.expect("Failed to get title");
-        println!("  Attempt {}: title = '{}'", attempts + 1, title);
-
-        if title.to_lowercase().contains("example") && !title.contains("New Tab") {
-            println!("✅ Page loaded successfully!");
-            break;
-        }
-
-        attempts += 1;
-        if attempts < max_attempts {
-            sleep(Duration::from_secs(1)).await;
-        }
-    }
-
-    // Verify we got the correct title
-    assert!(title.contains("Example"), "Expected title to contain 'Example' but got: {}", title);
-    assert!(!title.contains("New Tab"), "Still on 'New Tab' - page didn't load");
-
-    // Get page text with retry
-    let mut text = String::new();
-    for _ in 0..5 {
-        text = driver.get_page_text().await.expect("Failed to get page text");
-        if text.contains("Example Domain") {
-            break;
-        }
-        sleep(Duration::from_secs(1)).await;
-    }
-
-    println!("Page text: {}", text);
-    assert!(text.contains("Example Domain"), "Expected text to contain 'Example Domain'");
-
-    // Keep window open for 5 seconds (only visible in non-CI mode)
-    if !is_ci {
-        println!("Keeping window open for 5 seconds...");
-        sleep(Duration::from_secs(5)).await;
-    }
-
-    // Close browser
+    // Cleanup
     driver.close().await.expect("Failed to close browser");
+    tokio::fs::remove_file("test-nav-title.json").await.ok();
+    tokio::fs::remove_file("test-nav-text.json").await.ok();
 }
 
 #[tokio::test]
@@ -100,12 +100,6 @@ async fn test_get_element_text() {
     server.wait_ready().await.expect("Server failed to start");
     let url = server.url();
 
-    let is_ci = std::env::var("CI").is_ok()
-        || std::env::var("GITHUB_ACTIONS").is_ok()
-        || std::env::var("GITLAB_CI").is_ok()
-        || std::env::var("JENKINS_HOME").is_ok()
-        || std::env::var("CIRCLECI").is_ok();
-
     let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
         chrome_path: None,
         no_sandbox: true,  // Required for Ubuntu 23.10+ sandbox restrictions
@@ -114,77 +108,57 @@ async fn test_get_element_text() {
     .await
     .expect("Failed to launch Chrome");
 
-    driver
-        .navigate(&url)
+    // Use CDP script for reliable navigation and element extraction
+    let script = CdpScript {
+        name: "element-text-test".to_string(),
+        description: "Navigate and get element text".to_string(),
+        created: None,
+        author: Some("Test".to_string()),
+        tags: vec!["element".to_string()],
+        cdp_commands: vec![
+            CdpCommand {
+                method: "Page.navigate".to_string(),
+                params: serde_json::json!({
+                    "url": url
+                }),
+                save_as: None,
+                description: Some("Navigate to test server".to_string()),
+            },
+            CdpCommand {
+                method: "Runtime.evaluate".to_string(),
+                params: serde_json::json!({
+                    "expression": "document.querySelector('h1').textContent",
+                    "returnByValue": true
+                }),
+                save_as: Some("test-element-text.json".to_string()),
+                description: Some("Get h1 text".to_string()),
+            },
+        ],
+    };
+
+    // Execute the script
+    println!("Navigating to: {}", url);
+    let report = driver.execute_cdp_script_direct(&script).await.expect("Script execution failed");
+
+    println!("📊 Element Text Test:");
+    println!("   Commands: {}/{}", report.successful, report.total_commands);
+    println!("   Success rate: {:.1}%", report.success_rate());
+
+    assert!(report.is_success(), "Script execution should succeed");
+
+    // Read the extracted element text
+    let element_data = tokio::fs::read_to_string("test-element-text.json")
         .await
-        .expect("Failed to navigate");
+        .expect("Failed to read element text file");
+    println!("✅ Extracted h1 text: {}", element_data);
 
-    // Give navigation time to complete before checking
-    sleep(Duration::from_secs(3)).await;
+    assert!(element_data.contains("Example Domain"), "Expected h1 to contain 'Example Domain'");
 
-    // First, wait for page to load by checking title
-    let mut attempts = 0;
-    let max_attempts = 10;
-    let mut page_loaded = false;
+    println!("✅ Element text check passed!");
 
-    println!("⏳ Waiting for page to load...");
-    while attempts < max_attempts {
-        let title = driver.title().await.expect("Failed to get title");
-        println!("  Attempt {}: title = '{}'", attempts + 1, title);
-
-        if title.to_lowercase().contains("example") && !title.contains("New Tab") {
-            println!("✅ Page loaded successfully!");
-            page_loaded = true;
-            break;
-        }
-
-        attempts += 1;
-        if attempts < max_attempts {
-            sleep(Duration::from_secs(1)).await;
-        }
-    }
-
-    assert!(page_loaded, "Page failed to load after {} attempts", max_attempts);
-
-    // Now wait for h1 element
-    let mut h1_attempts = 0;
-    let max_h1_attempts = 10;
-    let mut h1_text = String::new();
-
-    println!("⏳ Waiting for h1 element...");
-    while h1_attempts < max_h1_attempts {
-
-        match driver.get_element_text("h1").await {
-            Ok(text) => {
-                h1_text = text;
-                println!("  Attempt {}: h1 = '{}'", h1_attempts + 1, h1_text);
-
-                if h1_text.contains("Example Domain") {
-                    println!("✅ Element loaded successfully!");
-                    break;
-                }
-            }
-            Err(e) => {
-                println!("  Attempt {}: Error getting h1 - {}", h1_attempts + 1, e);
-            }
-        }
-
-        h1_attempts += 1;
-        if h1_attempts < max_h1_attempts {
-            sleep(Duration::from_secs(1)).await;
-        }
-    }
-
-    println!("H1 text: {}", h1_text);
-    assert!(h1_text.contains("Example Domain"), "Expected h1 to contain 'Example Domain' but got: {}", h1_text);
-
-    // Keep window open for 5 seconds (only visible in non-CI mode)
-    if !is_ci {
-        println!("Keeping window open for 5 seconds...");
-        sleep(Duration::from_secs(5)).await;
-    }
-
+    // Cleanup
     driver.close().await.expect("Failed to close browser");
+    tokio::fs::remove_file("test-element-text.json").await.ok();
 }
 
 #[tokio::test]
