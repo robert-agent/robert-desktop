@@ -144,7 +144,9 @@ We believe automation should be:
 - ✅ **Native macOS integration** (menus, notifications)
 
 #### Automation Features
-- ✅ **Markdown script format** (inspired by Claude agents)
+- ✅ **Claude-generated CDP scripts** - AI writes Chrome DevTools Protocol commands as text
+- ✅ **Runtime script interpretation** - Scripts stored externally, not compiled into binary
+- ✅ **Direct CDP execution** - Full Chrome automation capabilities via CDP protocol
 - ✅ **Basic navigation** (goto, back, forward, refresh)
 - ✅ **Element interactions** (click, type, scroll)
 - ✅ **Wait conditions** (element, timeout, page load)
@@ -152,6 +154,7 @@ We believe automation should be:
 - ✅ **Text extraction** (page, element-specific)
 - ✅ **Metadata collection** (URL, title, timestamp)
 - ✅ **Error handling** (continue on error, stop on error)
+- ✅ **Advanced CDP commands** - Any CDP command supported by Chrome
 
 #### Output & Storage
 - ✅ **Structured file output** (screenshots/, text/, html/)
@@ -514,92 +517,68 @@ Create Script → Add Documentation → Export → Share File → Teammate Impor
 
 ## Script Format Specification
 
-**Note:** See [SCRIPT_FORMAT.md](SCRIPT_FORMAT.md) for full specification. Robert uses Markdown scripts inspired by Claude agents.
+**Note:** See [SCRIPT_FORMAT.md](SCRIPT_FORMAT.md) for full specification.
 
-### Example Markdown Structure
+### Claude-Generated CDP Scripts
 
-```markdown
----
-name: example-automation
-version: 1.0.0
-description: Demonstrates basic navigation and capture
-author: Your Name
----
+Robert uses **AI-generated Chrome DevTools Protocol (CDP) commands** for browser automation. Claude analyzes your natural language requests and generates CDP command sequences as text strings.
 
-# Example Automation
+**Key Architecture Decisions:**
+- **Scripts are NOT compiled** - CDP commands stored as text/JSON, interpreted at runtime
+- **Claude generates the scripts** - User describes task in natural language, Claude outputs CDP commands
+- **Direct CDP execution** - Runtime interpreter sends commands directly to Chrome via chromiumoxide
+- **No code in binary** - All browsing logic external to compiled application
 
-This automation demonstrates basic web navigation and content capture.
+### Example Claude-Generated Script
 
-## Steps
+**User Request:** "Navigate to example.com, take a screenshot, and click the login button"
 
-### 1. Navigate to website
-Go to https://example.com and wait for page to load
-
-### 2. Wait for heading
-Wait until the main heading is visible
-- Selector: h1
-- Timeout: 5 seconds
-
-### 3. Take screenshot
-Capture full page screenshot
-- Filename: homepage.png
-- Type: full-page
-
-### 4. Click call-to-action button
-Click the CTA button
-- Selector: button#cta
-- Wait after: 1 second
-
-### 5. Enter email
-Type email address into the form
-- Selector: input[name='email']
-- Text: user@example.com
-- Clear first: yes
-
-### 6. Extract results
-Get text from results section
-- Selector: .results
-- Save to: results.txt
-
-### 7. Scroll down
-    direction: "down"
-    amount: 500
-
-  - action: execute
-    javascript: "return document.title;"
-    variable: "page_title"
-
-  - action: conditional
-    condition:
-      type: "element_exists"
-      selector: ".error"
-    then:
-      - action: screenshot
-        type: "element"
-        selector: ".error"
-        filename: "error.png"
-    else:
-      - action: extract_text
-        selector: ".success"
-        output: "success.txt"
+**Claude Generates:**
+```json
+{
+  "name": "example-login-automation",
+  "description": "Navigate and click login",
+  "cdp_commands": [
+    {
+      "method": "Page.navigate",
+      "params": {
+        "url": "https://example.com"
+      }
+    },
+    {
+      "method": "Page.captureScreenshot",
+      "params": {
+        "format": "png",
+        "captureBeyondViewport": true
+      },
+      "save_as": "homepage.png"
+    },
+    {
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "document.querySelector('button#login').click()"
+      }
+    }
+  ]
+}
 ```
 
-### Action Reference
+### CDP Command Examples
 
-| Action | Description | Required Parameters | Optional Parameters |
-|--------|-------------|---------------------|---------------------|
-| `navigate` | Navigate to URL | `url` | `wait_for`, `timeout` |
-| `click` | Click element | `selector` | `wait_after`, `timeout` |
-| `type` | Type text | `selector`, `text` | `clear_first`, `delay` |
-| `scroll` | Scroll page | `direction`, `amount` | `selector` (scroll to) |
-| `wait` | Wait for condition | `condition`, `selector` | `timeout` |
-| `screenshot` | Capture screenshot | `type`, `filename` | `selector` (for element), `format` |
-| `extract_text` | Extract text | `selector`, `output` | `all` (get all matches) |
-| `execute` | Run JavaScript | `javascript` | `variable` (store result) |
-| `select` | Select dropdown | `selector`, `value` | `by` (value, text, index) |
-| `check` | Check checkbox | `selector` | `state` (true/false) |
-| `submit` | Submit form | `selector` | - |
-| `conditional` | Conditional execution | `condition`, `then` | `else` |
+Common CDP commands Claude can generate:
+
+| CDP Method | Purpose | Example Params |
+|------------|---------|----------------|
+| `Page.navigate` | Navigate to URL | `{"url": "https://example.com"}` |
+| `Page.captureScreenshot` | Take screenshot | `{"format": "png", "captureBeyondViewport": true}` |
+| `Runtime.evaluate` | Execute JavaScript | `{"expression": "document.title"}` |
+| `Input.dispatchMouseEvent` | Click elements | `{"type": "mousePressed", "x": 100, "y": 200}` |
+| `Input.dispatchKeyEvent` | Type text | `{"type": "char", "text": "hello"}` |
+| `Network.getCookies` | Get cookies | `{}` |
+| `DOM.getDocument` | Get DOM tree | `{}` |
+| `Emulation.setGeolocationOverride` | Set location | `{"latitude": 37.7749, "longitude": -122.4194}` |
+
+See [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) for full reference.
 
 ## Output Format Specification
 

@@ -5,6 +5,12 @@ members = [
     "crates/robert-cli",
     "crates/robert-app/src-tauri",
 ]
+# Exclude Tauri app from default builds (requires GTK/Pango system libraries)
+# To build the Tauri app: cargo build -p robert-app
+default-members = [
+    "crates/robert-webdriver",
+    "crates/robert-cli",
+]
 
 [workspace.dependencies]
 # Shared dependencies across all crates
@@ -24,3 +30,5 @@ clap = { version = "4.0", features = ["derive"] }
 # Utilities
 dirs = "5.0"
 futures = "0.3"
+base64 = "0.22"
+chrono = "0.4"

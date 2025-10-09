@@ -1087,13 +1087,122 @@ impl Executor {
 | macOS signing issues | Clear documentation, CI setup |
 | Performance with large scripts | Streaming events, pagination |
 
+## CDP Script Architecture
+
+### How Claude-Generated Scripts Work
+
+**Flow:**
+```
+User describes task → Claude generates CDP JSON → Stored as text file → Runtime loads & executes
+```
+
+**Key Components:**
+
+1. **Script Generator (Claude Integration)**
+   - User provides natural language description
+   - Claude CLI analyzes request
+   - Outputs CDP command sequence as JSON
+   - Saved to file (not compiled)
+
+2. **Script Format (JSON)**
+   ```json
+   {
+     "name": "automation-name",
+     "description": "What it does",
+     "cdp_commands": [
+       {
+         "method": "Page.navigate",
+         "params": {"url": "https://example.com"}
+       },
+       {
+         "method": "Runtime.evaluate",
+         "params": {"expression": "document.title"}
+       }
+     ]
+   }
+   ```
+
+3. **Runtime Interpreter**
+   - Loads script from file at runtime
+   - Parses JSON
+   - Sends each CDP command to Chrome via chromiumoxide
+   - Handles responses and errors
+
+4. **Execution Engine**
+   ```rust
+   pub struct CdpScriptExecutor {
+       driver: ChromeDriver,
+   }
+
+   impl CdpScriptExecutor {
+       pub async fn execute_script(&self, script_path: &Path) -> Result<()> {
+           // 1. Load JSON from file
+           let script = self.load_script(script_path)?;
+
+           // 2. Execute each CDP command
+           for cmd in script.cdp_commands {
+               self.execute_cdp_command(&cmd.method, cmd.params).await?;
+           }
+
+           Ok(())
+       }
+
+       async fn execute_cdp_command(
+           &self,
+           method: &str,
+           params: serde_json::Value
+       ) -> Result<serde_json::Value> {
+           // Send raw CDP command to Chrome
+           let page = self.driver.current_page().await?;
+           page.execute_cdp(method, params).await
+       }
+   }
+   ```
+
+### Implementation Approach
+
+**Phase 1: CDP Interpreter**
+- Implement JSON script loader
+- Add generic CDP command executor
+- Handle responses and errors
+- Support all CDP domains (Page, Runtime, Input, Network, etc.)
+
+**Phase 2: Claude Integration**
+- Connect Claude CLI for script generation
+- Prompt engineering for CDP output
+- Validate generated scripts
+- Save to script directory
+
+**Phase 3: UI Integration**
+- "Describe automation" text field
+- Claude generates script in background
+- Show generated CDP commands
+- Allow edit before execution
+- Execute button runs interpreter
+
+### Benefits of This Architecture
+
+1. **No Compilation** - Scripts are text files, change without rebuilding
+2. **Full CDP Access** - Any Chrome feature available
+3. **AI-Generated** - Non-technical users can automate
+4. **Auditable** - Scripts are readable JSON
+5. **Shareable** - Export/import script files
+6. **Flexible** - Can be hand-edited by power users
+
+### Security Considerations
+
+- **Sandboxed execution** - CDP commands run in isolated browser
+- **No arbitrary code** - Only CDP protocol commands
+- **User approval** - Scripts displayed before execution
+- **Audit log** - All commands logged
+
 ## Next Steps
 
 1. **Complete Phase 0 CLI** with chromiumoxide (both modes)
 2. **Initialize Tauri project**
-3. **Setup basic browser automation** with chromiumoxide
-4. **Implement core IPC** commands for both modes
-5. **Build execution status UI**
-6. **Iterate with user testing**
+3. **Implement CDP script interpreter** - Generic CDP command executor
+4. **Integrate Claude CLI** - For script generation
+5. **Build script execution UI** - Load, display, execute CDP scripts
+6. **Test with real automation tasks**
 
 This revised plan delivers a much more user-friendly experience with visual feedback and zero external dependencies, making browser automation accessible to all users while maintaining the power of scripted automation and advanced features for power users.

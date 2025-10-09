@@ -292,6 +292,142 @@ impl ChromeDriver {
         Ok(())
     }
 
+    /// Execute arbitrary JavaScript in the page context
+    pub async fn execute_script(&self, script: &str) -> Result<serde_json::Value> {
+        let pages = self.browser.pages().await?;
+        let page = pages.first().ok_or(BrowserError::NoPage)?;
+
+        let result = page
+            .evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))?;
+
+        Ok(result.into_value().unwrap_or(serde_json::Value::Null))
+    }
+
+    /// Execute JavaScript and return a specific type
+    pub async fn execute_script_typed<T: serde::de::DeserializeOwned>(
+        &self,
+        script: &str,
+    ) -> Result<T> {
+        let pages = self.browser.pages().await?;
+        let page = pages.first().ok_or(BrowserError::NoPage)?;
+
+        let result = page
+            .evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))?;
+
+        result
+            .into_value()
+            .map_err(|e| BrowserError::Other(format!("Failed to deserialize result: {}", e)))
+    }
+
+    /// Send a raw CDP (Chrome DevTools Protocol) command using JSON
+    ///
+    /// This is a convenience wrapper for sending arbitrary CDP commands.
+    /// The method should be in the format "Domain.method" (e.g., "Page.captureScreenshot", "Network.getCookies")
+    ///
+    /// For typed/safe CDP usage, use `driver.current_page()` to get the Page and use chromiumoxide's typed CDP methods.
+    ///
+    /// # Note on JavaScript Execution
+    /// For executing JavaScript, use `execute_script()` instead - it's simpler and more reliable.
+    ///
+    /// # Common CDP Commands
+    /// - `Page.captureScreenshot` - Take screenshots with custom options
+    /// - `Emulation.setDeviceMetricsOverride` - Mobile device emulation
+    /// - `Network.getCookies` - Get all cookies
+    /// - `Performance.getMetrics` - Get performance metrics
+    /// - `DOM.getDocument` - Get DOM tree
+    /// - `Input.dispatchMouseEvent` - Simulate mouse events
+    /// - `Input.dispatchKeyEvent` - Simulate keyboard events
+    ///
+    /// # Example - Set Geolocation
+    /// ```ignore
+    /// use serde_json::json;
+    /// use robert_webdriver::ChromeDriver;
+    ///
+    /// # async fn example(driver: &ChromeDriver) -> anyhow::Result<()> {
+    /// let params = json!({
+    ///     "latitude": 37.7749,
+    ///     "longitude": -122.4194,
+    ///     "accuracy": 100
+    /// });
+    /// driver.send_cdp_command("Emulation.setGeolocationOverride", params).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Example - Get Cookies
+    /// ```ignore
+    /// use serde_json::json;
+    /// use robert_webdriver::ChromeDriver;
+    ///
+    /// # async fn example(driver: &ChromeDriver) -> anyhow::Result<()> {
+    /// let result = driver.send_cdp_command("Network.getCookies", json!({})).await?;
+    /// println!("Cookies: {}", result);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn send_cdp_command(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value> {
+        // For now, we'll implement common use cases via JavaScript
+        // This is a limitation of chromiumoxide's typed API
+        // TODO: Implement proper CDP command execution when chromiumoxide supports it
+
+        // Special handling for common commands
+        match method {
+            "Runtime.evaluate" => {
+                // Use our built-in execute_script for this
+                if let Some(expression) = params.get("expression").and_then(|v| v.as_str()) {
+                    let result = self.execute_script(expression).await?;
+                    Ok(serde_json::json!({
+                        "result": {
+                            "type": "object",
+                            "value": result
+                        }
+                    }))
+                } else {
+                    Err(BrowserError::Other(
+                        "Runtime.evaluate requires 'expression' parameter".to_string(),
+                    ))
+                }
+            }
+            _ => {
+                // For other CDP commands, user should use current_page() and chromiumoxide types
+                Err(BrowserError::Other(format!(
+                    "CDP command '{}' not directly supported. Use driver.current_page() and chromiumoxide::cdp types for typed CDP access. \
+                    For JavaScript execution, use driver.execute_script(). \
+                    See documentation for examples.",
+                    method
+                )))
+            }
+        }
+    }
+
+    /// Get access to the underlying Browser for advanced CDP usage
+    pub fn browser(&self) -> &Browser {
+        &self.browser
+    }
+
+    /// Get access to the current page for advanced operations
+    /// Creates a new page if none exists
+    pub async fn current_page(&self) -> Result<chromiumoxide::page::Page> {
+        let pages = self.browser.pages().await?;
+        if let Some(page) = pages.first().cloned() {
+            Ok(page)
+        } else {
+            // No pages exist, create one
+            self.browser
+                .new_page("about:blank")
+                .await
+                .map_err(|e| BrowserError::Other(format!("Failed to create page: {}", e)))
+        }
+    }
+
     /// Close the browser connection
     pub async fn close(self) -> Result<()> {
         self.browser
@@ -366,4 +502,53 @@ impl ChromeDriver {
 
         None
     }
+
+    /// Execute a CDP script from a JSON file
+    ///
+    /// This method loads a CDP script and executes it via the CDP executor.
+    /// Scripts are JSON files containing Chrome DevTools Protocol commands.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let report = driver.execute_cdp_script(Path::new("script.json")).await?;
+    /// println!("Executed {} commands, {} successful",
+    ///     report.total_commands, report.successful);
+    /// ```
+    pub async fn execute_cdp_script(
+        &self,
+        script_path: &std::path::Path,
+    ) -> Result<crate::cdp::ExecutionReport> {
+        // Load script from file
+        let script = crate::cdp::CdpScript::from_file(script_path)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to load script: {}", e)))?;
+
+        // Get current page
+        let page = self.current_page().await?;
+
+        // Create executor and run script
+        let executor = crate::cdp::CdpExecutor::new(page);
+        executor
+            .execute_script(&script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))
+    }
+
+    /// Execute a CDP script from an in-memory CdpScript struct
+    ///
+    /// Useful when scripts are generated programmatically (e.g., by Claude)
+    /// rather than loaded from files.
+    pub async fn execute_cdp_script_direct(
+        &self,
+        script: &crate::cdp::CdpScript,
+    ) -> Result<crate::cdp::ExecutionReport> {
+        let page = self.current_page().await?;
+        let executor = crate::cdp::CdpExecutor::new(page);
+        executor
+            .execute_script(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))
+    }
+
 }
