@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tokio::process::Command;
 
 /// Health check result for Claude CLI
@@ -168,6 +167,7 @@ impl ClaudeHealthCheck {
     }
 
     /// Get a human-readable status message
+    #[allow(dead_code)]
     pub fn status_message(&self) -> String {
         match self.status {
             HealthStatus::Healthy => "Claude CLI is ready".to_string(),
@@ -181,6 +181,7 @@ impl ClaudeHealthCheck {
     }
 
     /// Get setup instructions
+    #[allow(dead_code)]
     pub fn setup_instructions(&self) -> Vec<String> {
         let mut instructions = Vec::new();
 
