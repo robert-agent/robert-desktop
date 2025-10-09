@@ -31,8 +31,6 @@
       case 'ChromeLaunched':
       case 'PageLoading':
       case 'PageParsing':
-      case 'ClaudeChecking':
-      case 'ClaudeProcessing':
       case 'Info':
       case 'Success':
         return event.data.message;
@@ -48,24 +46,6 @@
 
       case 'PageLoaded':
         return `Page loaded: ${event.data.title} (${event.data.url})`;
-
-      case 'ClaudeReady':
-        return `✓ Claude CLI ready: ${event.data.version} at ${event.data.path} (${event.data.authenticated ? 'authenticated' : 'not authenticated'})`;
-
-      case 'ClaudeNotReady':
-        return `✗ Claude CLI issue: ${event.data.issue}\n  → ${event.data.suggestion}`;
-
-      case 'ClaudeScreenshot':
-        return `📸 Screenshot captured: ${event.data.path}`;
-
-      case 'ClaudeHtmlExtracted':
-        return `📄 HTML extracted: ${event.data.size_kb} KB`;
-
-      case 'ClaudeApiCall':
-        return `🤖 Calling Claude (${event.data.model}): "${event.data.prompt_preview}"`;
-
-      case 'ClaudeResponse':
-        return `💬 Claude responded (${event.data.full_length} chars): "${event.data.preview}"`;
 
       case 'Error':
         return `Error: ${event.data.message}${event.data.details ? `\n${event.data.details}` : ''}`;

@@ -1,7 +1,11 @@
+use crate::claude::{
+    ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse, ClaudeStreamChunk,
+};
 use crate::events::*;
 use crate::state::AppState;
 use robert_webdriver::ChromeDriver;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use tauri::{AppHandle, State};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -140,4 +144,307 @@ pub async fn close_browser(app: AppHandle, state: State<'_, AppState>) -> Result
     } else {
         Err("Browser not running".to_string())
     }
+}
+
+/// Take a screenshot of the current page
+#[tauri::command]
+pub async fn take_screenshot(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    output_path: String,
+) -> Result<String, String> {
+    let driver_lock = state.driver.lock().await;
+
+    if driver_lock.is_none() {
+        return Err("Browser not launched".to_string());
+    }
+
+    let driver = driver_lock.as_ref().unwrap();
+
+    emit_info(&app, "Taking screenshot...").ok();
+
+    let path = PathBuf::from(&output_path);
+    match driver.screenshot_to_file(&path).await {
+        Ok(_) => {
+            emit_success(&app, format!("Screenshot saved to: {}", output_path)).ok();
+            Ok(output_path)
+        }
+        Err(e) => {
+            let error_msg = format!("Failed to take screenshot: {}", e);
+            emit_error(&app, error_msg.clone(), Some(e.to_string())).ok();
+            Err(error_msg)
+        }
+    }
+}
+
+/// Call Claude CLI with screenshot and HTML
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClaudeRequest {
+    pub prompt: String,
+    pub screenshot_path: Option<String>,
+    pub include_html: bool,
+    pub model: Option<String>,
+}
+
+#[tauri::command]
+pub async fn ask_claude(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: ClaudeRequest,
+) -> Result<ClaudeResponse, String> {
+    let driver_lock = state.driver.lock().await;
+
+    if driver_lock.is_none() {
+        return Err("Browser not launched".to_string());
+    }
+
+    let driver = driver_lock.as_ref().unwrap();
+
+    emit_claude_processing(&app, "Preparing data for Claude...").ok();
+
+    // Get HTML if requested
+    let html = if request.include_html {
+        emit_info(&app, "Extracting page HTML...").ok();
+        match driver.get_page_source().await {
+            Ok(html) => {
+                let size_kb = html.len() / 1024;
+                emit_claude_html_extracted(&app, size_kb).ok();
+                Some(html)
+            }
+            Err(e) => {
+                emit_error(&app, "Failed to get HTML".to_string(), Some(e.to_string())).ok();
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Build Claude input
+    let images = if let Some(path) = request.screenshot_path.clone() {
+        emit_claude_screenshot(&app, &path).ok();
+        vec![PathBuf::from(path)]
+    } else {
+        vec![]
+    };
+
+    let input = ClaudeInput {
+        prompt: request.prompt.clone(),
+        images,
+        html,
+    };
+
+    // Configure Claude client
+    let mut config = ClaudeConfig::default();
+    let model_name = request
+        .model
+        .clone()
+        .unwrap_or_else(|| "default".to_string());
+    config.model = request.model;
+    config.skip_permissions = true; // For automation purposes
+
+    let client = ClaudeClient::with_config(config);
+
+    // Show prompt preview (first 100 chars)
+    let prompt_preview = if request.prompt.len() > 100 {
+        format!("{}...", &request.prompt[..100])
+    } else {
+        request.prompt.clone()
+    };
+    emit_claude_api_call(&app, model_name, prompt_preview).ok();
+
+    // Execute Claude
+    match client.execute(input).await {
+        Ok(response) => {
+            let preview = if response.text.len() > 200 {
+                format!("{}...", &response.text[..200])
+            } else {
+                response.text.clone()
+            };
+            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_success(&app, "Claude response received").ok();
+            Ok(response)
+        }
+        Err(e) => {
+            let error_msg = format!("Claude CLI failed: {}", e);
+            emit_error(&app, error_msg.clone(), Some(e.to_string())).ok();
+            Err(error_msg)
+        }
+    }
+}
+
+/// Call Claude CLI with screenshot and HTML (one-shot helper)
+#[tauri::command]
+pub async fn ask_claude_about_page(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    prompt: String,
+    model: Option<String>,
+) -> Result<ClaudeResponse, String> {
+    let driver_lock = state.driver.lock().await;
+
+    if driver_lock.is_none() {
+        return Err("Browser not launched".to_string());
+    }
+
+    let driver = driver_lock.as_ref().unwrap();
+
+    emit_claude_processing(&app, "Taking screenshot for Claude...").ok();
+
+    // Create temp directory for screenshot
+    let temp_dir = std::env::temp_dir().join("robert-screenshots");
+    tokio::fs::create_dir_all(&temp_dir)
+        .await
+        .map_err(|e| format!("Failed to create temp dir: {}", e))?;
+
+    let timestamp = chrono::Utc::now().timestamp();
+    let screenshot_path = temp_dir.join(format!("screenshot-{}.png", timestamp));
+
+    // Take screenshot
+    driver
+        .screenshot_to_file(&screenshot_path)
+        .await
+        .map_err(|e| format!("Failed to take screenshot: {}", e))?;
+
+    emit_claude_screenshot(&app, screenshot_path.to_string_lossy()).ok();
+
+    emit_info(&app, "Getting page HTML...").ok();
+
+    // Get HTML
+    let html = driver
+        .get_page_source()
+        .await
+        .map_err(|e| format!("Failed to get HTML: {}", e))?;
+
+    let html_size_kb = html.len() / 1024;
+    emit_claude_html_extracted(&app, html_size_kb).ok();
+
+    // Build Claude input
+    let input = ClaudeInput {
+        prompt: prompt.clone(),
+        images: vec![screenshot_path.clone()],
+        html: Some(html),
+    };
+
+    // Configure Claude client
+    let mut config = ClaudeConfig::default();
+    let model_name = model.clone().unwrap_or_else(|| "default".to_string());
+    config.model = model;
+    config.skip_permissions = true;
+
+    let client = ClaudeClient::with_config(config);
+
+    // Show prompt preview
+    let prompt_preview = if prompt.len() > 100 {
+        format!("{}...", &prompt[..100])
+    } else {
+        prompt.clone()
+    };
+    emit_claude_api_call(&app, model_name, prompt_preview).ok();
+
+    // Execute Claude
+    let result = match client.execute(input).await {
+        Ok(response) => {
+            let preview = if response.text.len() > 200 {
+                format!("{}...", &response.text[..200])
+            } else {
+                response.text.clone()
+            };
+            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_success(&app, "Claude response received").ok();
+            Ok(response)
+        }
+        Err(e) => {
+            let error_msg = format!("Claude CLI failed: {}", e);
+            emit_error(&app, error_msg.clone(), Some(e.to_string())).ok();
+            Err(error_msg)
+        }
+    };
+
+    // Clean up screenshot
+    let _ = tokio::fs::remove_file(&screenshot_path).await;
+
+    result
+}
+
+/// Check Claude CLI installation and configuration
+#[tauri::command]
+pub async fn check_claude_health(app: AppHandle) -> Result<ClaudeHealthCheck, String> {
+    emit_claude_checking(&app, "Checking Claude CLI installation...").ok();
+
+    let health = ClaudeHealthCheck::check().await;
+
+    // Emit appropriate event based on health status
+    match health.status {
+        crate::claude::HealthStatus::Healthy => {
+            emit_claude_ready(
+                &app,
+                health.version.as_deref().unwrap_or("unknown"),
+                health.path.as_deref().unwrap_or("unknown"),
+                health.authenticated,
+            )
+            .ok();
+        }
+        crate::claude::HealthStatus::Warning | crate::claude::HealthStatus::Error => {
+            if let Some(issue) = health.issues.first() {
+                let suggestion = health
+                    .suggestions
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("See documentation for setup instructions");
+                emit_claude_not_ready(&app, issue, suggestion).ok();
+            }
+        }
+    }
+
+    Ok(health)
+}
+
+/// System diagnostics - check all dependencies
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SystemDiagnostics {
+    pub chrome_status: String,
+    pub claude_health: ClaudeHealthCheck,
+    pub browser_running: bool,
+    pub current_url: Option<String>,
+}
+
+#[tauri::command]
+pub async fn run_diagnostics(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<SystemDiagnostics, String> {
+    emit_info(&app, "Running system diagnostics...").ok();
+
+    // Check Claude
+    let claude_health = ClaudeHealthCheck::check().await;
+
+    // Check browser status
+    let driver_lock = state.driver.lock().await;
+    let browser_running = driver_lock.is_some();
+
+    let current_url = if let Some(driver) = driver_lock.as_ref() {
+        driver.current_url().await.ok()
+    } else {
+        None
+    };
+
+    let chrome_status = if browser_running {
+        "Running".to_string()
+    } else {
+        "Not launched".to_string()
+    };
+
+    drop(driver_lock);
+
+    let diagnostics = SystemDiagnostics {
+        chrome_status,
+        claude_health,
+        browser_running,
+        current_url,
+    };
+
+    emit_success(&app, "Diagnostics complete").ok();
+
+    Ok(diagnostics)
 }

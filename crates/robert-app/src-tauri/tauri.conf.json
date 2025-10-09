@@ -5,9 +5,9 @@
   "identifier": "com.robert",
   "build": {
     "beforeDevCommand": "bun run frontend:dev",
-    "beforeBuildCommand": "bun run frontend:build",
     "devUrl": "http://localhost:1420",
-    "frontendDist": "../build"
+    "beforeBuildCommand": "bun run frontend:build",
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [
