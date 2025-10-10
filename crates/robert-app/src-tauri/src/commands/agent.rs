@@ -89,12 +89,7 @@ pub async fn process_chat_message(
             if result.success {
                 emit_success(&app, result.message.clone()).ok();
             } else {
-                emit_error(
-                    &app,
-                    result.message.clone(),
-                    result.error.clone(),
-                )
-                .ok();
+                emit_error(&app, result.message.clone(), result.error.clone()).ok();
             }
             Ok(result)
         }
@@ -187,10 +182,7 @@ pub async fn list_agent_configs(app: AppHandle) -> Result<Vec<String>, String> {
 
 /// Get an agent configuration
 #[tauri::command]
-pub async fn get_agent_config(
-    app: AppHandle,
-    agent_name: String,
-) -> Result<AgentConfig, String> {
+pub async fn get_agent_config(app: AppHandle, agent_name: String) -> Result<AgentConfig, String> {
     let config_path = AgentConfig::config_path(&agent_name)
         .map_err(|e| format!("Failed to get config path: {}", e))?;
 
@@ -209,10 +201,7 @@ pub async fn get_agent_config(
 
 /// Update an agent configuration
 #[tauri::command]
-pub async fn update_agent_config(
-    app: AppHandle,
-    config: AgentConfig,
-) -> Result<(), String> {
+pub async fn update_agent_config(app: AppHandle, config: AgentConfig) -> Result<(), String> {
     let config_path = AgentConfig::config_path(&config.name)
         .map_err(|e| format!("Failed to get config path: {}", e))?;
 
@@ -286,10 +275,7 @@ async fn capture_screenshot_if_available(
     None
 }
 
-async fn get_html_if_available(
-    app: &AppHandle,
-    state: &State<'_, AppState>,
-) -> Option<String> {
+async fn get_html_if_available(app: &AppHandle, state: &State<'_, AppState>) -> Option<String> {
     let driver_lock = state.driver.lock().await;
 
     if let Some(driver) = driver_lock.as_ref() {
@@ -360,7 +346,9 @@ pub async fn submit_action_feedback(
             feedback_message.push_str(&format!("\nError: {}\n", error));
         }
 
-        feedback_message.push_str("\nPlease update the agent's instructions to prevent this issue in the future.");
+        feedback_message.push_str(
+            "\nPlease update the agent's instructions to prevent this issue in the future.",
+        );
 
         // Load the original agent config (not used directly but kept for validation)
         let _agent_config = load_or_create_agent_config(&app, &feedback.agent_name).await?;
@@ -417,10 +405,7 @@ pub async fn submit_action_feedback(
         // Positive feedback - just log it
         emit_success(
             &app,
-            format!(
-                "Positive feedback recorded for {}",
-                feedback.agent_name
-            ),
+            format!("Positive feedback recorded for {}", feedback.agent_name),
         )
         .ok();
         Ok("Thank you for your feedback!".to_string())

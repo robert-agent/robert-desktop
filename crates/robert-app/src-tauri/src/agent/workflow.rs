@@ -140,10 +140,7 @@ impl WorkflowExecutor {
                 Ok(report) => Ok(WorkflowResult {
                     success: true,
                     workflow_type: WorkflowType::CdpAutomation,
-                    message: format!(
-                        "Successfully executed {} commands",
-                        report.total_commands
-                    ),
+                    message: format!("Successfully executed {} commands", report.total_commands),
                     cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
                     execution_report: Some(serde_json::to_value(&report)?),
                     error: None,
@@ -237,7 +234,10 @@ impl WorkflowExecutor {
                 message: "Failed to parse updated configuration".to_string(),
                 cdp_script: None,
                 execution_report: None,
-                error: Some(format!("Parse error: {}\n\nGenerated config:\n{}", e, cleaned_toml)),
+                error: Some(format!(
+                    "Parse error: {}\n\nGenerated config:\n{}",
+                    e, cleaned_toml
+                )),
             }),
         }
     }
@@ -258,11 +258,16 @@ impl WorkflowExecutor {
             html: html_content,
         };
 
-        let mut config = ClaudeConfig::default();
-        config.model = model.clone();
-        config.skip_permissions = true;
+        let config = ClaudeConfig {
+            model: model.clone(),
+            skip_permissions: true,
+            ..Default::default()
+        };
 
         let client = ClaudeClient::with_config(config);
-        client.execute(input).await.context("Claude API call failed")
+        client
+            .execute(input)
+            .await
+            .context("Claude API call failed")
     }
 }
