@@ -85,16 +85,15 @@ impl AgentConfig {
             .await
             .context("Failed to read agent config file")?;
 
-        let config: AgentConfig = toml::from_str(&content)
-            .context("Failed to parse agent config TOML")?;
+        let config: AgentConfig =
+            toml::from_str(&content).context("Failed to parse agent config TOML")?;
 
         Ok(config)
     }
 
     /// Save agent config to a TOML file
     pub async fn save(&self, path: &Path) -> Result<()> {
-        let content = toml::to_string_pretty(self)
-            .context("Failed to serialize agent config")?;
+        let content = toml::to_string_pretty(self).context("Failed to serialize agent config")?;
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {

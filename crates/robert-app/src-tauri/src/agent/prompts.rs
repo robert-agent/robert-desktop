@@ -31,10 +31,7 @@ impl PromptTemplate {
         agent_instructions: &str,
     ) -> String {
         let context = if let (Some(url), Some(title)) = (current_url, page_title) {
-            format!(
-                "\nCURRENT PAGE:\n- URL: {}\n- Title: {}\n",
-                url, title
-            )
+            format!("\nCURRENT PAGE:\n- URL: {}\n- Title: {}\n", url, title)
         } else {
             String::new()
         };
