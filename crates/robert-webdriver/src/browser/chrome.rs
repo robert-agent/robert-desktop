@@ -228,12 +228,28 @@ impl ChromeDriver {
     pub async fn navigate(&self, url: &str) -> Result<()> {
         use chromiumoxide::cdp::browser_protocol::page::NavigateParams;
 
+        // Normalize URL - add https:// if no protocol specified
+        let normalized_url = if !url.starts_with("http://")
+            && !url.starts_with("https://")
+            && !url.starts_with("file://")
+            && !url.starts_with("about:")
+            && !url.starts_with("data:") {
+            eprintln!("🔧 Normalizing URL: {} -> https://{}", url, url);
+            format!("https://{}", url)
+        } else {
+            url.to_string()
+        };
+
+        eprintln!("🌐 Starting navigation to: {}", normalized_url);
+
         // Always get all pages and work with the first one (or create if none exist)
         let mut pages = self.browser.pages().await?;
+        eprintln!("📄 Found {} browser page(s)", pages.len());
 
         // Close all but the first page to ensure we only have one page
         for (i, p) in pages.iter().enumerate() {
             if i > 0 {
+                eprintln!("🗑️  Closing extra page {}", i);
                 let _ = p
                     .execute(
                         chromiumoxide::cdp::browser_protocol::target::CloseTargetParams::new(
@@ -248,9 +264,11 @@ impl ChromeDriver {
         pages = self.browser.pages().await?;
 
         let page = if let Some(page) = pages.first() {
+            eprintln!("✓ Using existing page");
             // Use the first (and now only) page
             page.clone()
         } else {
+            eprintln!("➕ Creating new page");
             // No page exists, create a new one
             self.browser
                 .new_page("about:blank")
@@ -260,37 +278,74 @@ impl ChromeDriver {
 
         // Use CDP Page.navigate command directly (more reliable than goto())
         // This is what the working headless_integration tests use
+        eprintln!("🚀 Executing CDP Navigate command...");
         let params = NavigateParams::builder()
-            .url(url)
+            .url(&normalized_url)
             .build()
-            .map_err(|e| BrowserError::NavigationFailed(format!("Invalid URL {}: {}", url, e)))?;
+            .map_err(|e| BrowserError::NavigationFailed(format!("Invalid URL {}: {}", normalized_url, e)))?;
+
         let response = page.execute(params).await.map_err(|e| {
-            BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", url, e))
+            eprintln!("❌ CDP Navigate failed: {}", e);
+            BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", normalized_url, e))
         })?;
 
         // Check if navigation was successful
         let nav_result = response.result;
         if let Some(error_text) = nav_result.error_text {
+            eprintln!("❌ Navigation error from browser: {}", error_text);
             return Err(BrowserError::NavigationFailed(format!(
                 "Navigation error: {}",
                 error_text
             )));
         }
 
-        // Wait for the page to load using Page.loadEventFired
+        eprintln!("📡 Frame ID: {:?}", nav_result.frame_id);
+        if let Some(loader_id) = &nav_result.loader_id {
+            eprintln!("📦 Loader ID: {:?}", loader_id);
+        }
+
+        // Wait for the page to load using Page.loadEventFired with timeout
         // This is more reliable than arbitrary sleeps
+        eprintln!("⏳ Waiting for page load event (30s timeout)...");
         use chromiumoxide::cdp::browser_protocol::page::EventLoadEventFired;
-        if let Err(e) = page.event_listener::<EventLoadEventFired>().await {
-            eprintln!("Warning: Could not wait for load event: {}", e);
+
+        let load_result = tokio::time::timeout(
+            tokio::time::Duration::from_secs(30),
+            page.event_listener::<EventLoadEventFired>()
+        ).await;
+
+        match load_result {
+            Ok(Ok(_)) => {
+                eprintln!("✓ Page load event fired successfully");
+            }
+            Ok(Err(e)) => {
+                eprintln!("⚠️  Warning: Could not wait for load event: {}", e);
+            }
+            Err(_) => {
+                eprintln!("❌ Timeout waiting for page load event after 30s");
+                return Err(BrowserError::NavigationFailed(format!(
+                    "Request timed out. \n\
+                    Possible causes:\n\
+                    - Network connectivity issues\n\
+                    - URL is unreachable: {}\n\
+                    - Firewall or proxy blocking the connection\n\
+                    - Browser unable to resolve DNS\n\
+                    \n\
+                    Debug: Check if you can access {} in your regular browser.",
+                    normalized_url, normalized_url
+                )));
+            }
         }
 
         // Additional small delay for page state to stabilize
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+        eprintln!("✓ Navigation completed successfully");
 
         // Inject chat UI if enabled
         if self.chat_ui.is_enabled() {
+            eprintln!("💬 Injecting chat UI...");
             if let Err(e) = self.chat_ui.inject(&page).await {
-                eprintln!("Warning: Failed to inject chat UI: {}", e);
+                eprintln!("⚠️  Warning: Failed to inject chat UI: {}", e);
                 // Don't fail navigation if chat UI injection fails
             }
         }
