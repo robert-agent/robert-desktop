@@ -174,9 +174,7 @@
                   <code>claude setup-token</code>
                 </li>
               {/if}
-              <li>
-                Refresh this status panel to verify installation
-              </li>
+              <li>Refresh this status panel to verify installation</li>
             </ol>
           </div>
         {/if}
