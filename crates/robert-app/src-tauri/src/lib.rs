@@ -10,6 +10,16 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Initialize logger
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp_millis()
+        .init();
+
+    log::info!("🚀 Robert App starting...");
+
+    // Check if Claude CLI is accessible
+    check_claude_cli_availability();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(AppState::new())
@@ -40,4 +50,32 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Check if Claude CLI is accessible for process spawning
+fn check_claude_cli_availability() {
+    use std::process::Command;
+
+    log::info!("🔍 Checking Claude CLI availability...");
+
+    match Command::new("claude").arg("--version").output() {
+        Ok(output) => {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout);
+                log::info!("✓ Claude CLI found: {}", version.trim());
+            } else {
+                log::warn!(
+                    "⚠️  Claude CLI command failed with status: {}",
+                    output.status
+                );
+                log::warn!("   Make sure Claude is installed and in your PATH");
+                log::warn!("   Visit: https://www.anthropic.com/claude-cli");
+            }
+        }
+        Err(e) => {
+            log::warn!("⚠️  Claude CLI not found or not accessible: {}", e);
+            log::warn!("   Agent workflows will not be available without Claude CLI");
+            log::warn!("   Install from: https://www.anthropic.com/claude-cli");
+        }
+    }
 }
