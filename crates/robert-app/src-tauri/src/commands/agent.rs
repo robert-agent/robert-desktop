@@ -44,10 +44,21 @@ pub async fn process_chat_message(
     state: State<'_, AppState>,
     request: ChatMessageRequest,
 ) -> Result<WorkflowResult, String> {
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  💬 CHAT MESSAGE RECEIVED                                 ║");
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+    log::info!("📝 Message: {}", request.message);
+    log::info!("🤖 Agent: {}", request.agent_name);
+    log::info!("🔄 Workflow: {:?}", request.workflow_type);
+    log::debug!("📸 Include screenshot: {}", request.include_screenshot);
+    log::debug!("📄 Include HTML: {}", request.include_html);
+
     emit_info(&app, "Processing chat message...").ok();
 
     // Load agent configuration
+    log::debug!("🔧 Loading agent configuration...");
     let agent_config = load_or_create_agent_config(&app, &request.agent_name).await?;
+    log::info!("✓ Agent config loaded: {}", agent_config.name);
 
     // Get screenshot if requested and browser is available
     let screenshot_path = if request.include_screenshot {

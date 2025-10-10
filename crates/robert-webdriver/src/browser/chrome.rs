@@ -233,7 +233,8 @@ impl ChromeDriver {
             && !url.starts_with("https://")
             && !url.starts_with("file://")
             && !url.starts_with("about:")
-            && !url.starts_with("data:") {
+            && !url.starts_with("data:")
+        {
             eprintln!("🔧 Normalizing URL: {} -> https://{}", url, url);
             format!("https://{}", url)
         } else {
@@ -282,11 +283,16 @@ impl ChromeDriver {
         let params = NavigateParams::builder()
             .url(&normalized_url)
             .build()
-            .map_err(|e| BrowserError::NavigationFailed(format!("Invalid URL {}: {}", normalized_url, e)))?;
+            .map_err(|e| {
+                BrowserError::NavigationFailed(format!("Invalid URL {}: {}", normalized_url, e))
+            })?;
 
         let response = page.execute(params).await.map_err(|e| {
             eprintln!("❌ CDP Navigate failed: {}", e);
-            BrowserError::NavigationFailed(format!("Failed to navigate to {}: {}", normalized_url, e))
+            BrowserError::NavigationFailed(format!(
+                "Failed to navigate to {}: {}",
+                normalized_url, e
+            ))
         })?;
 
         // Check if navigation was successful
@@ -311,8 +317,9 @@ impl ChromeDriver {
 
         let load_result = tokio::time::timeout(
             tokio::time::Duration::from_secs(30),
-            page.event_listener::<EventLoadEventFired>()
-        ).await;
+            page.event_listener::<EventLoadEventFired>(),
+        )
+        .await;
 
         match load_result {
             Ok(Ok(_)) => {
