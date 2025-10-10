@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 pub struct ChromeDriver {
     browser: Browser,
     temp_dir: Option<PathBuf>,
+    chat_ui: super::chat::ChatUI,
 }
 
 /// Connection mode for Chrome browser
@@ -216,7 +217,11 @@ impl ChromeDriver {
             }
         };
 
-        Ok(Self { browser, temp_dir })
+        Ok(Self {
+            browser,
+            temp_dir,
+            chat_ui: super::chat::ChatUI::new(),
+        })
     }
 
     /// Navigate to a URL
@@ -281,6 +286,14 @@ impl ChromeDriver {
 
         // Additional small delay for page state to stabilize
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Inject chat UI if enabled
+        if self.chat_ui.is_enabled() {
+            if let Err(e) = self.chat_ui.inject(&page).await {
+                eprintln!("Warning: Failed to inject chat UI: {}", e);
+                // Don't fail navigation if chat UI injection fails
+            }
+        }
 
         Ok(())
     }
@@ -633,6 +646,54 @@ impl ChromeDriver {
             .execute_script(script)
             .await
             .map_err(|e| BrowserError::Other(format!("Script execution failed: {}", e)))
+    }
+
+    // ===== CHAT UI METHODS =====
+
+    /// Get a reference to the ChatUI manager
+    pub fn chat_ui(&self) -> &super::chat::ChatUI {
+        &self.chat_ui
+    }
+
+    /// Get a mutable reference to the ChatUI manager
+    pub fn chat_ui_mut(&mut self) -> &mut super::chat::ChatUI {
+        &mut self.chat_ui
+    }
+
+    /// Send a message from the agent to the chat UI
+    pub async fn send_chat_message(&self, message: &str) -> Result<()> {
+        let page = self.current_page().await?;
+        self.chat_ui.send_agent_message(&page, message).await
+    }
+
+    /// Get all messages from the chat UI
+    pub async fn get_chat_messages(&self) -> Result<Vec<super::chat::ChatMessage>> {
+        let page = self.current_page().await?;
+        self.chat_ui.get_messages(&page).await
+    }
+
+    /// Clear all messages from the chat UI
+    pub async fn clear_chat_messages(&self) -> Result<()> {
+        let page = self.current_page().await?;
+        self.chat_ui.clear_messages(&page).await
+    }
+
+    /// Manually inject the chat UI (useful if it was disabled during construction)
+    pub async fn inject_chat_ui(&self) -> Result<()> {
+        let page = self.current_page().await?;
+        self.chat_ui.inject(&page).await
+    }
+
+    /// Collapse the chat UI sidebar
+    pub async fn collapse_chat(&self) -> Result<()> {
+        let page = self.current_page().await?;
+        self.chat_ui.collapse(&page).await
+    }
+
+    /// Expand the chat UI sidebar
+    pub async fn expand_chat(&self) -> Result<()> {
+        let page = self.current_page().await?;
+        self.chat_ui.expand(&page).await
     }
 }
 

@@ -3,6 +3,7 @@ pub mod cdp;
 pub mod error;
 
 //  Re-export commonly used items
+pub use browser::chat::{ChatMessage, ChatUI};
 pub use browser::chrome::{ChromeDriver, ConnectionMode};
 pub use cdp::{
     CdpCommand, CdpExecutor, CdpScript, CdpScriptGenerator, CdpValidator, CommandResult,
