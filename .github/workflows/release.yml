@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - 'canary-*'
   workflow_dispatch:
     inputs:
       tag:
@@ -31,13 +33,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get version from Cargo.toml
+        id: get_version
+        run: |
+          VERSION=$(grep -m 1 '^version = ' crates/robert-app/src-tauri/Cargo.toml | cut -d '"' -f 2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
+
       - name: Get tag name
         id: get_tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
+            # For canary branches, use version from Cargo.toml with canary suffix
+            BRANCH_NAME=${GITHUB_REF#refs/heads/}
+            echo "tag=${{ steps.get_version.outputs.version }}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
           else
-            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            # For tag pushes, use the tag name but validate it matches Cargo.toml
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           fi
 
       - name: Get commit hash
@@ -46,6 +61,15 @@ jobs:
           SHORT_HASH=$(git rev-parse --short=7 HEAD)
           echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
           echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
+
+      - name: Determine if prerelease
+        id: prerelease
+        run: |
+          if [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create GitHub Release
         id: create_release
@@ -56,7 +80,7 @@ jobs:
           tag_name: ${{ steps.get_tag.outputs.tag }}
           release_name: Robert ${{ steps.get_tag.outputs.tag }}
           draft: true
-          prerelease: false
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
           body: |
             ## Robert Browser Automation - Release ${{ steps.get_tag.outputs.tag }}
 
