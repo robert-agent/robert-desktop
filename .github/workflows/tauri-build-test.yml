@@ -1,0 +1,124 @@
+name: Tauri Build Test
+
+on:
+  push:
+    branches:
+      - main
+      - 'ci-*'
+  pull_request:
+    branches: [main]
+  pull_request_target:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test-tauri-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            name: macOS
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            name: macOS Intel
+          # Uncomment to enable Windows builds
+          # - platform: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   name: Windows
+          # Uncomment to enable Ubuntu builds
+          # - platform: ubuntu-latest
+          #   target: x86_64-unknown-linux-gnu
+          #   name: Linux
+
+    name: Test ${{ matrix.name }} Build
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-latest'
+        run: sudo bash scripts/setup-linux-dev.sh
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/robert-app/src-tauri
+          shared-key: tauri-${{ matrix.platform }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install frontend dependencies
+        working-directory: crates/robert-app
+        run: bun install
+
+      - name: Build Tauri app (production)
+        working-directory: crates/robert-app
+        run: bunx tauri build --target ${{ matrix.target }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - name: Verify build artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        working-directory: crates/robert-app
+        run: |
+          echo "Checking for build artifacts..."
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/macos" ]; then
+            echo "✅ macOS .app bundle found"
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/macos/
+          fi
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/dmg" ]; then
+            echo "✅ DMG installer found"
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/dmg/
+          fi
+
+      - name: Verify build artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        working-directory: crates/robert-app
+        shell: bash
+        run: |
+          echo "Checking for build artifacts..."
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/msi" ]; then
+            echo "✅ MSI installer found"
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/msi/
+          fi
+
+      - name: Verify build artifacts (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        working-directory: crates/robert-app
+        run: |
+          echo "Checking for build artifacts..."
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/appimage" ]; then
+            echo "✅ AppImage found"
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/appimage/
+          fi
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/deb" ]; then
+            echo "✅ DEB package found"
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/deb/
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: robert-${{ matrix.name }}-${{ matrix.target }}
+          path: |
+            target/${{ matrix.target }}/release/bundle/
+          retention-days: 7
