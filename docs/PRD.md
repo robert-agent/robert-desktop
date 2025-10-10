@@ -120,9 +120,10 @@ We believe automation should be:
 2. 🔄 **Visual script builder** - Drag-and-drop for non-technical users
 3. 🔄 **Record & replay** - Watch once, automate forever
 4. 🔄 **Community script library** - Share and discover automations
-5. 🔄 **Linux headless mode** - CI/CD and server deployments
-6. 🔄 **Multi-browser support** - Firefox, Edge, Safari
-7. 🔄 **Optional cloud inference** - Send LLM requests to cloud when desired
+5. 🔄 **Workflow learning system** - AI agents learn and improve navigation paths automatically
+6. 🔄 **Linux headless mode** - CI/CD and server deployments
+7. 🔄 **Multi-browser support** - Firefox, Edge, Safari
+8. 🔄 **Optional cloud inference** - Send LLM requests to cloud when desired
 
 ## Product Scope
 
@@ -580,6 +581,192 @@ Common CDP commands Claude can generate:
 
 See [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) for full reference.
 
+## Workflow Learning System (Future Feature)
+
+### Overview
+
+The **Workflow Learning System** enables AI agents to learn, document, and iteratively improve website navigation workflows without broad exploration. Instead of exploring a website from scratch each time, agents reference standardized workflow files that contain proven navigation paths with empirical confidence scores.
+
+**Problem Solved:**
+- Traditional AI agents waste time exploring websites repeatedly
+- No shared knowledge between agent instances
+- Brittle selectors break when sites update
+- No learning from experience or failures
+
+**Solution:**
+Two complementary file formats that agents create and improve autonomously:
+
+### Format 1: Workflow Graph (`.workflow.md`)
+
+**Purpose**: High-level navigation roadmap showing how to navigate from A→B
+
+**Structure**:
+- **Nodes**: Pages, buttons, forms, modals with selectors and URL patterns
+- **Edges**: Actions (click, type, navigate) with wait conditions and success indicators
+- **Confidence scores**: Based on empirical success rates from actual executions
+- **Error recovery**: Documented strategies for common failures
+- **Alternative paths**: Multiple proven ways to achieve the same goal
+- **Mermaid diagrams**: Visual workflow representation
+
+**Example**:
+```markdown
+---
+domain: github.com
+workflow_name: create_repository
+version: 1.0.0
+success_rate: 0.98
+tested_sessions: 45
+---
+
+## Edge: github_home → new_repo_button
+**Action**: click
+**Selector**: `[data-test-selector="global-create-menu-button"]`
+**Confidence**: 0.98
+**Success Indicators**: Dropdown menu becomes visible
+**Alternative Selectors**: ["button[aria-label='Create new...']"]
+```
+
+### Format 2: Step Frame (`.frames.json`)
+
+**Purpose**: Detailed execution traces capturing every moment of a workflow session
+
+**Each frame contains**:
+- **Screenshot**: Visual state saved as PNG file
+- **DOM snapshot**: Complete page structure as HTML
+- **Interactive elements**: All clickable/typeable elements with bounding boxes
+- **Action metadata**: What action was taken, target selector, input data
+- **Natural language transcript**: Human-readable description, reasoning, expected outcome
+- **State changes**: URL changes, network requests, DOM mutations
+- **Verification**: Success/failure indicators
+- **Learning data**: Selector stability scores, alternative selectors discovered
+
+**Example**:
+```json
+{
+  "frames": [
+    {
+      "frame_id": 0,
+      "screenshot": {"path": "./screenshots/frame_0000.png"},
+      "action": {
+        "type": "click",
+        "target": {"selector": "[data-test-selector='create-button']"},
+        "intent": "Open the create menu"
+      },
+      "transcript": {
+        "action_description": "Clicking the '+' button to open create menu",
+        "reasoning": "Standard entry point for creating items on GitHub",
+        "expected_outcome": "Dropdown menu should appear"
+      },
+      "learning": {
+        "selector_stability": 0.98,
+        "action_reliability": 0.96
+      }
+    }
+  ]
+}
+```
+
+### How It Works
+
+**1. Recording Phase**
+- Agent executes a workflow while capturing detailed frames
+- Each frame includes screenshot, DOM state, action, and transcript
+- Session saved as `.frames.json` with all evidence
+
+**2. Learning Phase**
+- Agent analyzes multiple session frames
+- Calculates selector stability and confidence scores
+- Extracts nodes, edges, and alternative paths
+- Creates/updates `.workflow.md` with learned knowledge
+
+**3. Execution Phase**
+- Agent loads `.workflow.md` before executing
+- Follows highest-confidence path
+- Records new session while executing
+- Updates confidence scores based on results
+- Continuous improvement loop
+
+### Key Features
+
+**🎯 Confidence-Based Navigation**
+- Every selector has empirical success rate (0.0-1.0)
+- Agent automatically chooses most reliable selectors
+- Falls back to alternatives when primary fails
+- Example: `data-test-selector` (0.98) preferred over class-based (0.87)
+
+**🔄 Self-Improving System**
+```
+Session 1:   60% success → discovering the workflow
+Session 10:  85% success → learning reliable selectors
+Session 50:  94% success → optimized with error recovery
+Session 100: 97% success → mature, production-ready
+```
+
+**🛡️ Built-In Error Recovery**
+- Documents common failure scenarios
+- Proven recovery strategies included
+- Automatic fallback to alternative paths
+- Example: Rate limit → Wait 60s → Retry
+
+**🤝 Multi-Agent Knowledge Sharing**
+- Multiple agents contribute to same workflow
+- Merge alternative selectors and strategies
+- Weighted confidence score averaging
+- Version control for workflow evolution
+
+### File Organization
+
+```
+workflows/
+├── github.com/
+│   ├── create_repository/
+│   │   ├── github.com_create_repository_v1.workflow.md    # Graph
+│   │   ├── session_abc123/
+│   │   │   ├── *.frames.json                              # Frames
+│   │   │   ├── screenshots/frame_*.png
+│   │   │   └── dom/frame_*.html
+│   │   └── session_xyz789/
+│   └── create_issue/
+└── gmail.com/
+    └── compose_email/
+```
+
+### Agent Integration
+
+Agents use this system to:
+1. **Execute workflows** using proven paths from `.workflow.md`
+2. **Record sessions** capturing frames for learning
+3. **Analyze patterns** to improve selector choices
+4. **Update graphs** with new confidence scores
+5. **Share knowledge** by committing updated workflows
+6. **Recover from errors** using documented strategies
+
+### Benefits
+
+**For Agents:**
+- ✅ No exploration needed - follow proven paths
+- ✅ Higher reliability with empirical confidence
+- ✅ Automatic error recovery
+- ✅ Learn from every execution
+- ✅ Share knowledge across instances
+
+**For Users:**
+- ✅ Faster automation setup
+- ✅ More reliable workflows
+- ✅ Transparent agent behavior (view frames/graphs)
+- ✅ Workflows improve over time
+- ✅ Community can share workflow knowledge
+
+### Documentation
+
+Complete specifications available in:
+- [agent-formats/specs/WORKFLOW_GRAPH_SCHEMA.md](../agent-formats/specs/WORKFLOW_GRAPH_SCHEMA.md) - Graph format spec
+- [agent-formats/specs/STEP_FRAME_SCHEMA.md](../agent-formats/specs/STEP_FRAME_SCHEMA.md) - Frame format spec
+- [agent-formats/specs/AGENT_WORKFLOW_STANDARDS.md](../agent-formats/specs/AGENT_WORKFLOW_STANDARDS.md) - Integration guide
+- [agent-formats/README.md](../agent-formats/README.md) - Overview and examples
+
+**Note**: This feature is planned for a future release. The format specifications are complete and ready for implementation when AI agent capabilities are integrated into Robert.
+
 ## Output Format Specification
 
 ### Directory Structure
@@ -953,6 +1140,12 @@ Like Tesla started with the Roadster for affluent early adopters, Robert will la
 ### Version 3.0 (Q2 2027+) - **AI & Collaboration**
 - ✅ Voice-driven script creation (in v1.0)
 - 🔄 Advanced AI features (error recovery, optimization suggestions)
+- 🔄 **Workflow Learning System** - AI agents learn and improve navigation paths
+  - Session recording with frame capture (screenshots + DOM + transcripts)
+  - Workflow graph generation from sessions
+  - Confidence-based selector management
+  - Multi-agent knowledge sharing
+  - Automatic error recovery strategies
 - 🔄 Team workspaces
 - 🔄 Community script marketplace
 - 🔄 Scheduled runs and automation
@@ -1010,10 +1203,16 @@ Like Tesla started with the Roadster for affluent early adopters, Robert will la
 │  │  - Execution UI    │      │  - System Chrome  │    │
 │  │  - Output Browser  │      │  - Script Executor │    │
 │  │  - Settings Panel  │      │  - Capture Engine  │    │
+│  │                    │      │  - Workflow Learn* │    │
 │  └────────────────────┘      └──────────┬─────────┘    │
 │                                          │              │
 └──────────────────────────────────────────┼──────────────┘
                                            │
+                                * Future: Workflow Learning System
+                                  - Session recording (frames)
+                                  - Workflow graph generation
+                                  - Confidence-based execution
+                                  - Multi-agent knowledge sharing
                               ┌────────────┴──────────────┐
                               │                           │
                         Sandboxed Mode           Advanced Mode
