@@ -1,31 +1,31 @@
 // Debug event types matching Rust backend
 export type DebugEventType =
-  | { type: "ChromeDownloading"; data: { message: string } }
-  | { type: "ChromeDownloadProgress"; data: { downloaded: number; total: number; percent: number } }
-  | { type: "ChromeDownloaded"; data: { path: string; version: string } }
-  | { type: "ChromeLaunching"; data: { message: string } }
-  | { type: "ChromeLaunched"; data: { message: string } }
-  | { type: "PageNavigating"; data: { url: string } }
-  | { type: "PageLoading"; data: { message: string } }
-  | { type: "PageLoaded"; data: { url: string; title: string } }
-  | { type: "PageParsing"; data: { message: string } }
-  | { type: "Info"; data: { message: string } }
-  | { type: "Success"; data: { message: string } }
-  | { type: "Error"; data: { message: string; details?: string } }
-  | { type: "ClaudeChecking"; data: { message: string } }
-  | { type: "ClaudeReady"; data: { version: string; path: string; authenticated: boolean } }
-  | { type: "ClaudeNotReady"; data: { issue: string; suggestion: string } }
-  | { type: "ClaudeProcessing"; data: { message: string } }
-  | { type: "ClaudeScreenshot"; data: { path: string } }
-  | { type: "ClaudeHtmlExtracted"; data: { size_kb: number } }
-  | { type: "ClaudeApiCall"; data: { model: string; prompt_preview: string } }
-  | { type: "ClaudeResponse"; data: { preview: string; full_length: number } };
+  | { type: 'ChromeDownloading'; data: { message: string } }
+  | { type: 'ChromeDownloadProgress'; data: { downloaded: number; total: number; percent: number } }
+  | { type: 'ChromeDownloaded'; data: { path: string; version: string } }
+  | { type: 'ChromeLaunching'; data: { message: string } }
+  | { type: 'ChromeLaunched'; data: { message: string } }
+  | { type: 'PageNavigating'; data: { url: string } }
+  | { type: 'PageLoading'; data: { message: string } }
+  | { type: 'PageLoaded'; data: { url: string; title: string } }
+  | { type: 'PageParsing'; data: { message: string } }
+  | { type: 'Info'; data: { message: string } }
+  | { type: 'Success'; data: { message: string } }
+  | { type: 'Error'; data: { message: string; details?: string } }
+  | { type: 'ClaudeChecking'; data: { message: string } }
+  | { type: 'ClaudeReady'; data: { version: string; path: string; authenticated: boolean } }
+  | { type: 'ClaudeNotReady'; data: { issue: string; suggestion: string } }
+  | { type: 'ClaudeProcessing'; data: { message: string } }
+  | { type: 'ClaudeScreenshot'; data: { path: string } }
+  | { type: 'ClaudeHtmlExtracted'; data: { size_kb: number } }
+  | { type: 'ClaudeApiCall'; data: { model: string; prompt_preview: string } }
+  | { type: 'ClaudeResponse'; data: { preview: string; full_length: number } };
 
 export interface DebugLogEntry {
   id: string;
   timestamp: Date;
   event: DebugEventType;
-  level: "info" | "success" | "error" | "warning";
+  level: 'info' | 'success' | 'error' | 'warning';
 }
 
 export interface NavigationResult {

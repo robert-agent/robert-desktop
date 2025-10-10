@@ -1,6 +1,6 @@
 <script lang="ts">
   import { debugLogs, clearDebugLogs } from '$lib/stores';
-  import { onMount, afterUpdate } from 'svelte';
+  import { afterUpdate } from 'svelte';
   import type { DebugLogEntry } from '$lib/types';
 
   let logContainer: HTMLDivElement;
@@ -18,7 +18,7 @@
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      fractionalSecondDigits: 3
+      fractionalSecondDigits: 3,
     });
   }
 
@@ -71,16 +71,21 @@
         return `Error: ${event.data.message}${event.data.details ? `\n${event.data.details}` : ''}`;
 
       default:
-        return JSON.stringify(event.data);
+        // Exhaustive check - should never reach here
+        return JSON.stringify((event as any).data);
     }
   }
 
   function getIcon(level: string): string {
     switch (level) {
-      case 'success': return '✓';
-      case 'error': return '✗';
-      case 'warning': return '⚠';
-      default: return '•';
+      case 'success':
+        return '✓';
+      case 'error':
+        return '✗';
+      case 'warning':
+        return '⚠';
+      default:
+        return '•';
     }
   }
 
