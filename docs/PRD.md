@@ -516,6 +516,242 @@ Open Settings → Adjust Preferences → Save → Settings Applied
 Create Script → Add Documentation → Export → Share File → Teammate Imports → Runs Successfully
 ```
 
+## Chat-Driven AI Workflow System
+
+### Overview
+
+Robert features an **injected chat interface** that appears on web pages, allowing users to request automations in natural language. The system uses **AI-generated CDP scripts** with a sophisticated template system and feedback loop for continuous improvement.
+
+### Architecture Components
+
+#### 1. Chat Interface Injection
+- **Visual chat sidebar** injected into all web pages
+- **Persistent across navigation** - stays visible as user browses
+- **Bi-directional communication** with Tauri backend
+- **Feedback mechanism** - thumbs up/down for every action
+
+#### 2. AI Inference Engine
+- **Template-based prompts** loaded at compile time (not external files)
+- **Two workflow types**:
+  - **CDP Generation**: User request → AI → CDP JSON → Browser execution
+  - **Config Update**: User feedback → AI → Updated agent instructions
+- **Step frame context** included in prompts:
+  - Screenshot of current page
+  - DOM structure
+  - Previous action taken
+  - New instruction from user
+
+#### 3. Agent Configuration System
+- **TOML-based agent configs** stored in `~/.config/robert/agents/`
+- **Two default agents**:
+  - `cdp-generator.toml`: Generates CDP automation scripts
+  - `meta-agent.toml`: Updates agent configs based on feedback
+- **Agent settings**: Model selection, temperature, retry limits
+- **Instructions**: System prompts that evolve based on user feedback
+
+#### 4. Prompt Template System
+Templates are embedded in Rust code at compile time:
+
+```rust
+pub fn build_cdp_prompt(
+    user_request: &str,
+    current_url: Option<&str>,
+    page_title: Option<&str>,
+    agent_instructions: &str,
+) -> String {
+    // Includes:
+    // - Agent system instructions
+    // - Current page context (URL, title)
+    // - Screenshot reference (captured separately)
+    // - HTML content (captured separately)
+    // - CDP command reference
+    // - User's natural language request
+}
+```
+
+### End-to-End Workflows
+
+#### Workflow 3b: Typical Path (CDP Automation)
+
+```
+User types in chat: "Click the login button"
+    ↓
+Chat UI → process_chat_message(request) → Tauri Backend
+    ↓
+Capture screenshot + HTML of current page
+    ↓
+Build prompt with template:
+  - Agent instructions (from config)
+  - Page context (URL, title, screenshot, HTML)
+  - User request
+  - CDP command reference
+    ↓
+Send to Claude API (local or cloud)
+    ↓
+Claude returns CDP JSON script
+    ↓
+Validate CDP script structure
+    ↓
+Execute CDP commands via ChromeDriver
+    ↓
+Show result in chat + Display thumbs up/down buttons
+    ↓
+User provides feedback (👍 or 👎)
+```
+
+#### Workflow 3a: Meta Path (Config Update from Feedback)
+
+```
+User clicks thumbs down 👎
+    ↓
+Chat UI → submit_action_feedback(feedback) → Tauri Backend
+    ↓
+Build feedback message:
+  - Original user request
+  - What went wrong
+  - Error details
+  - User comment (optional)
+    ↓
+Load meta-agent config
+    ↓
+Build config update prompt:
+  - Current agent config (TOML)
+  - Feedback message
+  - Failure context
+    ↓
+Send to Claude API
+    ↓
+Claude returns updated agent config (TOML)
+    ↓
+Parse and save updated config
+    ↓
+Future requests use improved instructions
+```
+
+### Step Frame Format
+
+Every request to the AI includes a "step frame" with complete context:
+
+```json
+{
+  "screenshot": "path/to/screenshot.png",
+  "dom": "<html>...</html>",
+  "current_url": "https://example.com",
+  "page_title": "Example Page",
+  "previous_action": {
+    "type": "click",
+    "target": "button#login",
+    "result": "success"
+  },
+  "user_instruction": "Fill the username field with 'admin'"
+}
+```
+
+This ensures the AI has full visual and structural context for generating accurate CDP commands.
+
+### Feedback Loop
+
+The system implements a **self-improving feedback loop**:
+
+1. **Initial Performance**: Agent follows base instructions
+2. **User Provides Feedback**: Thumbs down triggers analysis
+3. **Meta-Agent Updates Config**: Analyzes what went wrong, updates instructions
+4. **Improved Future Performance**: Agent learns from mistakes
+5. **Continuous Improvement**: Each failure makes the agent smarter
+
+**Example Evolution:**
+```toml
+# Initial config
+[cdp-generator]
+instructions = "Generate CDP commands from user requests"
+
+# After feedback: "It didn't wait for the button to load"
+[cdp-generator]
+instructions = """
+Generate CDP commands from user requests.
+Always add wait conditions before interacting with elements.
+Check if elements exist before clicking them.
+"""
+
+# After more feedback: "It clicked the wrong button"
+[cdp-generator]
+instructions = """
+Generate CDP commands from user requests.
+Always add wait conditions before interacting with elements.
+Check if elements exist before clicking them.
+Use data-test-selector attributes when available for reliability.
+Verify element text content matches user intent before clicking.
+"""
+```
+
+### Chat Interface Features
+
+**Injected UI Elements:**
+- Chat sidebar (collapsible)
+- Message history
+- Input field with send button
+- Feedback buttons (👍/👎) after each action
+- Processing indicators
+- Error messages with context
+
+**User Experience:**
+1. Chat appears on every page
+2. User types natural language request
+3. AI response appears in chat
+4. Action executes visibly in browser
+5. User sees result and provides feedback
+6. System learns and improves
+
+### Technical Implementation
+
+**Files Created:**
+- `crates/robert-app/src-tauri/src/agent/mod.rs` - Module structure
+- `crates/robert-app/src-tauri/src/agent/config.rs` - Agent configuration management
+- `crates/robert-app/src-tauri/src/agent/prompts.rs` - Prompt template system
+- `crates/robert-app/src-tauri/src/agent/workflow.rs` - Workflow execution logic
+- `crates/robert-app/src-tauri/src/commands/agent.rs` - Tauri commands for chat
+- `crates/robert-webdriver/src/chat_ui.js` - Injected chat interface (updated)
+
+**Tauri Commands:**
+- `process_chat_message` - Main entry point for chat submissions
+- `submit_action_feedback` - Handle thumbs up/down feedback
+- `init_agent_configs` - Create default agent configurations
+- `get_agent_config` / `update_agent_config` - CRUD for agents
+- `list_agent_configs` - List available agents
+
+### Testing Requirements
+
+Given the critical nature of the templating and inference systems, we require:
+
+**Template System Tests:**
+- ✅ Prompt generation with all context types
+- ✅ Template variable substitution
+- ✅ Edge cases (missing context, empty fields)
+- ✅ Output format validation
+
+**Inference Engine Tests:**
+- ✅ CDP generation workflow end-to-end
+- ✅ Config update workflow end-to-end
+- ✅ Error handling and recovery
+- ✅ Claude API integration
+- ✅ Response parsing and validation
+
+**Target Coverage:** >90% for template system, >85% for workflows
+
+### Security & Privacy
+
+**Local-First by Default:**
+- Templates embedded in binary (no external files)
+- Agent configs stored locally (`~/.config/robert/`)
+- Screenshots and HTML captured temporarily
+- All processing happens on-device
+
+**Cloud Inference (Optional):**
+- User explicitly opts in
+- Sensitive data obfuscation before sending
+- Screenshot sanitization
+- Audit logs of what was sent
+
 ## Script Format Specification
 
 **Note:** See [SCRIPT_FORMAT.md](SCRIPT_FORMAT.md) for full specification.
