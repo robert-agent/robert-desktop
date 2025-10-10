@@ -14,6 +14,7 @@
 
   interface SystemDiagnostics {
     chrome_status: string;
+    chrome_installed: boolean;
     claude_health: ClaudeHealthCheck;
     browser_running: boolean;
     current_url?: string;

@@ -408,6 +408,7 @@ pub async fn check_claude_health(app: AppHandle) -> Result<ClaudeHealthCheck, St
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SystemDiagnostics {
     pub chrome_status: String,
+    pub chrome_installed: bool,
     pub claude_health: ClaudeHealthCheck,
     pub browser_running: bool,
     pub current_url: Option<String>,
@@ -418,10 +419,14 @@ pub async fn run_diagnostics(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<SystemDiagnostics, String> {
+    log::info!("Running system diagnostics...");
     emit_info(&app, "Running system diagnostics...").ok();
 
     // Check Claude
     let claude_health = ClaudeHealthCheck::check().await;
+
+    // Check if Chrome/Chromium is installed (try to detect)
+    let chrome_installed = check_chrome_installed().await;
 
     // Check browser status
     let driver_lock = state.driver.lock().await;
@@ -435,22 +440,60 @@ pub async fn run_diagnostics(
 
     let chrome_status = if browser_running {
         "Running".to_string()
+    } else if chrome_installed {
+        "Installed (not running)".to_string()
     } else {
-        "Not launched".to_string()
+        "Not installed".to_string()
     };
 
     drop(driver_lock);
 
     let diagnostics = SystemDiagnostics {
         chrome_status,
+        chrome_installed,
         claude_health,
         browser_running,
         current_url,
     };
 
+    log::info!(
+        "Diagnostics complete - Chrome: {}, Claude: {:?}",
+        chrome_status,
+        claude_health.status
+    );
     emit_success(&app, "Diagnostics complete").ok();
 
     Ok(diagnostics)
+}
+
+/// Check if Chrome/Chromium is installed on the system
+async fn check_chrome_installed() -> bool {
+    use std::process::Command;
+
+    // Try common Chrome/Chromium locations and commands
+    let commands = vec![
+        "google-chrome",
+        "google-chrome-stable",
+        "chromium",
+        "chromium-browser",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+    ];
+
+    for cmd in commands {
+        if let Ok(output) = Command::new(cmd).arg("--version").output() {
+            if output.status.success() {
+                log::debug!("Found Chrome at: {}", cmd);
+                return true;
+            }
+        }
+    }
+
+    // Also check if chromiumoxide can auto-download
+    log::debug!("Chrome not found in system, but auto-download is available");
+    false
 }
 
 /// Validate a CDP script from JSON string
