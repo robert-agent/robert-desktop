@@ -66,7 +66,18 @@
 </script>
 
 <div class="system-status">
-  <div class="status-header" on:click={() => (expanded = !expanded)}>
+  <div
+    class="status-header"
+    role="button"
+    tabindex="0"
+    on:click={() => (expanded = !expanded)}
+    on:keydown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        expanded = !expanded;
+      }
+    }}
+  >
     <h4>System Status</h4>
     <button class="refresh-btn" on:click|stopPropagation={checkHealth} disabled={loading}>
       {loading ? '⟳' : '↻'} Refresh

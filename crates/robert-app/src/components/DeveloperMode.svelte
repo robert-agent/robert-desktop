@@ -121,7 +121,7 @@
     {:else if systemPaths}
       <div class="paths-grid">
         <div class="path-item">
-          <label>Installation Directory:</label>
+          <span class="path-label">Installation Directory:</span>
           <div class="path-value">
             <code>{systemPaths.installation_dir}</code>
             <button
@@ -134,7 +134,7 @@
         </div>
 
         <div class="path-item">
-          <label>Config Directory:</label>
+          <span class="path-label">Config Directory:</span>
           <div class="path-value">
             <code>{systemPaths.config_dir}</code>
             <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.config_dir)}>
@@ -144,7 +144,7 @@
         </div>
 
         <div class="path-item">
-          <label>Data Directory:</label>
+          <span class="path-label">Data Directory:</span>
           <div class="path-value">
             <code>{systemPaths.data_dir}</code>
             <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.data_dir)}>
@@ -154,7 +154,7 @@
         </div>
 
         <div class="path-item">
-          <label>Cache Directory:</label>
+          <span class="path-label">Cache Directory:</span>
           <div class="path-value">
             <code>{systemPaths.cache_dir}</code>
             <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.cache_dir)}>
@@ -164,7 +164,7 @@
         </div>
 
         <div class="path-item">
-          <label>Temp Directory:</label>
+          <span class="path-label">Temp Directory:</span>
           <div class="path-value">
             <code>{systemPaths.temp_dir}</code>
             <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.temp_dir)}>
@@ -174,7 +174,7 @@
         </div>
 
         <div class="path-item">
-          <label>Current Directory:</label>
+          <span class="path-label">Current Directory:</span>
           <div class="path-value">
             <code>{systemPaths.current_dir}</code>
             <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.current_dir)}>
@@ -185,7 +185,7 @@
 
         {#if systemPaths.chrome_path}
           <div class="path-item">
-            <label>Chrome Path:</label>
+            <span class="path-label">Chrome Path:</span>
             <div class="path-value">
               <code>{systemPaths!.chrome_path}</code>
               <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.chrome_path!)}>
@@ -320,7 +320,7 @@
     gap: 0.5rem;
   }
 
-  .path-item label {
+  .path-label {
     font-weight: 600;
     color: #555;
     font-size: 0.875rem;
