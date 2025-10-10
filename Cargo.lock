@@ -4309,6 +4309,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "dirs 5.0.1",
  "reqwest 0.12.4",
  "robert-webdriver",
  "serde",
@@ -4317,6 +4318,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
  "tokio",
+ "toml 0.8.2",
  "warp",
 ]
 
