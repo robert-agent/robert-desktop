@@ -2,6 +2,7 @@
   import { debugLogs, clearDebugLogs } from '$lib/stores';
   import { afterUpdate } from 'svelte';
   import type { DebugLogEntry } from '$lib/types';
+  import SystemStatus from './SystemStatus.svelte';
 
   let logContainer: HTMLDivElement;
   let autoScroll = true;
@@ -99,6 +100,11 @@
 </script>
 
 <div class="debug-view">
+  <!-- System Status Panel -->
+  <div class="status-panel">
+    <SystemStatus />
+  </div>
+
   <div class="debug-header">
     <h3>Debug Log</h3>
     <div class="controls">
@@ -134,6 +140,12 @@
     height: 100%;
     background: #1e1e1e;
     color: #d4d4d4;
+  }
+
+  .status-panel {
+    padding: 1rem;
+    border-bottom: 2px solid #3a3a3a;
+    background: #252525;
   }
 
   .debug-header {
