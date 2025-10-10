@@ -216,6 +216,40 @@
     #robert-chat-messages::-webkit-scrollbar-thumb:hover {
       background: #aaa;
     }
+
+    /* Feedback buttons */
+    .robert-feedback-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      padding: 8px 15px;
+      animation: slideIn 0.2s ease;
+    }
+
+    .feedback-btn {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .feedback-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .feedback-btn.thumbs-up:hover {
+      background: #e8f5e9;
+      border-color: #4caf50;
+    }
+
+    .feedback-btn.thumbs-down:hover {
+      background: #ffebee;
+      border-color: #f44336;
+    }
   `;
 
   // Inject UI and styles into the page
@@ -290,6 +324,94 @@
     window.dispatchEvent(new CustomEvent('robert-chat-message', {
       detail: { text, sender: 'user', timestamp: Date.now() }
     }));
+
+    // If window.__TAURI__ is available, call the Tauri backend
+    if (window.__TAURI__) {
+      sendToBackend(text);
+    }
+  }
+
+  // Send message to Tauri backend for processing
+  async function sendToBackend(text) {
+    try {
+      // Show processing message
+      addMessage('Processing your request...', 'agent');
+
+      const result = await window.__TAURI__.core.invoke('process_chat_message', {
+        request: {
+          message: text,
+          workflow_type: 'cdp_automation',
+          agent_name: 'cdp-generator',
+          include_screenshot: true,
+          include_html: true
+        }
+      });
+
+      if (result.success) {
+        addMessage(result.message, 'agent');
+
+        // Show action feedback buttons
+        if (result.cdp_script) {
+          const actionId = 'action-' + Date.now();
+          addFeedbackButtons(actionId, text, 'cdp-generator');
+        }
+      } else {
+        addMessage('Error: ' + (result.error || result.message), 'agent');
+
+        // Show feedback for failed action
+        const actionId = 'action-' + Date.now();
+        addFeedbackButtons(actionId, text, 'cdp-generator', result.error);
+      }
+    } catch (error) {
+      addMessage('Error communicating with backend: ' + error, 'agent');
+      console.error('Backend error:', error);
+    }
+  }
+
+  // Add feedback buttons for an action
+  function addFeedbackButtons(actionId, originalRequest, agentName, errorDescription) {
+    const feedbackDiv = document.createElement('div');
+    feedbackDiv.className = 'robert-feedback-buttons';
+    feedbackDiv.innerHTML = `
+      <button class="feedback-btn thumbs-up" data-action-id="${actionId}">👍</button>
+      <button class="feedback-btn thumbs-down" data-action-id="${actionId}">👎</button>
+    `;
+
+    messagesContainer.appendChild(feedbackDiv);
+
+    // Add event listeners
+    feedbackDiv.querySelector('.thumbs-up').addEventListener('click', () => {
+      submitFeedback(actionId, true, originalRequest, agentName);
+      feedbackDiv.remove();
+    });
+
+    feedbackDiv.querySelector('.thumbs-down').addEventListener('click', () => {
+      const comment = prompt('What went wrong? (optional)');
+      submitFeedback(actionId, false, originalRequest, agentName, comment, errorDescription);
+      feedbackDiv.remove();
+    });
+  }
+
+  // Submit feedback to backend
+  async function submitFeedback(actionId, positive, originalRequest, agentName, comment, errorDescription) {
+    if (!window.__TAURI__) return;
+
+    try {
+      const feedback = {
+        action_id: actionId,
+        positive: positive,
+        comment: comment || null,
+        agent_name: agentName,
+        original_request: originalRequest,
+        error_description: errorDescription || null
+      };
+
+      const result = await window.__TAURI__.core.invoke('submit_action_feedback', { feedback });
+      addMessage(result, 'agent');
+    } catch (error) {
+      addMessage('Error submitting feedback: ' + error, 'agent');
+      console.error('Feedback error:', error);
+    }
   }
 
   // Toggle sidebar collapse

@@ -1,5 +1,7 @@
+mod agent;
 mod developer_mode;
 
+pub use agent::*;
 pub use developer_mode::*;
 
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
