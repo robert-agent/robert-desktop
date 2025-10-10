@@ -1,4 +1,5 @@
 // Modules
+mod agent;
 mod claude;
 mod commands;
 pub mod developer_mode;
@@ -29,6 +30,13 @@ pub fn run() {
             commands::start_dev_test_server,
             commands::stop_dev_test_server,
             commands::get_dev_test_server_status,
+            // Agent workflow commands
+            commands::process_chat_message,
+            commands::init_agent_configs,
+            commands::list_agent_configs,
+            commands::get_agent_config,
+            commands::update_agent_config,
+            commands::submit_action_feedback,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
