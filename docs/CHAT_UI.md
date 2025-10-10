@@ -220,12 +220,14 @@ Run the chat UI tests:
 cargo test --test chat_ui_test
 ```
 
+**Note**: All tests use a local test server for complete isolation from external dependencies. No internet connection required and tests are fully offline-capable.
+
 Tests cover:
 - Automatic injection on navigation
 - Sending agent messages
 - Retrieving messages
 - Clearing messages
-- Persistence across navigation
+- Persistence across navigation (using local /page2 route)
 - Collapse/expand functionality
 - Disable/enable functionality
 - Manual injection

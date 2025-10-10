@@ -65,6 +65,27 @@ cargo test --package robert-webdriver --test headless_integration -- --test-thre
 
 ---
 
+### 💬 Chat UI Tests (`chat_ui_test.rs`)
+**Purpose**: Test chat UI injection and messaging
+**Chrome Required**: ✅ Yes (auto-downloads)
+**Tests**: 7
+
+All tests use local test server for complete isolation from external sites.
+
+- `test_chat_ui_injection` - Verify automatic chat UI injection on navigation
+- `test_send_agent_message` - Test sending messages from agent to chat
+- `test_clear_chat_messages` - Test clearing all chat messages
+- `test_chat_ui_persists_across_navigation` - Test chat UI re-injection on page navigation
+- `test_chat_ui_collapse_expand` - Test collapse/expand functionality
+- `test_chat_ui_can_be_disabled` - Test disabling automatic injection
+- `test_manual_chat_ui_injection` - Test manual injection control
+
+```bash
+cargo test --package robert-webdriver --test chat_ui_test
+```
+
+---
+
 ### 🧪 CDP API Tests
 
 #### CDP Execution Tests (`cdp_execution_test.rs`)
@@ -120,14 +141,15 @@ cargo test --package robert-webdriver --test cdp_generator_test
 | Meta/Infrastructure | 4 | ❌ | ✅ All Pass |
 | Validation | 20 | ❌ | ✅ All Pass |
 | Library Unit | 15 | ❌ | ✅ All Pass |
+| Chat UI | 7 | ✅ | ✅ All Pass |
 | CDP Execution | 4 | ✅ | ✅ All Pass |
 | CDP Script Execution | 5 | ✅ | ✅ All Pass |
 | CDP Generator/Validation | 6 | ❌ | ✅ All Pass |
 | E2E | 3 | ✅ | ✅ All Pass |
 | Headless Integration | 5 | ✅ | ✅ All Pass |
-| **Total** | **53** | - | **✅ 53/53** |
+| **Total** | **69** | - | **✅ 69/69** |
 | Doc Tests | 2 | ❌ | ✅ All Pass |
-| **Grand Total** | **55** | - | **✅ 55/55** |
+| **Grand Total** | **71** | - | **✅ 71/71** |
 
 ---
 
@@ -136,10 +158,11 @@ cargo test --package robert-webdriver --test cdp_generator_test
 ### Local Test Server
 All Chrome tests use `test_server` module:
 - Random ports for isolation
-- Serves example.com-like HTML
+- Serves example.com-like HTML with multiple pages (/page2, /page3)
 - `wait_ready()` for reliability
 - Zero network dependencies
 - Offline capable
+- Navigation testing support with inter-page links
 
 ### CDP Commands
 E2E tests use CDP commands directly (not high-level `navigate()`) because:

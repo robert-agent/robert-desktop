@@ -19,6 +19,15 @@ cargo test --package robert-webdriver --test headless_integration -- --test-thre
 # Result: 5 tests pass in ~5 seconds
 ```
 
+### Chat UI Tests
+```bash
+# Run chat UI injection and messaging tests
+cargo test --package robert-webdriver --test chat_ui_test
+
+# Result: 7 tests pass in ~2 seconds
+# Note: Uses local test server, no external dependencies
+```
+
 ### Unit Tests
 ```bash
 # Run all library unit tests
@@ -41,6 +50,7 @@ cargo test --package robert-webdriver -- --test-threads=1
 |-------|-------|-------|---------------|-------|
 | **Validation** | 20 | ~10ms | ❌ No | Always pass, no dependencies |
 | **Unit Tests** | 15 | ~100ms | ❌ No | Library logic tests |
+| **Chat UI** | 7 | ~2s | ✅ Yes | Uses local test server, offline-capable |
 | **Headless Integration** | 5 | ~5s | ✅ Yes | Chrome downloads automatically |
 | **E2E Tests** | 3 | ~10s | ✅ Yes | ⚠️ Sandbox issues on Ubuntu 23.10+ |
 
@@ -191,8 +201,10 @@ cargo clippy --workspace --all-targets -- -D warnings
 - ✅ JSON validation - Full coverage (20 tests)
 - ✅ CDP commands - All 15 commands tested
 - ✅ Chrome automation - Headless mode covered
+- ✅ Chat UI - Complete injection and messaging coverage (7 tests)
 - ✅ Error handling - Comprehensive error tests
 - ✅ Script execution - E2E workflow tested
+- ✅ Local test server - All Chrome tests use offline-capable local server
 
 ## Summary
 
