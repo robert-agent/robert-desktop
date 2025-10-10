@@ -19,7 +19,7 @@ export function addDebugLog(event: DebugEventType) {
     level: getLogLevel(event),
   };
 
-  debugLogs.update(logs => [...logs, entry]);
+  debugLogs.update((logs) => [...logs, entry]);
 }
 
 // Clear debug logs
@@ -28,22 +28,22 @@ export function clearDebugLogs() {
 }
 
 // Determine log level based on event type
-function getLogLevel(event: DebugEventType): "info" | "success" | "error" | "warning" {
+function getLogLevel(event: DebugEventType): 'info' | 'success' | 'error' | 'warning' {
   switch (event.type) {
-    case "Error":
-      return "error";
-    case "Success":
-    case "ChromeLaunched":
-    case "PageLoaded":
-      return "success";
-    case "ChromeDownloading":
-    case "ChromeLaunching":
-    case "PageNavigating":
-    case "PageLoading":
-    case "PageParsing":
-    case "Info":
-      return "info";
+    case 'Error':
+      return 'error';
+    case 'Success':
+    case 'ChromeLaunched':
+    case 'PageLoaded':
+      return 'success';
+    case 'ChromeDownloading':
+    case 'ChromeLaunching':
+    case 'PageNavigating':
+    case 'PageLoading':
+    case 'PageParsing':
+    case 'Info':
+      return 'info';
     default:
-      return "info";
+      return 'info';
   }
 }

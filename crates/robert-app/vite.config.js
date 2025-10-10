@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import path from 'path';
 
 const host = process.env.TAURI_DEV_HOST;
@@ -10,8 +10,8 @@ export default defineConfig(async () => ({
 
   resolve: {
     alias: {
-      '$lib': path.resolve('./src/lib')
-    }
+      $lib: path.resolve('./src/lib'),
+    },
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -25,14 +25,14 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
+          protocol: 'ws',
           host,
           port: 1421,
         }
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      ignored: ['**/src-tauri/**'],
     },
   },
 }));

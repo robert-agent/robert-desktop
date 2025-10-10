@@ -6,7 +6,7 @@
     stopDevTestServer,
     getDevTestServerStatus,
     launchBrowser,
-    navigateToUrl
+    navigateToUrl,
   } from '../lib/tauri';
   import type { SystemPaths, TestServerStatus } from '../lib/types';
 
@@ -121,60 +121,63 @@
     {:else if systemPaths}
       <div class="paths-grid">
         <div class="path-item">
-          <label>Installation Directory:</label>
+          <span class="path-label">Installation Directory:</span>
           <div class="path-value">
             <code>{systemPaths.installation_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.installation_dir)}>
+            <button
+              class="copy-btn"
+              on:click={() => copyToClipboard(systemPaths!.installation_dir)}
+            >
               📋
             </button>
           </div>
         </div>
 
         <div class="path-item">
-          <label>Config Directory:</label>
+          <span class="path-label">Config Directory:</span>
           <div class="path-value">
             <code>{systemPaths.config_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.config_dir)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.config_dir)}>
               📋
             </button>
           </div>
         </div>
 
         <div class="path-item">
-          <label>Data Directory:</label>
+          <span class="path-label">Data Directory:</span>
           <div class="path-value">
             <code>{systemPaths.data_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.data_dir)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.data_dir)}>
               📋
             </button>
           </div>
         </div>
 
         <div class="path-item">
-          <label>Cache Directory:</label>
+          <span class="path-label">Cache Directory:</span>
           <div class="path-value">
             <code>{systemPaths.cache_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.cache_dir)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.cache_dir)}>
               📋
             </button>
           </div>
         </div>
 
         <div class="path-item">
-          <label>Temp Directory:</label>
+          <span class="path-label">Temp Directory:</span>
           <div class="path-value">
             <code>{systemPaths.temp_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.temp_dir)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.temp_dir)}>
               📋
             </button>
           </div>
         </div>
 
         <div class="path-item">
-          <label>Current Directory:</label>
+          <span class="path-label">Current Directory:</span>
           <div class="path-value">
             <code>{systemPaths.current_dir}</code>
-            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.current_dir)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.current_dir)}>
               📋
             </button>
           </div>
@@ -182,10 +185,10 @@
 
         {#if systemPaths.chrome_path}
           <div class="path-item">
-            <label>Chrome Path:</label>
+            <span class="path-label">Chrome Path:</span>
             <div class="path-value">
-              <code>{systemPaths.chrome_path}</code>
-              <button class="copy-btn" on:click={() => copyToClipboard(systemPaths.chrome_path)}>
+              <code>{systemPaths!.chrome_path}</code>
+              <button class="copy-btn" on:click={() => copyToClipboard(systemPaths!.chrome_path!)}>
                 📋
               </button>
             </div>
@@ -199,8 +202,8 @@
   <section class="section">
     <h3>🌐 Mock Test Server</h3>
     <p class="description">
-      Start a local HTTP server for manual e2e testing. Use this to test CDP commands
-      against a controlled webpage environment.
+      Start a local HTTP server for manual e2e testing. Use this to test CDP commands against a
+      controlled webpage environment.
     </p>
 
     <div class="server-status">
@@ -216,12 +219,13 @@
           <div class="info-item">
             <strong>URL:</strong>
             <a href={serverStatus.url} target="_blank">{serverStatus.url}</a>
-            <button class="copy-btn" on:click={() => copyToClipboard(serverStatus.url)}>
+            <button class="copy-btn" on:click={() => copyToClipboard(serverStatus.url!)}>
               📋
             </button>
           </div>
           <div class="info-item">
-            <strong>Port:</strong> {serverStatus.port}
+            <strong>Port:</strong>
+            {serverStatus.port}
           </div>
         </div>
       {/if}
@@ -229,26 +233,14 @@
 
     <div class="server-controls">
       {#if !serverStatus.running}
-        <button
-          class="btn btn-primary"
-          on:click={handleStartServer}
-          disabled={loading}
-        >
+        <button class="btn btn-primary" on:click={handleStartServer} disabled={loading}>
           {loading ? 'Starting...' : 'Start Server'}
         </button>
       {:else}
-        <button
-          class="btn btn-primary"
-          on:click={handleOpenInBrowser}
-          disabled={loading}
-        >
+        <button class="btn btn-primary" on:click={handleOpenInBrowser} disabled={loading}>
           {loading ? 'Loading...' : 'Open in Browser'}
         </button>
-        <button
-          class="btn btn-secondary"
-          on:click={handleStopServer}
-          disabled={loading}
-        >
+        <button class="btn btn-secondary" on:click={handleStopServer} disabled={loading}>
           {loading ? 'Stopping...' : 'Stop Server'}
         </button>
       {/if}
@@ -328,7 +320,7 @@
     gap: 0.5rem;
   }
 
-  .path-item label {
+  .path-label {
     font-weight: 600;
     color: #555;
     font-size: 0.875rem;
@@ -394,8 +386,13 @@
   }
 
   @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
 
   .status-text {
