@@ -78,14 +78,14 @@ jobs:
         working-directory: crates/robert-app
         run: |
           echo "Checking for build artifacts..."
-          ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle/macos" ]; then
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/macos" ]; then
             echo "✅ macOS .app bundle found"
-            ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/macos/
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/macos/
           fi
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle/dmg" ]; then
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/dmg" ]; then
             echo "✅ DMG installer found"
-            ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/dmg/
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/dmg/
           fi
 
       - name: Verify build artifacts (Windows)
@@ -94,10 +94,10 @@ jobs:
         shell: bash
         run: |
           echo "Checking for build artifacts..."
-          ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle/msi" ]; then
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/msi" ]; then
             echo "✅ MSI installer found"
-            ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/msi/
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/msi/
           fi
 
       - name: Verify build artifacts (Linux)
@@ -105,14 +105,14 @@ jobs:
         working-directory: crates/robert-app
         run: |
           echo "Checking for build artifacts..."
-          ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle/appimage" ]; then
+          ls -lah ../../target/${{ matrix.target }}/release/bundle/
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/appimage" ]; then
             echo "✅ AppImage found"
-            ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/appimage/
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/appimage/
           fi
-          if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle/deb" ]; then
+          if [ -d "../../target/${{ matrix.target }}/release/bundle/deb" ]; then
             echo "✅ DEB package found"
-            ls -lah src-tauri/target/${{ matrix.target }}/release/bundle/deb/
+            ls -lah ../../target/${{ matrix.target }}/release/bundle/deb/
           fi
 
       - name: Upload build artifacts
@@ -120,5 +120,5 @@ jobs:
         with:
           name: robert-${{ matrix.name }}-${{ matrix.target }}
           path: |
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/
+            target/${{ matrix.target }}/release/bundle/
           retention-days: 7
