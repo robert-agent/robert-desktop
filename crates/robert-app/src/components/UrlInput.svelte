@@ -26,7 +26,7 @@
     if (!$browserLaunched) {
       try {
         await handleLaunchBrowser();
-      } catch (err) {
+      } catch {
         return; // Error already handled
       }
     }

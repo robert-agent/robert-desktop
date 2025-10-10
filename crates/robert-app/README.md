@@ -78,12 +78,14 @@ bun run build:debug
 ## CI/CD
 
 The following checks run in CI:
+
 - TypeScript type checking (`bun run check`)
 - ESLint linting (`bun run lint`)
 - Prettier formatting (`bun run format`)
 - Frontend build (`bun run frontend:build`)
 
 Make sure all checks pass before pushing:
+
 ```bash
 bun run check:all
 ```

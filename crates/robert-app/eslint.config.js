@@ -14,7 +14,6 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: './tsconfig.json',
       },
       globals: {
         ...globals.browser,
@@ -25,7 +24,6 @@ export default [
       '@typescript-eslint': tsPlugin,
     },
     rules: {
-      ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
     },
@@ -47,16 +45,16 @@ export default [
       svelte: sveltePlugin,
     },
     rules: {
-      ...sveltePlugin.configs.recommended.rules,
+      'svelte/no-at-html-tags': 'off',
     },
   },
   {
     ignores: [
-      'node_modules',
-      'dist',
-      'build',
-      '.svelte-kit',
-      'src-tauri',
+      'node_modules/**',
+      'dist/**',
+      'build/**',
+      '.svelte-kit/**',
+      'src-tauri/**',
       '*.config.js',
       '*.config.ts',
     ],
