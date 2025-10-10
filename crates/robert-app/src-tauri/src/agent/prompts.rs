@@ -174,8 +174,10 @@ pub struct PromptContext {
 mod tests {
     use super::*;
 
+    // CDP Generation Prompt Tests
+
     #[test]
-    fn test_cdp_generation_prompt() {
+    fn test_cdp_generation_prompt_with_full_context() {
         let template = PromptTemplate::new(PromptType::CdpGeneration);
         let prompt = template.build_cdp_prompt(
             "Click the login button",
@@ -184,13 +186,102 @@ mod tests {
             "You are an automation expert",
         );
 
+        // Verify all key components are present
         assert!(prompt.contains("Click the login button"));
         assert!(prompt.contains("example.com"));
+        assert!(prompt.contains("Example Page"));
+        assert!(prompt.contains("You are an automation expert"));
+        assert!(prompt.contains("CURRENT PAGE"));
+        assert!(prompt.contains("USER REQUEST"));
         assert!(prompt.contains("CDP COMMANDS"));
+
+        // Verify CDP command reference includes key commands
+        assert!(prompt.contains("Page.navigate"));
+        assert!(prompt.contains("Page.captureScreenshot"));
+        assert!(prompt.contains("Runtime.evaluate"));
+        assert!(prompt.contains("Input.insertText"));
+        assert!(prompt.contains("Input.dispatchMouseEvent"));
+        assert!(prompt.contains("Input.dispatchKeyEvent"));
+
+        // Verify output format instructions
+        assert!(prompt.contains("OUTPUT FORMAT"));
+        assert!(prompt.contains("JSON only"));
     }
 
     #[test]
-    fn test_config_update_prompt() {
+    fn test_cdp_generation_prompt_without_page_context() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let prompt = template.build_cdp_prompt(
+            "Navigate to google.com",
+            None,
+            None,
+            "You are an automation expert",
+        );
+
+        // Should still contain core elements
+        assert!(prompt.contains("Navigate to google.com"));
+        assert!(prompt.contains("You are an automation expert"));
+        assert!(prompt.contains("CDP COMMANDS"));
+
+        // Should NOT contain page context section (empty)
+        assert!(!prompt.contains("CURRENT PAGE:"));
+        assert!(!prompt.contains("URL:"));
+        assert!(!prompt.contains("Title:"));
+    }
+
+    #[test]
+    fn test_cdp_generation_prompt_with_special_characters() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let prompt = template.build_cdp_prompt(
+            "Type \"hello@example.com\" into the email field",
+            Some("https://example.com/login?redirect=%2Fdashboard"),
+            Some("Login | My App™"),
+            "Handle special chars: <>&\"'",
+        );
+
+        // Verify special characters are preserved
+        assert!(prompt.contains("hello@example.com"));
+        assert!(prompt.contains("redirect=%2Fdashboard"));
+        assert!(prompt.contains("My App™"));
+        assert!(prompt.contains("<>&\"'"));
+    }
+
+    #[test]
+    fn test_cdp_generation_prompt_with_empty_strings() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let prompt = template.build_cdp_prompt(
+            "",
+            Some(""),
+            Some(""),
+            "",
+        );
+
+        // Should still have structure
+        assert!(prompt.contains("USER REQUEST:"));
+        assert!(prompt.contains("CDP COMMANDS"));
+        // Empty URL and title should create context section but with empty values
+        assert!(prompt.contains("CURRENT PAGE"));
+    }
+
+    #[test]
+    fn test_cdp_generation_prompt_with_multiline_request() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let prompt = template.build_cdp_prompt(
+            "First, navigate to example.com\nThen, click the login button\nFinally, take a screenshot",
+            Some("https://example.com"),
+            Some("Example"),
+            "You are an automation expert",
+        );
+
+        assert!(prompt.contains("First, navigate"));
+        assert!(prompt.contains("Then, click"));
+        assert!(prompt.contains("Finally, take"));
+    }
+
+    // Config Update Prompt Tests
+
+    #[test]
+    fn test_config_update_prompt_with_failure_context() {
         let template = PromptTemplate::new(PromptType::ConfigUpdate);
         let prompt = template.build_config_update_prompt(
             "test-agent",
@@ -202,5 +293,215 @@ mod tests {
         assert!(prompt.contains("test-agent"));
         assert!(prompt.contains("failed to handle errors"));
         assert!(prompt.contains("element not found"));
+        assert!(prompt.contains("CURRENT CONFIGURATION"));
+        assert!(prompt.contains("USER FEEDBACK"));
+        assert!(prompt.contains("FAILURE CONTEXT"));
+        assert!(prompt.contains("```toml"));
+    }
+
+    #[test]
+    fn test_config_update_prompt_without_failure_context() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let prompt = template.build_config_update_prompt(
+            "cdp-generator",
+            "name = \"cdp-generator\"",
+            "Please make the agent more careful",
+            None,
+        );
+
+        assert!(prompt.contains("cdp-generator"));
+        assert!(prompt.contains("more careful"));
+        assert!(!prompt.contains("FAILURE CONTEXT"));
+    }
+
+    #[test]
+    fn test_config_update_prompt_with_complex_toml() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let config = r#"
+name = "test-agent"
+version = "1.0.0"
+
+[settings]
+model = "sonnet"
+temperature = 0.7
+
+instructions = """
+Multi-line
+instructions
+here
+"""
+
+tags = ["tag1", "tag2"]
+"#;
+        let prompt = template.build_config_update_prompt(
+            "test-agent",
+            config,
+            "Improve error handling",
+            Some("Failed on timeout"),
+        );
+
+        assert!(prompt.contains("Multi-line"));
+        assert!(prompt.contains("instructions"));
+        assert!(prompt.contains("settings"));
+        assert!(prompt.contains("Improve error handling"));
+        assert!(prompt.contains("Failed on timeout"));
+    }
+
+    #[test]
+    fn test_config_update_prompt_rules_present() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let prompt = template.build_config_update_prompt(
+            "test-agent",
+            "name = \"test\"",
+            "Update needed",
+            None,
+        );
+
+        // Verify all rules are documented
+        assert!(prompt.contains("RULES"));
+        assert!(prompt.contains("Keep all existing fields"));
+        assert!(prompt.contains("Only modify the 'instructions' field"));
+        assert!(prompt.contains("Make minimal, targeted changes"));
+        assert!(prompt.contains("Ensure the TOML is valid"));
+        assert!(prompt.contains("prevent this error in the future"));
+    }
+
+    // PromptContext and build() Tests
+
+    #[test]
+    fn test_prompt_context_default() {
+        let context = PromptContext::default();
+        assert_eq!(context.user_request, "");
+        assert_eq!(context.current_url, None);
+        assert_eq!(context.page_title, None);
+        assert_eq!(context.agent_instructions, "");
+        assert_eq!(context.agent_name, "");
+        assert_eq!(context.current_config, "");
+        assert_eq!(context.user_feedback, "");
+        assert_eq!(context.failure_context, None);
+    }
+
+    #[test]
+    fn test_build_with_cdp_generation_context() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let context = PromptContext {
+            user_request: "Click button".to_string(),
+            current_url: Some("https://example.com".to_string()),
+            page_title: Some("Test Page".to_string()),
+            agent_instructions: "Be careful".to_string(),
+            ..Default::default()
+        };
+
+        let prompt = template.build(context);
+        assert!(prompt.contains("Click button"));
+        assert!(prompt.contains("example.com"));
+        assert!(prompt.contains("Test Page"));
+        assert!(prompt.contains("Be careful"));
+    }
+
+    #[test]
+    fn test_build_with_config_update_context() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let context = PromptContext {
+            agent_name: "test-agent".to_string(),
+            current_config: "name = \"test\"".to_string(),
+            user_feedback: "It failed".to_string(),
+            failure_context: Some("Timeout error".to_string()),
+            ..Default::default()
+        };
+
+        let prompt = template.build(context);
+        assert!(prompt.contains("test-agent"));
+        assert!(prompt.contains("It failed"));
+        assert!(prompt.contains("Timeout error"));
+    }
+
+    // Edge Case Tests
+
+    #[test]
+    fn test_cdp_prompt_with_very_long_user_request() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let long_request = "a".repeat(10000);
+        let prompt = template.build_cdp_prompt(
+            &long_request,
+            Some("https://example.com"),
+            Some("Title"),
+            "Instructions",
+        );
+
+        assert!(prompt.contains(&long_request));
+        assert!(prompt.len() > 10000);
+    }
+
+    #[test]
+    fn test_config_update_prompt_with_unicode() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let prompt = template.build_config_update_prompt(
+            "test-agent-日本語",
+            "name = \"test\" # コメント",
+            "エラーが発生しました 🔥",
+            Some("失敗: タイムアウト ⏱️"),
+        );
+
+        assert!(prompt.contains("日本語"));
+        assert!(prompt.contains("コメント"));
+        assert!(prompt.contains("エラーが発生"));
+        assert!(prompt.contains("🔥"));
+        assert!(prompt.contains("⏱️"));
+    }
+
+    #[test]
+    fn test_prompt_template_type_checking() {
+        let cdp_template = PromptTemplate::new(PromptType::CdpGeneration);
+        assert_eq!(cdp_template.prompt_type, PromptType::CdpGeneration);
+
+        let config_template = PromptTemplate::new(PromptType::ConfigUpdate);
+        assert_eq!(config_template.prompt_type, PromptType::ConfigUpdate);
+    }
+
+    #[test]
+    fn test_cdp_prompt_includes_all_command_types() {
+        let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let prompt = template.build_cdp_prompt(
+            "test",
+            Some("url"),
+            Some("title"),
+            "instructions",
+        );
+
+        // Verify comprehensive CDP command coverage
+        let required_commands = [
+            "Page.navigate",
+            "Page.captureScreenshot",
+            "Runtime.evaluate",
+            "Input.insertText",
+            "Input.dispatchMouseEvent",
+            "Input.dispatchKeyEvent",
+        ];
+
+        for cmd in &required_commands {
+            assert!(
+                prompt.contains(cmd),
+                "Prompt should contain CDP command: {}",
+                cmd
+            );
+        }
+    }
+
+    #[test]
+    fn test_config_update_task_steps_present() {
+        let template = PromptTemplate::new(PromptType::ConfigUpdate);
+        let prompt = template.build_config_update_prompt(
+            "agent",
+            "config",
+            "feedback",
+            None,
+        );
+
+        // Verify task breakdown is present
+        assert!(prompt.contains("TASK:"));
+        assert!(prompt.contains("1. Analyze what went wrong"));
+        assert!(prompt.contains("2. Update the agent's instructions"));
+        assert!(prompt.contains("3. Output the COMPLETE updated TOML"));
     }
 }
