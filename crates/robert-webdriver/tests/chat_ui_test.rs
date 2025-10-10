@@ -2,7 +2,10 @@
 //!
 //! Tests for the chat UI injection and messaging functionality.
 
+mod test_server;
+
 use robert_webdriver::{ChromeDriver, ConnectionMode};
+use test_server::TestServer;
 
 /// Helper to create a headless driver for testing
 async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
@@ -17,11 +20,16 @@ async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
 
 #[tokio::test]
 async fn test_chat_ui_injection() -> anyhow::Result<()> {
+    // Start local test server
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     // Launch Chrome in headless mode
     let driver = create_headless_driver().await?;
 
-    // Navigate to a test page
-    driver.navigate("https://example.com").await?;
+    // Navigate to test page
+    driver.navigate(&url).await?;
 
     // Verify that the chat UI was injected
     let has_chat_ui = driver
@@ -51,8 +59,12 @@ async fn test_chat_ui_injection() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_send_agent_message() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let driver = create_headless_driver().await?;
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Send a message from the agent
     driver.send_chat_message("Test message from agent").await?;
@@ -75,8 +87,12 @@ async fn test_send_agent_message() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_clear_chat_messages() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let driver = create_headless_driver().await?;
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Send some messages
     driver.send_chat_message("Message 1").await?;
@@ -99,10 +115,14 @@ async fn test_clear_chat_messages() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_chat_ui_persists_across_navigation() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let driver = create_headless_driver().await?;
 
     // Navigate to first page
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Verify chat UI exists
     let has_chat_ui_1 = driver
@@ -114,8 +134,9 @@ async fn test_chat_ui_persists_across_navigation() -> anyhow::Result<()> {
         .await?;
     assert_eq!(has_chat_ui_1, serde_json::json!(true));
 
-    // Navigate to second page
-    driver.navigate("https://httpbin.org").await?;
+    // Navigate to second page (using our local test server page2)
+    let url2 = format!("{}/page2", url);
+    driver.navigate(&url2).await?;
 
     // Verify chat UI is re-injected on new page
     let has_chat_ui_2 = driver
@@ -133,8 +154,12 @@ async fn test_chat_ui_persists_across_navigation() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_chat_ui_collapse_expand() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let driver = create_headless_driver().await?;
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Initially should not be collapsed
     let is_collapsed_initially = driver
@@ -178,13 +203,17 @@ async fn test_chat_ui_collapse_expand() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_chat_ui_can_be_disabled() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let mut driver = create_headless_driver().await?;
 
     // Disable chat UI
     driver.chat_ui_mut().disable();
 
     // Navigate - chat UI should not be injected
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Verify chat UI was not injected
     let has_chat_ui = driver
@@ -202,13 +231,17 @@ async fn test_chat_ui_can_be_disabled() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_manual_chat_ui_injection() -> anyhow::Result<()> {
+    let server = TestServer::start().await;
+    server.wait_ready().await?;
+    let url = server.url();
+
     let mut driver = create_headless_driver().await?;
 
     // Disable chat UI for automatic injection
     driver.chat_ui_mut().disable();
 
     // Navigate - chat UI should not be injected
-    driver.navigate("https://example.com").await?;
+    driver.navigate(&url).await?;
 
     // Verify no chat UI
     let has_chat_ui_before = driver

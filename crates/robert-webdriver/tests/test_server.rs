@@ -33,14 +33,52 @@ impl TestServer {
     <div>
         <h1>Example Domain</h1>
         <p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p>
-        <p><a href="https://iana.org/domains/example">Learn more</a></p>
+        <p><a href="/page2">Go to Page 2</a></p>
     </div>
 </body>
 </html>"#,
             )
         });
 
-        let routes = index;
+        let page2 = warp::path("page2").map(|| {
+            warp::reply::html(
+                r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Test Page 2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <div>
+        <h1>Test Page 2</h1>
+        <p>This is a second page for testing navigation.</p>
+        <p><a href="/">Back to Home</a> | <a href="/page3">Go to Page 3</a></p>
+    </div>
+</body>
+</html>"#,
+            )
+        });
+
+        let page3 = warp::path("page3").map(|| {
+            warp::reply::html(
+                r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Test Page 3</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <div>
+        <h1>Test Page 3</h1>
+        <p>This is a third page for testing navigation.</p>
+        <p><a href="/">Back to Home</a></p>
+    </div>
+</body>
+</html>"#,
+            )
+        });
+
+        let routes = index.or(page2).or(page3);
 
         // Bind to random port
         let (addr, server) =
