@@ -249,12 +249,7 @@ mod tests {
     #[test]
     fn test_cdp_generation_prompt_with_empty_strings() {
         let template = PromptTemplate::new(PromptType::CdpGeneration);
-        let prompt = template.build_cdp_prompt(
-            "",
-            Some(""),
-            Some(""),
-            "",
-        );
+        let prompt = template.build_cdp_prompt("", Some(""), Some(""), "");
 
         // Should still have structure
         assert!(prompt.contains("USER REQUEST:"));
@@ -462,12 +457,7 @@ tags = ["tag1", "tag2"]
     #[test]
     fn test_cdp_prompt_includes_all_command_types() {
         let template = PromptTemplate::new(PromptType::CdpGeneration);
-        let prompt = template.build_cdp_prompt(
-            "test",
-            Some("url"),
-            Some("title"),
-            "instructions",
-        );
+        let prompt = template.build_cdp_prompt("test", Some("url"), Some("title"), "instructions");
 
         // Verify comprehensive CDP command coverage
         let required_commands = [
@@ -491,12 +481,7 @@ tags = ["tag1", "tag2"]
     #[test]
     fn test_config_update_task_steps_present() {
         let template = PromptTemplate::new(PromptType::ConfigUpdate);
-        let prompt = template.build_config_update_prompt(
-            "agent",
-            "config",
-            "feedback",
-            None,
-        );
+        let prompt = template.build_config_update_prompt("agent", "config", "feedback", None);
 
         // Verify task breakdown is present
         assert!(prompt.contains("TASK:"));
