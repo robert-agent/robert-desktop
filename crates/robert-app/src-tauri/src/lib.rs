@@ -1,6 +1,7 @@
 // Modules
 mod claude;
 mod commands;
+pub mod developer_mode;
 mod events;
 mod state;
 
@@ -23,6 +24,11 @@ pub fn run() {
             commands::run_diagnostics,
             commands::validate_cdp_script,
             commands::validate_cdp_script_file,
+            // Developer mode commands
+            commands::get_system_paths,
+            commands::start_dev_test_server,
+            commands::stop_dev_test_server,
+            commands::get_dev_test_server_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
