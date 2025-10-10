@@ -448,6 +448,12 @@ pub async fn run_diagnostics(
 
     drop(driver_lock);
 
+    log::info!(
+        "Diagnostics complete - Chrome: {}, Claude: {:?}",
+        chrome_status,
+        claude_health.status
+    );
+
     let diagnostics = SystemDiagnostics {
         chrome_status,
         chrome_installed,
@@ -456,11 +462,6 @@ pub async fn run_diagnostics(
         current_url,
     };
 
-    log::info!(
-        "Diagnostics complete - Chrome: {}, Claude: {:?}",
-        chrome_status,
-        claude_health.status
-    );
     emit_success(&app, "Diagnostics complete").ok();
 
     Ok(diagnostics)

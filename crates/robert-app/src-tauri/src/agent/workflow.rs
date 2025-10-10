@@ -151,10 +151,10 @@ impl WorkflowExecutor {
         // Parse the generated script
         log::info!("🔍 Parsing CDP script from JSON...");
         let cdp_script: robert_webdriver::CdpScript =
-            match serde_json::from_str(&claude_response.text) {
+            match serde_json::from_str::<robert_webdriver::CdpScript>(&claude_response.text) {
                 Ok(script) => {
                     log::info!("✓ CDP script parsed successfully");
-                    log::info!("📊 Commands in script: {}", script.commands.len());
+                    log::info!("📊 Commands in script: {}", script.cdp_commands.len());
                     script
                 }
                 Err(e) => {
@@ -194,11 +194,11 @@ impl WorkflowExecutor {
             log::info!("╚═══════════════════════════════════════════════════════════╝");
             log::info!(
                 "📋 Total commands to execute: {}",
-                cdp_script.commands.len()
+                cdp_script.cdp_commands.len()
             );
 
-            for (i, cmd) in cdp_script.commands.iter().enumerate() {
-                log::info!("  {}. {} - {}", i + 1, cmd.action, cmd.description);
+            for (i, cmd) in cdp_script.cdp_commands.iter().enumerate() {
+                log::info!("  {}. {} - {}", i + 1, cmd.method, cmd.description.as_deref().unwrap_or(""));
             }
 
             log::info!("🚀 Executing CDP script...");
@@ -210,13 +210,18 @@ impl WorkflowExecutor {
                     log::info!("📊 Total commands: {}", report.total_commands);
                     log::info!("✓ Successful: {}", report.successful);
                     log::info!("✗ Failed: {}", report.failed);
-                    log::info!("⏱️  Duration: {:?}", report.duration);
+                    log::info!("⏱️  Duration: {:?}", report.total_duration);
 
-                    if !report.command_results.is_empty() {
+                    if !report.results.is_empty() {
                         log::debug!("📋 Command results:");
-                        for result in &report.command_results {
-                            let status = if result.success { "✓" } else { "✗" };
-                            log::debug!("  {} {}", status, result.description);
+                        for result in &report.results {
+                            use robert_webdriver::CommandStatus;
+                            let status = match result.status {
+                                CommandStatus::Success => "✓",
+                                CommandStatus::Failed => "✗",
+                                CommandStatus::Skipped => "⊘",
+                            };
+                            log::debug!("  {} Step {} - {}", status, result.step, result.method);
                             if let Some(err) = &result.error {
                                 log::warn!("    ⚠️  Error: {}", err);
                             }
