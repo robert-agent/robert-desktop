@@ -174,24 +174,41 @@ jobs:
         env:
           RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
-          # Clone the releases repository
-          git clone https://x-access-token:${RELEASES_REPO_TOKEN}@github.com/lucky-tensor/robert-releases.git
-          cd robert-releases
+          # Check if release exists in robert-releases
+          RELEASE_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${{ needs.create-release.outputs.tag_name }}" | \
+            jq -r '.id // empty')
 
-          # Create releases directory if it doesn't exist
-          mkdir -p releases/${{ needs.create-release.outputs.tag_name }}
+          # If release doesn't exist, create it
+          if [ -z "$RELEASE_ID" ]; then
+            RELEASE_RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/lucky-tensor/robert-releases/releases" \
+              -d "{
+                \"tag_name\": \"${{ needs.create-release.outputs.tag_name }}\",
+                \"name\": \"Robert ${{ needs.create-release.outputs.tag_name }}\",
+                \"body\": \"Release assets for Robert ${{ needs.create-release.outputs.version_with_hash }}\",
+                \"draft\": false,
+                \"prerelease\": ${{ steps.prerelease.outputs.is_prerelease || 'false' }}
+              }")
+            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
+            UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          else
+            # Get upload URL for existing release
+            UPLOAD_URL=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}" | \
+              jq -r '.upload_url' | sed 's/{?name,label}//')
+          fi
 
-          # Copy the DMG to the releases directory
-          cp ${{ env.DMG_PATH }} releases/${{ needs.create-release.outputs.tag_name }}/${{ env.DMG_NAME }}
-
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Commit and push
-          git add releases/${{ needs.create-release.outputs.tag_name }}/${{ env.DMG_NAME }}
-          git commit -m "Add ${{ env.DMG_NAME }} for release ${{ needs.create-release.outputs.tag_name }}"
-          git push origin main
+          # Upload the DMG as a release asset
+          curl -X POST \
+            -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+            -H "Content-Type: application/x-apple-diskimage" \
+            "${UPLOAD_URL}?name=${{ env.DMG_NAME }}" \
+            --data-binary @"${{ env.DMG_PATH }}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
