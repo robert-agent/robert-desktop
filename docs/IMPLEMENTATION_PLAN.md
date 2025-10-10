@@ -1012,6 +1012,365 @@ impl Executor {
 - Database for job queue (SQLite/PostgreSQL)
 - Job scheduler
 
+## Roadmap: Workflow Learning System (Future)
+
+### Phase 9: AI Agent Workflow Learning (v3.0)
+
+**Overview:**
+Enable AI agents to learn, document, and iteratively improve website navigation workflows without broad exploration. Agents build and share knowledge of proven navigation paths with empirical confidence scores.
+
+**Goals:**
+- Record detailed execution sessions (screenshots + DOM + transcripts)
+- Generate workflow graphs from session analysis
+- Confidence-based selector management
+- Multi-agent knowledge sharing
+- Automatic error recovery strategies
+
+**Components:**
+
+#### 9.1: Session Recording System
+
+**Tasks:**
+1. Implement frame capture during execution:
+   - Screenshot capture before/after each action
+   - DOM snapshot extraction
+   - Interactive element detection and bounding boxes
+   - Action metadata (selector, type, input data)
+   - Natural language transcript generation
+   - State change tracking (URL, network, DOM mutations)
+   - Verification indicators (success/failure)
+
+2. Session storage:
+   - JSON format for session metadata and frames
+   - Organized directory structure (domain/workflow/session)
+   - Screenshot and DOM file management
+   - Session deduplication (hash-based)
+
+3. Rust implementation:
+   ```rust
+   pub struct SessionRecorder {
+       session_id: Uuid,
+       workflow_name: String,
+       frames: Vec<Frame>,
+   }
+
+   pub struct Frame {
+       frame_id: usize,
+       timestamp: DateTime<Utc>,
+       screenshot: ScreenshotData,
+       dom: DomSnapshot,
+       action: ActionMetadata,
+       transcript: Transcript,
+       state_changes: StateChanges,
+       verification: VerificationResult,
+       learning: LearningData,
+   }
+   ```
+
+**Deliverables:**
+- Session recording integrated into executor
+- Frame capture system
+- JSON session format (.frames.json)
+- Storage and retrieval system
+
+#### 9.2: Workflow Graph Generation
+
+**Tasks:**
+1. Session analysis engine:
+   - Parse multiple session frames
+   - Extract nodes (pages, elements, actions)
+   - Extract edges (transitions, actions, wait conditions)
+   - Calculate selector stability scores
+   - Identify alternative paths
+   - Document error patterns and recovery
+
+2. Workflow graph builder:
+   - Generate Markdown workflow format (.workflow.md)
+   - Include metadata (domain, version, success rate, tested sessions)
+   - Define nodes with selectors and URL patterns
+   - Define edges with actions, confidence scores, success indicators
+   - Generate Mermaid diagrams for visualization
+   - Document error recovery strategies
+
+3. Rust implementation:
+   ```rust
+   pub struct WorkflowAnalyzer {
+       sessions: Vec<Session>,
+   }
+
+   impl WorkflowAnalyzer {
+       pub fn analyze(&self) -> WorkflowGraph {
+           let nodes = self.extract_nodes();
+           let edges = self.extract_edges();
+           let confidence = self.calculate_confidence_scores();
+           let alternatives = self.discover_alternative_paths();
+
+           WorkflowGraph {
+               metadata: self.build_metadata(),
+               nodes,
+               edges,
+               confidence_scores: confidence,
+               alternative_paths: alternatives,
+               error_recovery: self.extract_error_recovery(),
+           }
+       }
+   }
+   ```
+
+**Deliverables:**
+- Workflow graph analyzer
+- Markdown generation from sessions
+- Confidence score calculation
+- Alternative path discovery
+
+#### 9.3: Confidence-Based Execution
+
+**Tasks:**
+1. Workflow loader:
+   - Parse .workflow.md files
+   - Load confidence scores and alternatives
+   - Build execution plan from graph
+
+2. Smart selector resolution:
+   - Choose highest-confidence selectors
+   - Fallback to alternatives on failure
+   - Update confidence scores after execution
+   - Detect selector degradation
+
+3. Rust implementation:
+   ```rust
+   pub struct WorkflowExecutor {
+       workflow: WorkflowGraph,
+       driver: ChromeDriver,
+   }
+
+   impl WorkflowExecutor {
+       pub async fn execute(&mut self) -> Result<()> {
+           // Load workflow graph
+           let path = self.workflow.get_optimal_path();
+
+           for edge in path {
+               // Use highest confidence selector
+               let selector = edge.get_best_selector();
+
+               // Execute with fallback
+               match self.execute_action(&edge, &selector).await {
+                   Ok(_) => {
+                       // Update confidence (success)
+                       edge.update_confidence(selector, true);
+                   }
+                   Err(_) => {
+                       // Try alternative selectors
+                       for alt in edge.alternative_selectors() {
+                           if self.execute_action(&edge, alt).await.is_ok() {
+                               edge.update_confidence(alt, true);
+                               break;
+                           }
+                       }
+                   }
+               }
+           }
+
+           Ok(())
+       }
+   }
+   ```
+
+**Deliverables:**
+- Workflow-guided execution
+- Confidence-based selector choice
+- Automatic fallback system
+- Real-time confidence updates
+
+#### 9.4: Knowledge Sharing & Versioning
+
+**Tasks:**
+1. Workflow versioning:
+   - Semantic versioning for workflows
+   - Git-based version control
+   - Workflow diff and merge logic
+   - Change tracking and history
+
+2. Multi-agent knowledge merge:
+   - Combine alternative selectors from multiple agents
+   - Weighted confidence averaging (by session count)
+   - Merge error recovery strategies
+   - Resolve conflicts (highest success rate wins)
+
+3. Community workflow repository:
+   - Centralized workflow storage
+   - Domain-organized structure
+   - Pull/push workflow updates
+   - Workflow discovery and search
+
+**Deliverables:**
+- Workflow version control
+- Multi-agent merge logic
+- Community repository integration
+- Workflow marketplace (future)
+
+#### 9.5: Error Recovery & Learning
+
+**Tasks:**
+1. Error pattern detection:
+   - Classify errors from sessions
+   - Identify recovery strategies that worked
+   - Build error recovery library
+
+2. Auto-recovery implementation:
+   - Apply documented recovery strategies
+   - Fall back to alternative paths
+   - Rate limit handling
+   - Selector not found recovery
+
+3. Continuous learning:
+   - Update workflows after each execution
+   - Improve confidence scores over time
+   - Discover new alternative paths
+   - Prune low-confidence selectors
+
+**Deliverables:**
+- Error classification system
+- Recovery strategy library
+- Auto-recovery execution
+- Continuous learning loop
+
+### File Formats
+
+**1. Workflow Graph (.workflow.md):**
+```markdown
+---
+domain: github.com
+workflow_name: create_repository
+version: 1.0.0
+success_rate: 0.98
+tested_sessions: 45
+---
+
+## Edge: github_home → new_repo_button
+**Action**: click
+**Selector**: `[data-test-selector="global-create-menu-button"]`
+**Confidence**: 0.98
+**Success Indicators**: Dropdown menu becomes visible
+**Alternative Selectors**: ["button[aria-label='Create new...']"]
+```
+
+**2. Step Frame (.frames.json):**
+```json
+{
+  "metadata": {
+    "domain": "github.com",
+    "workflow_name": "create_repository",
+    "session_id": "abc123",
+    "success": true
+  },
+  "frames": [
+    {
+      "frame_id": 0,
+      "screenshot": {"path": "./screenshots/frame_0000.png"},
+      "dom": {"url": "https://github.com", "html_path": "./dom/frame_0000.html"},
+      "action": {
+        "type": "click",
+        "target": {"selector": "[data-test-selector='create-button']"}
+      },
+      "transcript": {
+        "action_description": "Clicking the '+' button",
+        "reasoning": "Standard entry point",
+        "expected_outcome": "Dropdown appears"
+      },
+      "learning": {
+        "selector_stability": 0.98,
+        "action_reliability": 0.96
+      }
+    }
+  ]
+}
+```
+
+### Integration with Existing System
+
+**Additions to Project Structure:**
+```
+crates/
+├── robert-webdriver/
+│   ├── src/
+│   │   ├── workflow/           # NEW
+│   │   │   ├── mod.rs
+│   │   │   ├── recorder.rs     # Session recording
+│   │   │   ├── frame.rs        # Frame capture
+│   │   │   ├── analyzer.rs     # Workflow analysis
+│   │   │   ├── graph.rs        # Graph generation
+│   │   │   ├── executor.rs     # Workflow-guided execution
+│   │   │   ├── learning.rs     # Confidence updates
+│   │   │   └── formats.rs      # File format parsing
+│   │   └── ...
+├── workflows/                  # NEW - Workflow storage
+│   ├── github.com/
+│   │   ├── create_repository/
+│   │   │   ├── *.workflow.md
+│   │   │   └── session_*/
+│   │   │       ├── *.frames.json
+│   │   │       ├── screenshots/
+│   │   │       └── dom/
+│   └── ...
+```
+
+**New Dependencies:**
+```toml
+# Add to robert-webdriver/Cargo.toml
+pulldown-cmark = "0.9"          # Markdown parsing
+comrak = "0.17"                 # Markdown generation
+semver = "1.0"                  # Version handling
+petgraph = "0.6"                # Graph algorithms
+git2 = "0.17"                   # Git integration (optional)
+```
+
+### Success Criteria
+
+- [ ] Sessions recorded with full frame capture
+- [ ] Workflow graphs generated from sessions
+- [ ] Confidence scores calculated and updated
+- [ ] Workflow-guided execution working
+- [ ] Alternative selector fallback functional
+- [ ] Multi-agent knowledge merging
+- [ ] Error recovery strategies applied
+- [ ] Continuous learning loop operational
+- [ ] Workflows improve over time (success rate increases)
+
+### Timeline
+
+- **Phase 9.1**: 2 weeks (Session recording)
+- **Phase 9.2**: 2 weeks (Workflow graph generation)
+- **Phase 9.3**: 2 weeks (Confidence-based execution)
+- **Phase 9.4**: 1 week (Knowledge sharing)
+- **Phase 9.5**: 1 week (Error recovery & learning)
+
+**Total**: 8 weeks for complete workflow learning system
+
+### Benefits
+
+**For Agents:**
+- No exploration needed - follow proven paths
+- Higher reliability with empirical confidence
+- Automatic error recovery
+- Learn from every execution
+- Share knowledge across instances
+
+**For Users:**
+- Faster automation setup
+- More reliable workflows
+- Transparent agent behavior (view frames/graphs)
+- Workflows improve over time
+- Community can share workflow knowledge
+
+**Documentation:**
+Complete format specifications available in:
+- `/agent-formats/specs/WORKFLOW_GRAPH_SCHEMA.md` - Graph format spec
+- `/agent-formats/specs/STEP_FRAME_SCHEMA.md` - Frame format spec
+- `/agent-formats/specs/AGENT_WORKFLOW_STANDARDS.md` - Integration guide
+- `/agent-formats/README.md` - Overview and examples
+- `/agent-formats/QUICK_REFERENCE.md` - Quick reference summary
+
 ## Success Criteria
 
 ### Functional
