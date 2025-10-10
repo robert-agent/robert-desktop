@@ -198,7 +198,12 @@ impl WorkflowExecutor {
             );
 
             for (i, cmd) in cdp_script.cdp_commands.iter().enumerate() {
-                log::info!("  {}. {} - {}", i + 1, cmd.method, cmd.description.as_deref().unwrap_or(""));
+                log::info!(
+                    "  {}. {} - {}",
+                    i + 1,
+                    cmd.method,
+                    cmd.description.as_deref().unwrap_or("")
+                );
             }
 
             log::info!("🚀 Executing CDP script...");
