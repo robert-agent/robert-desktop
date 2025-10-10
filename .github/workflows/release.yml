@@ -150,7 +150,7 @@ jobs:
       - name: Rename DMG
         working-directory: crates/robert-app
         run: |
-          DMG_PATH=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -n 1)
+          DMG_PATH=$(find ../../target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -n 1)
           if [ -z "$DMG_PATH" ]; then
             echo "Error: No DMG file found"
             exit 1
