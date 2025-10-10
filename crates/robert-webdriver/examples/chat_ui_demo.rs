@@ -65,9 +65,7 @@ async fn main() -> anyhow::Result<()> {
 
     if messages.iter().any(|m| m.sender == "user") {
         println!("\n✅ User sent feedback!");
-        driver
-            .send_chat_message("Thanks for the feedback!")
-            .await?;
+        driver.send_chat_message("Thanks for the feedback!").await?;
     } else {
         println!("\n⏭️  No user messages received (that's okay!)");
     }

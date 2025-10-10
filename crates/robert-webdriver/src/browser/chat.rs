@@ -69,7 +69,10 @@ impl ChatUI {
         }
 
         // Escape the message for JavaScript
-        let escaped_message = message.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
+        let escaped_message = message
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n");
 
         let script = format!(
             r#"
@@ -88,10 +91,7 @@ impl ChatUI {
     }
 
     /// Retrieve all messages from the chat UI
-    pub async fn get_messages(
-        &self,
-        page: &chromiumoxide::page::Page,
-    ) -> Result<Vec<ChatMessage>> {
+    pub async fn get_messages(&self, page: &chromiumoxide::page::Page) -> Result<Vec<ChatMessage>> {
         if !self.enabled {
             return Ok(Vec::new());
         }

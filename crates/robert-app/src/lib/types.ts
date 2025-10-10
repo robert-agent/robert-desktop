@@ -34,3 +34,20 @@ export interface NavigationResult {
   title: string;
   message: string;
 }
+
+// Developer mode types
+export interface SystemPaths {
+  installation_dir: string;
+  config_dir: string;
+  data_dir: string;
+  cache_dir: string;
+  temp_dir: string;
+  current_dir: string;
+  chrome_path: string | null;
+}
+
+export interface TestServerStatus {
+  running: boolean;
+  url: string | null;
+  port: number | null;
+}
