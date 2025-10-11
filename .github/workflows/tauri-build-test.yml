@@ -66,12 +66,10 @@ jobs:
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build Tauri app (production)
+      - name: Build Tauri app (production, skip updater)
         working-directory: crates/robert-app
-        run: bunx tauri build --target ${{ matrix.target }}
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: bunx tauri build --target ${{ matrix.target }} --bundles app,dmg
+        # Skip updater bundles to avoid requiring signing keys for test builds
 
       - name: Verify build artifacts (macOS)
         if: matrix.platform == 'macos-latest'
