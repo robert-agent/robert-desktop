@@ -168,6 +168,84 @@ impl ChatUI {
 
         Ok(())
     }
+
+    /// Get unprocessed messages from the chat (messages waiting for agent response)
+    pub async fn get_unprocessed_messages(&self, page: &chromiumoxide::page::Page) -> Result<Vec<ChatMessage>> {
+        if !self.enabled {
+            return Ok(Vec::new());
+        }
+
+        let script = r#"
+            window.__ROBERT_UNPROCESSED_MESSAGES__ || []
+        "#;
+
+        let result = page
+            .evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to get unprocessed messages: {}", e)))?;
+
+        let messages: Vec<ChatMessage> = result
+            .into_value()
+            .map_err(|e| BrowserError::Other(format!("Failed to parse unprocessed messages: {}", e)))?;
+
+        Ok(messages)
+    }
+
+    /// Clear unprocessed messages after they have been handled
+    pub async fn clear_unprocessed_messages(&self, page: &chromiumoxide::page::Page) -> Result<()> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        let script = r#"
+            window.__ROBERT_UNPROCESSED_MESSAGES__ = [];
+        "#;
+
+        page.evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to clear unprocessed messages: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Get feedback submissions from users
+    pub async fn get_feedback(&self, page: &chromiumoxide::page::Page) -> Result<Vec<UserFeedback>> {
+        if !self.enabled {
+            return Ok(Vec::new());
+        }
+
+        let script = r#"
+            window.__ROBERT_FEEDBACK__ || []
+        "#;
+
+        let result = page
+            .evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to get feedback: {}", e)))?;
+
+        let feedback: Vec<UserFeedback> = result
+            .into_value()
+            .map_err(|e| BrowserError::Other(format!("Failed to parse feedback: {}", e)))?;
+
+        Ok(feedback)
+    }
+
+    /// Clear feedback after it has been processed
+    pub async fn clear_feedback(&self, page: &chromiumoxide::page::Page) -> Result<()> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        let script = r#"
+            window.__ROBERT_FEEDBACK__ = [];
+        "#;
+
+        page.evaluate(script)
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to clear feedback: {}", e)))?;
+
+        Ok(())
+    }
 }
 
 impl Default for ChatUI {
@@ -181,6 +259,19 @@ impl Default for ChatUI {
 pub struct ChatMessage {
     pub text: String,
     pub sender: String,
+    pub timestamp: u64,
+}
+
+/// Represents user feedback on an agent action
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserFeedback {
+    pub action_id: String,
+    pub positive: bool,
+    pub comment: Option<String>,
+    pub agent_name: String,
+    pub original_request: String,
+    pub error_description: Option<String>,
     pub timestamp: u64,
 }
 
