@@ -253,7 +253,8 @@ async fn process_chat_message_internal(
 
         log::info!("🎬 Calling capture_step_frame...");
         // Capture the step frame
-        let capture_result = capture_step_frame(drv, 0, 0, &options, Some(message.clone()), action).await;
+        let capture_result =
+            capture_step_frame(drv, 0, 0, &options, Some(message.clone()), action).await;
         log::info!("📦 capture_step_frame returned");
 
         match capture_result {
@@ -264,7 +265,12 @@ async fn process_chat_message_internal(
                     format!(
                         "Captured step frame: {} KB screenshot, {} KB HTML",
                         step_frame.screenshot.size_bytes / 1024,
-                        step_frame.dom.html_path.as_ref().map(|_| "saved").unwrap_or("none")
+                        step_frame
+                            .dom
+                            .html_path
+                            .as_ref()
+                            .map(|_| "saved")
+                            .unwrap_or("none")
                     ),
                 )
                 .ok();

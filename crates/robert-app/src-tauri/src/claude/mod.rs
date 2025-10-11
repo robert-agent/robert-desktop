@@ -142,13 +142,15 @@ fn classify_claude_error(stderr: &str, exit_code: i32) -> ClaudeError {
     }
 
     // Check for model availability
-    if stderr_lower.contains("model") && (stderr_lower.contains("not available") || stderr_lower.contains("not found"))
+    if stderr_lower.contains("model")
+        && (stderr_lower.contains("not available") || stderr_lower.contains("not found"))
     {
         return ClaudeError::ModelNotAvailable(stderr.to_string());
     }
 
     // Check for invalid input
-    if stderr_lower.contains("invalid") && (stderr_lower.contains("input") || stderr_lower.contains("argument"))
+    if stderr_lower.contains("invalid")
+        && (stderr_lower.contains("input") || stderr_lower.contains("argument"))
     {
         return ClaudeError::InvalidInput(stderr.to_string());
     }
@@ -192,7 +194,10 @@ impl ClaudeClient {
         let output = self.run_command(&input, false).await?;
 
         log::debug!("Claude CLI output length: {} bytes", output.len());
-        log::debug!("Claude CLI raw output (first 500 chars): {}", &output.chars().take(500).collect::<String>());
+        log::debug!(
+            "Claude CLI raw output (first 500 chars): {}",
+            &output.chars().take(500).collect::<String>()
+        );
 
         // Parse JSON response
         let response: ClaudeResponse =
@@ -269,7 +274,10 @@ impl ClaudeClient {
             prompt.push_str("```html\n");
             // Truncate HTML if it's too large (Claude has token limits)
             if html.len() > 100_000 {
-                log::warn!("⚠️  HTML content is large ({} bytes), truncating to 100KB", html.len());
+                log::warn!(
+                    "⚠️  HTML content is large ({} bytes), truncating to 100KB",
+                    html.len()
+                );
                 prompt.push_str(&html[..100_000]);
                 prompt.push_str("\n... [truncated]");
             } else {
@@ -351,7 +359,10 @@ impl ClaudeClient {
         log::debug!("Building prompt...");
         let prompt = self.build_prompt(input);
         log::debug!("Prompt length: {} chars", prompt.len());
-        log::debug!("Prompt preview (first 200 chars): {}", &prompt.chars().take(200).collect::<String>());
+        log::debug!(
+            "Prompt preview (first 200 chars): {}",
+            &prompt.chars().take(200).collect::<String>()
+        );
 
         // Add prompt as the final argument
         cmd.arg(&prompt);

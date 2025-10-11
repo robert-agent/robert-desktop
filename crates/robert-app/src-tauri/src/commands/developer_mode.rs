@@ -160,20 +160,15 @@ pub async fn dev_capture_screenshot(
     let session_dir = base_dir.join(&session_id);
     log::debug!("Screenshot session directory: {:?}", session_dir);
 
-    tokio::fs::create_dir_all(&session_dir)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Failed to create screenshot directory: {}", e);
-            format!("Failed to create screenshot directory: {}", e)
-        })?;
+    tokio::fs::create_dir_all(&session_dir).await.map_err(|e| {
+        log::error!("❌ Failed to create screenshot directory: {}", e);
+        format!("Failed to create screenshot directory: {}", e)
+    })?;
 
     // Generate filename with detailed timestamp (for proper ordering)
     let now = chrono::Utc::now();
     let timestamp = now.timestamp();
-    let filename = format!(
-        "screenshot_{}.png",
-        now.format("%Y%m%d_%H%M%S_%3f")
-    );
+    let filename = format!("screenshot_{}.png", now.format("%Y%m%d_%H%M%S_%3f"));
     let screenshot_path = session_dir.join(&filename);
     log::debug!("Target path: {:?}", screenshot_path);
 
@@ -189,18 +184,20 @@ pub async fn dev_capture_screenshot(
         })?;
 
     // Verify and get file info
-    let metadata = tokio::fs::metadata(&screenshot_path)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Screenshot file not found after capture: {}", e);
-            format!("Failed to verify screenshot file: {}", e)
-        })?;
+    let metadata = tokio::fs::metadata(&screenshot_path).await.map_err(|e| {
+        log::error!("❌ Screenshot file not found after capture: {}", e);
+        format!("Failed to verify screenshot file: {}", e)
+    })?;
 
     let size_bytes = metadata.len();
     let size_kb = size_bytes / 1024;
 
     log::info!("✓ Screenshot captured: {} ({} KB)", filename, size_kb);
-    emit_success(&app, format!("Screenshot captured: {} ({} KB)", filename, size_kb)).ok();
+    emit_success(
+        &app,
+        format!("Screenshot captured: {} ({} KB)", filename, size_kb),
+    )
+    .ok();
 
     Ok(ScreenshotInfo {
         path: screenshot_path.to_string_lossy().to_string(),
@@ -226,7 +223,10 @@ pub async fn dev_list_screenshots(
     let session_dir = base_dir.join(&session_id);
 
     if !session_dir.exists() {
-        log::debug!("Screenshot directory doesn't exist yet for session {}", session_id);
+        log::debug!(
+            "Screenshot directory doesn't exist yet for session {}",
+            session_id
+        );
         return Ok(vec![]);
     }
 
@@ -235,7 +235,11 @@ pub async fn dev_list_screenshots(
         .await
         .map_err(|e| format!("Failed to read screenshot directory: {}", e))?;
 
-    while let Some(entry) = entries.next_entry().await.map_err(|e| format!("Failed to read entry: {}", e))? {
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| format!("Failed to read entry: {}", e))?
+    {
         let path = entry.path();
 
         // Only include PNG files with our naming pattern
@@ -268,7 +272,11 @@ pub async fn dev_list_screenshots(
     // Sort by timestamp (newest first)
     screenshots.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
 
-    log::debug!("✓ Found {} screenshots in session {}", screenshots.len(), session_id);
+    log::debug!(
+        "✓ Found {} screenshots in session {}",
+        screenshots.len(),
+        session_id
+    );
     Ok(screenshots)
 }
 
@@ -288,7 +296,10 @@ pub async fn dev_delete_all_screenshots(
     let session_dir = base_dir.join(&session_id);
 
     if !session_dir.exists() {
-        log::debug!("Screenshot directory doesn't exist for session {}", session_id);
+        log::debug!(
+            "Screenshot directory doesn't exist for session {}",
+            session_id
+        );
         return Ok(0);
     }
 
@@ -297,7 +308,11 @@ pub async fn dev_delete_all_screenshots(
         .await
         .map_err(|e| format!("Failed to read screenshot directory: {}", e))?;
 
-    while let Some(entry) = entries.next_entry().await.map_err(|e| format!("Failed to read entry: {}", e))? {
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .map_err(|e| format!("Failed to read entry: {}", e))?
+    {
         let path = entry.path();
 
         // Only delete PNG files with our naming pattern
@@ -316,7 +331,11 @@ pub async fn dev_delete_all_screenshots(
         }
     }
 
-    log::info!("✓ Deleted {} screenshot(s) from session {}", count, session_id);
+    log::info!(
+        "✓ Deleted {} screenshot(s) from session {}",
+        count,
+        session_id
+    );
     emit_success(&app, format!("Deleted {} screenshot(s)", count)).ok();
 
     Ok(count)

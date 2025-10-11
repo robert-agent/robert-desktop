@@ -232,7 +232,10 @@ pub async fn capture_step_frame(
     action_info: Option<ActionInfo>,
 ) -> Result<StepFrame> {
     log::info!("╔═══════════════════════════════════════════════════════════╗");
-    log::info!("║  📸 CAPTURING STEP FRAME {}                              ║", frame_id);
+    log::info!(
+        "║  📸 CAPTURING STEP FRAME {}                              ║",
+        frame_id
+    );
     log::info!("╚═══════════════════════════════════════════════════════════╝");
 
     if let Some(ref instruction) = user_instruction {

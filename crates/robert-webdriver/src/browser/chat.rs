@@ -170,7 +170,10 @@ impl ChatUI {
     }
 
     /// Get unprocessed messages from the chat (messages waiting for agent response)
-    pub async fn get_unprocessed_messages(&self, page: &chromiumoxide::page::Page) -> Result<Vec<ChatMessage>> {
+    pub async fn get_unprocessed_messages(
+        &self,
+        page: &chromiumoxide::page::Page,
+    ) -> Result<Vec<ChatMessage>> {
         if !self.enabled {
             return Ok(Vec::new());
         }
@@ -179,14 +182,13 @@ impl ChatUI {
             window.__ROBERT_UNPROCESSED_MESSAGES__ || []
         "#;
 
-        let result = page
-            .evaluate(script)
-            .await
-            .map_err(|e| BrowserError::Other(format!("Failed to get unprocessed messages: {}", e)))?;
+        let result = page.evaluate(script).await.map_err(|e| {
+            BrowserError::Other(format!("Failed to get unprocessed messages: {}", e))
+        })?;
 
-        let messages: Vec<ChatMessage> = result
-            .into_value()
-            .map_err(|e| BrowserError::Other(format!("Failed to parse unprocessed messages: {}", e)))?;
+        let messages: Vec<ChatMessage> = result.into_value().map_err(|e| {
+            BrowserError::Other(format!("Failed to parse unprocessed messages: {}", e))
+        })?;
 
         Ok(messages)
     }
@@ -201,15 +203,18 @@ impl ChatUI {
             window.__ROBERT_UNPROCESSED_MESSAGES__ = [];
         "#;
 
-        page.evaluate(script)
-            .await
-            .map_err(|e| BrowserError::Other(format!("Failed to clear unprocessed messages: {}", e)))?;
+        page.evaluate(script).await.map_err(|e| {
+            BrowserError::Other(format!("Failed to clear unprocessed messages: {}", e))
+        })?;
 
         Ok(())
     }
 
     /// Get feedback submissions from users
-    pub async fn get_feedback(&self, page: &chromiumoxide::page::Page) -> Result<Vec<UserFeedback>> {
+    pub async fn get_feedback(
+        &self,
+        page: &chromiumoxide::page::Page,
+    ) -> Result<Vec<UserFeedback>> {
         if !self.enabled {
             return Ok(Vec::new());
         }
