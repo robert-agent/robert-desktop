@@ -561,12 +561,12 @@ pub async fn ask_claude(
     // Execute Claude
     match client.execute(input).await {
         Ok(response) => {
-            let preview = if response.text.len() > 200 {
-                format!("{}...", &response.text[..200])
+            let preview = if response.text().len() > 200 {
+                format!("{}...", &response.text()[..200])
             } else {
-                response.text.clone()
+                response.text().to_string()
             };
-            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_claude_response(&app, preview, response.text().len()).ok();
             emit_success(&app, "Claude response received").ok();
             Ok(response)
         }
@@ -650,12 +650,12 @@ pub async fn ask_claude_about_page(
     // Execute Claude
     let result = match client.execute(input).await {
         Ok(response) => {
-            let preview = if response.text.len() > 200 {
-                format!("{}...", &response.text[..200])
+            let preview = if response.text().len() > 200 {
+                format!("{}...", &response.text()[..200])
             } else {
-                response.text.clone()
+                response.text().to_string()
             };
-            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_claude_response(&app, preview, response.text().len()).ok();
             emit_success(&app, "Claude response received").ok();
             Ok(response)
         }

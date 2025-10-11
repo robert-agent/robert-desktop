@@ -147,16 +147,16 @@ impl WorkflowExecutor {
         log::info!("╔═══════════════════════════════════════════════════════════╗");
         log::info!("║  ✨ INFERENCE RESPONSE RECEIVED                           ║");
         log::info!("╚═══════════════════════════════════════════════════════════╝");
-        log::info!("📏 Response length: {} chars", claude_response.text.len());
+        log::info!("📏 Response length: {} chars", claude_response.text().len());
         log::debug!(
             "📋 Response preview: {}...",
-            &claude_response.text.chars().take(200).collect::<String>()
+            &claude_response.text().chars().take(200).collect::<String>()
         );
 
         // Parse the generated script
         log::info!("🔍 Parsing CDP script from JSON...");
         let cdp_script: robert_webdriver::CdpScript =
-            match serde_json::from_str::<robert_webdriver::CdpScript>(&claude_response.text) {
+            match serde_json::from_str::<robert_webdriver::CdpScript>(claude_response.text()) {
                 Ok(script) => {
                     log::info!("✓ CDP script parsed successfully");
                     log::info!("📊 Commands in script: {}", script.cdp_commands.len());
@@ -169,7 +169,7 @@ impl WorkflowExecutor {
                         success: false,
                         workflow_type: WorkflowType::CdpAutomation,
                         message: "Failed to parse CDP script JSON".to_string(),
-                        cdp_script: Some(claude_response.text.clone()),
+                        cdp_script: Some(claude_response.text().to_string()),
                         execution_report: None,
                         error: Some(format!("Parse error: {}", e)),
                     });
@@ -185,7 +185,7 @@ impl WorkflowExecutor {
                 success: false,
                 workflow_type: WorkflowType::CdpAutomation,
                 message: "CDP script validation failed".to_string(),
-                cdp_script: Some(claude_response.text.clone()),
+                cdp_script: Some(claude_response.text().to_string()),
                 execution_report: None,
                 error: Some(format!("Validation error: {}", e)),
             });
@@ -307,7 +307,7 @@ impl WorkflowExecutor {
             .await?;
 
         // Try to parse the response as TOML
-        let updated_config_text = claude_response.text.trim();
+        let updated_config_text = claude_response.text().trim();
 
         // Remove markdown code blocks if present
         let cleaned_toml = if updated_config_text.starts_with("```toml") {
