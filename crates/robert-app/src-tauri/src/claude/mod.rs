@@ -88,13 +88,45 @@ pub struct ClaudeInput {
 
 /// Response from Claude CLI (JSON format)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ClaudeResponse {
-    /// The response text from Claude
-    pub text: String,
-    /// Optional structured data
+    /// Response type
+    #[serde(rename = "type")]
+    pub response_type: String,
+
+    /// Response subtype
     #[serde(default)]
-    pub metadata: Option<serde_json::Value>,
+    pub subtype: Option<String>,
+
+    /// Whether this is an error response
+    #[serde(default)]
+    pub is_error: bool,
+
+    /// The result/response text from Claude
+    pub result: String,
+
+    /// Session ID
+    #[serde(default)]
+    pub session_id: Option<String>,
+
+    /// Duration in milliseconds
+    #[serde(default)]
+    pub duration_ms: Option<u64>,
+
+    /// Usage information
+    #[serde(default)]
+    pub usage: Option<serde_json::Value>,
+
+    /// Permission denials
+    #[serde(default)]
+    pub permission_denials: Option<Vec<serde_json::Value>>,
+}
+
+impl ClaudeResponse {
+    /// Get the text content (for backwards compatibility)
+    pub fn text(&self) -> &str {
+        &self.result
+    }
 }
 
 /// Streaming response chunk from Claude CLI
@@ -110,6 +142,52 @@ pub struct ClaudeStreamChunk {
     /// Metadata for the chunk
     #[serde(default)]
     pub metadata: Option<serde_json::Value>,
+}
+
+/// Analyze result message from JSON response and classify the error
+fn classify_claude_error_from_result(result: &str, stderr: &str, exit_code: i32) -> ClaudeError {
+    let result_lower = result.to_lowercase();
+
+    // Check for rate limiting (e.g., "5-hour limit reached")
+    if result_lower.contains("limit reached")
+        || result_lower.contains("rate limit")
+        || result_lower.contains("hour limit")
+        || result_lower.contains("usage limit")
+    {
+        return ClaudeError::RateLimitExceeded(result.to_string());
+    }
+
+    // Check for authentication issues
+    if result_lower.contains("not authenticated")
+        || result_lower.contains("authentication")
+        || result_lower.contains("login")
+        || result_lower.contains("please sign in")
+    {
+        return ClaudeError::NotAuthenticated;
+    }
+
+    // Check for permission issues
+    if result_lower.contains("permission denied")
+        || result_lower.contains("access denied")
+        || result_lower.contains("unauthorized")
+    {
+        return ClaudeError::PermissionDenied(result.to_string());
+    }
+
+    // Check for model availability
+    if result_lower.contains("model")
+        && (result_lower.contains("not available") || result_lower.contains("not found"))
+    {
+        return ClaudeError::ModelNotAvailable(result.to_string());
+    }
+
+    // Check for timeout
+    if result_lower.contains("timeout") || result_lower.contains("timed out") {
+        return ClaudeError::Timeout;
+    }
+
+    // Fall back to stderr-based classification
+    classify_claude_error(stderr, exit_code)
 }
 
 /// Analyze stderr output and classify the error
@@ -204,7 +282,7 @@ impl ClaudeClient {
             serde_json::from_str(&output).context("Failed to parse Claude CLI response as JSON")?;
 
         log::info!("✅ Claude CLI executed successfully");
-        log::debug!("Response text length: {} chars", response.text.len());
+        log::debug!("Response text length: {} chars", response.text().len());
 
         Ok(response)
     }
@@ -375,27 +453,52 @@ impl ClaudeClient {
         log::debug!("Stdout length: {} bytes", output.stdout.len());
         log::debug!("Stderr length: {} bytes", output.stderr.len());
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let exit_code = output.status.code().unwrap_or(-1);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let exit_code = output.status.code().unwrap_or(-1);
 
+        // Try to parse JSON response even if exit code is non-zero
+        // Claude CLI may return JSON with error information
+        if let Ok(json_response) = serde_json::from_str::<ClaudeResponse>(&stdout) {
+            log::debug!("Parsed JSON response from Claude CLI");
+
+            // Check if the response indicates an error
+            if json_response.is_error || !output.status.success() {
+                let error_msg = &json_response.result;
+                log::error!("❌ Claude CLI returned error!");
+                log::error!("Exit code: {}", exit_code);
+                log::error!("Error message: {}", error_msg);
+                log::error!("Stderr: {}", stderr);
+
+                // Classify based on the error message in the result
+                let error = classify_claude_error_from_result(error_msg, &stderr, exit_code);
+                log::error!("Error classification: {:?}", error);
+
+                return Err(anyhow::Error::from(error));
+            }
+
+            // Success - return the JSON output as string
+            log::debug!("✅ Claude CLI completed successfully");
+            return Ok(stdout.to_string());
+        }
+
+        // If we can't parse JSON and exit code is non-zero, it's an error
+        if !output.status.success() {
             log::error!("❌ Claude CLI failed!");
             log::error!("Exit code: {}", exit_code);
             log::error!("Stderr: {}", stderr);
             log::error!("Stdout: {}", stdout);
 
-            // Classify the error
+            // Classify the error using stderr
             let error = classify_claude_error(&stderr, exit_code);
             log::error!("Error classification: {:?}", error);
 
             return Err(anyhow::Error::from(error));
         }
 
-        let result = String::from_utf8_lossy(&output.stdout).to_string();
+        // Success case with non-JSON output (shouldn't happen with --output-format json)
         log::debug!("✅ Claude CLI completed successfully");
-
-        Ok(result)
+        Ok(stdout.to_string())
     }
 
     /// Spawn a streaming command
