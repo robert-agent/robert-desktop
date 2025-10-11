@@ -74,25 +74,43 @@ jobs:
             echo "is_prerelease=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create GitHub Release
+      - name: Create or Update GitHub Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
         with:
-          tag_name: ${{ steps.get_tag.outputs.tag }}
-          release_name: Robert ${{ steps.get_tag.outputs.tag }}
-          draft: true
-          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
-          body: |
-            ## Robert Browser Automation - Release ${{ steps.get_tag.outputs.tag }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = '${{ steps.get_tag.outputs.tag }}';
+            const isPrerelease = ${{ steps.prerelease.outputs.is_prerelease }};
+
+            // Check if release already exists
+            let release;
+            try {
+              const { data } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag
+              });
+              release = data;
+              console.log(`Found existing release: ${release.id}`);
+            } catch (error) {
+              if (error.status === 404) {
+                // Release doesn't exist, create it
+                const { data } = await github.rest.repos.createRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_name: tag,
+                  name: `Robert ${tag}`,
+                  draft: true,
+                  prerelease: isPrerelease,
+                  body: `## Robert Browser Automation - Release ${tag}
 
             **Version:** ${{ steps.get_commit.outputs.version_with_hash }}
-            **Commit:** `${{ steps.get_commit.outputs.short_hash }}`
+            **Commit:** \`${{ steps.get_commit.outputs.short_hash }}\`
 
             ### Downloads
-            - **macOS (Apple Silicon)**: `Robert_${{ steps.get_commit.outputs.version_with_hash }}_aarch64.dmg`
-            - **macOS (Intel)**: `Robert_${{ steps.get_commit.outputs.version_with_hash }}_x64.dmg`
+            - **macOS (Apple Silicon)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_aarch64.dmg\`
+            - **macOS (Intel)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_x64.dmg\`
 
             ### Installation
             1. Download the appropriate DMG file for your system
@@ -100,7 +118,18 @@ jobs:
             3. Launch Robert from Applications
 
             ### Changes
-            <!-- Add release notes here -->
+            <!-- Add release notes here -->`
+                });
+                release = data;
+                console.log(`Created new release: ${release.id}`);
+              } else {
+                throw error;
+              }
+            }
+
+            core.setOutput('upload_url', release.upload_url);
+            core.setOutput('id', release.id);
+            return release.id;
 
   build-macos:
     name: Build macOS
@@ -161,24 +190,55 @@ jobs:
           echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
 
       - name: Upload to GitHub Release
-        uses: actions/upload-release-asset@v1
+        uses: actions/github-script@v7
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DMG_PATH: ${{ env.DMG_PATH }}
+          DMG_NAME: ${{ env.DMG_NAME }}
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ env.DMG_PATH }}
-          asset_name: ${{ env.DMG_NAME }}
-          asset_content_type: application/x-apple-diskimage
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const assetName = process.env.DMG_NAME;
+            const assetPath = process.env.DMG_PATH;
+            const releaseId = ${{ needs.create-release.outputs.release_id }};
+
+            // Check if asset already exists and delete it
+            const { data: assets } = await github.rest.repos.listReleaseAssets({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId
+            });
+
+            const existingAsset = assets.find(asset => asset.name === assetName);
+            if (existingAsset) {
+              console.log(`Deleting existing asset: ${assetName} (ID: ${existingAsset.id})`);
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: existingAsset.id
+              });
+            }
+
+            // Upload the new asset
+            console.log(`Uploading asset: ${assetName}`);
+            await github.rest.repos.uploadReleaseAsset({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: releaseId,
+              name: assetName,
+              data: fs.readFileSync(assetPath)
+            });
 
       - name: Upload to robert-releases repository
         env:
           RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           # Check if release exists in robert-releases
-          RELEASE_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+          RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${{ needs.create-release.outputs.tag_name }}" | \
-            jq -r '.id // empty')
+            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${{ needs.create-release.outputs.tag_name }}")
+
+          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id // empty')
 
           # If release doesn't exist, create it
           if [ -z "$RELEASE_ID" ]; then
@@ -194,16 +254,36 @@ jobs:
                 \"prerelease\": ${{ steps.prerelease.outputs.is_prerelease || 'false' }}
               }")
             RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-            UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
-          else
-            # Get upload URL for existing release
+          fi
+
+          # Get assets for the release
+          ASSETS=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets")
+
+          # Check if asset with same name exists and delete it
+          EXISTING_ASSET_ID=$(echo "$ASSETS" | jq -r ".[] | select(.name == \"${{ env.DMG_NAME }}\") | .id // empty")
+          if [ -n "$EXISTING_ASSET_ID" ]; then
+            echo "Deleting existing asset: ${{ env.DMG_NAME }} (ID: ${EXISTING_ASSET_ID})"
+            curl -X DELETE \
+              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_ASSET_ID}"
+          fi
+
+          # Get upload URL
+          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url // empty')
+          if [ -z "$UPLOAD_URL" ]; then
+            # Fetch it again if we're using an existing release
             UPLOAD_URL=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}" | \
-              jq -r '.upload_url' | sed 's/{?name,label}//')
+              jq -r '.upload_url')
           fi
+          UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?name,label}//')
 
           # Upload the DMG as a release asset
+          echo "Uploading asset: ${{ env.DMG_NAME }}"
           curl -X POST \
             -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
             -H "Content-Type: application/x-apple-diskimage" \
