@@ -7,9 +7,13 @@ pub use developer_mode::*;
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::{CdpValidator, ChromeDriver, ValidationResult};
+use robert_webdriver::{
+    capture_step_frame, ActionInfo, CaptureOptions, CdpValidator, ChatUI, ChromeDriver,
+    ScreenshotFormat, ValidationResult,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +49,13 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
             emit_success(&app, "Chrome is ready for automation").ok();
 
             *driver_lock = Some(driver);
+            drop(driver_lock);
+
+            // Start chat message polling task
+            let state_clone = state.inner().driver.clone();
+            let shutdown_clone = state.inner().chat_poll_shutdown.clone();
+            start_chat_polling(app.clone(), state_clone, shutdown_clone).await;
+
             Ok("Browser launched successfully".to_string())
         }
         Err(e) => {
@@ -53,6 +64,284 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
             Err(error_msg)
         }
     }
+}
+
+/// Start a background task to poll for chat messages
+async fn start_chat_polling(
+    app: AppHandle,
+    driver: Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
+    shutdown_holder: Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+) {
+    log::info!("Starting chat message polling task");
+
+    let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel();
+
+    // Store shutdown channel
+    *shutdown_holder.lock().await = Some(shutdown_tx);
+
+    // Spawn polling task
+    tokio::spawn(async move {
+        let chat_ui = ChatUI::new();
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+
+        loop {
+            tokio::select! {
+                _ = &mut shutdown_rx => {
+                    log::info!("Chat polling task shutting down");
+                    break;
+                }
+                _ = interval.tick() => {
+                    // Check for unprocessed messages
+                    let messages_to_process = {
+                        let driver_lock = driver.lock().await;
+                        if let Some(drv) = driver_lock.as_ref() {
+                            if let Ok(page) = drv.current_page().await {
+                                match chat_ui.get_unprocessed_messages(&page).await {
+                                    Ok(messages) if !messages.is_empty() => {
+                                        log::info!("📬 Found {} unprocessed chat message(s)", messages.len());
+                                        Some(messages)
+                                    }
+                                    Ok(_) => None,
+                                    Err(e) => {
+                                        log::warn!("Error checking for chat messages: {}", e);
+                                        None
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }; // Lock is dropped here
+
+                    // Process messages outside of the lock
+                    if let Some(messages) = messages_to_process {
+                        for msg in &messages {
+                            log::info!("💬 User message: {}", msg.text);
+                            emit_info(&app, format!("Chat message: {}", msg.text)).ok();
+
+                            // Process message through CDP generation workflow
+                            match process_chat_message_internal(
+                                &app,
+                                &driver,
+                                msg.text.clone(),
+                            ).await {
+                                Ok(result) => {
+                                    let response = if result.success {
+                                        result.message
+                                    } else {
+                                        format!("Error: {}", result.error.unwrap_or_else(|| "Unknown error".to_string()))
+                                    };
+
+                                    // Reacquire lock to send response
+                                    let driver_lock = driver.lock().await;
+                                    if let Some(drv) = driver_lock.as_ref() {
+                                        if let Ok(page) = drv.current_page().await {
+                                            if let Err(e) = chat_ui.send_agent_message(&page, &response).await {
+                                                log::error!("Failed to send agent response: {}", e);
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    let error_msg = format!("Workflow failed: {}", e);
+                                    log::error!("{}", error_msg);
+
+                                    // Reacquire lock to send error
+                                    let driver_lock = driver.lock().await;
+                                    if let Some(drv) = driver_lock.as_ref() {
+                                        if let Ok(page) = drv.current_page().await {
+                                            if let Err(e) = chat_ui.send_agent_message(&page, &error_msg).await {
+                                                log::error!("Failed to send error message: {}", e);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Clear processed messages (reacquire lock)
+                        let driver_lock = driver.lock().await;
+                        if let Some(drv) = driver_lock.as_ref() {
+                            if let Ok(page) = drv.current_page().await {
+                                if let Err(e) = chat_ui.clear_unprocessed_messages(&page).await {
+                                    log::error!("Failed to clear unprocessed messages: {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Internal helper to process chat messages (used by polling task)
+async fn process_chat_message_internal(
+    app: &AppHandle,
+    driver: &Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
+    message: String,
+) -> Result<crate::agent::WorkflowResult, String> {
+    use crate::agent::{AgentConfig, WorkflowExecutor, WorkflowType};
+
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  💬 PROCESSING CHAT MESSAGE                               ║");
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+    log::info!("📝 Message: {}", message);
+
+    emit_info(app, "Processing chat message...").ok();
+
+    // Load agent configuration
+    let agent_name = "cdp-generator";
+    let agent_config = {
+        let config_path = AgentConfig::config_path(agent_name)
+            .map_err(|e| format!("Failed to get config path: {}", e))?;
+
+        if config_path.exists() {
+            AgentConfig::load(&config_path)
+                .await
+                .map_err(|e| format!("Failed to load agent config: {}", e))?
+        } else {
+            let config = AgentConfig::default_cdp_agent();
+            config
+                .save(&config_path)
+                .await
+                .map_err(|e| format!("Failed to save agent config: {}", e))?;
+            emit_info(app, format!("Created default config for '{}'", agent_name)).ok();
+            config
+        }
+    };
+
+    log::info!("✓ Agent config loaded: {}", agent_config.name);
+
+    // Capture step frame with screenshot and HTML
+    log::info!("📸 Capturing step frame...");
+    log::debug!("Acquiring driver lock...");
+    let driver_lock = driver.lock().await;
+    log::debug!("Driver lock acquired");
+    let driver_ref = driver_lock.as_ref();
+
+    let (screenshot_path, html_content) = if let Some(drv) = driver_ref {
+        log::debug!("Driver available, setting up capture options...");
+
+        // Set up capture options for step frame
+        let temp_dir = std::env::temp_dir().join("robert-chat");
+        let screenshot_dir = temp_dir.join("screenshots");
+        let dom_dir = temp_dir.join("dom");
+
+        log::debug!("Temp dir: {:?}", temp_dir);
+        log::debug!("Screenshot dir: {:?}", screenshot_dir);
+        log::debug!("DOM dir: {:?}", dom_dir);
+
+        let options = CaptureOptions {
+            screenshot_dir,
+            dom_dir: Some(dom_dir),
+            screenshot_format: ScreenshotFormat::Png,
+            save_html: true,
+            compute_hashes: false, // Don't need hashes for immediate processing
+            extract_interactive_elements: false, // Don't need interactive elements for chat messages
+        };
+
+        log::debug!("Creating action info...");
+        // Create action info
+        let action = Some(ActionInfo {
+            action_type: "user_instruction".to_string(),
+            intent: message.clone(),
+            target: None,
+        });
+
+        log::info!("🎬 Calling capture_step_frame...");
+        // Capture the step frame
+        let capture_result =
+            capture_step_frame(drv, 0, 0, &options, Some(message.clone()), action).await;
+        log::info!("📦 capture_step_frame returned");
+
+        match capture_result {
+            Ok(step_frame) => {
+                log::info!("✅ Step frame captured successfully (match arm)");
+                emit_info(
+                    app,
+                    format!(
+                        "Captured step frame: {} KB screenshot, {} KB HTML",
+                        step_frame.screenshot.size_bytes / 1024,
+                        step_frame
+                            .dom
+                            .html_path
+                            .as_ref()
+                            .map(|_| "saved")
+                            .unwrap_or("none")
+                    ),
+                )
+                .ok();
+
+                // Extract screenshot path and HTML for workflow
+                let screenshot = PathBuf::from(step_frame.screenshot.path);
+
+                // Read HTML from file if saved
+                let html = if let Some(html_path) = step_frame.dom.html_path {
+                    match tokio::fs::read_to_string(&html_path).await {
+                        Ok(content) => Some(content),
+                        Err(e) => {
+                            log::warn!("⚠️  Failed to read HTML from file: {}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                (Some(screenshot), html)
+            }
+            Err(e) => {
+                log::error!("❌ Step frame capture failed (error match arm)");
+                log::error!("Error details: {}", e);
+                log::error!("Error debug: {:?}", e);
+                emit_error(app, "Step frame capture failed", Some(e.to_string())).ok();
+                (None, None)
+            }
+        }
+    } else {
+        log::warn!("⚠️  No driver available (browser not launched)");
+        emit_error(
+            app,
+            "Cannot capture step frame",
+            Some("Browser not launched".to_string()),
+        )
+        .ok();
+        (None, None)
+    };
+
+    log::info!("🚀 Initiating workflow executor...");
+    let executor = WorkflowExecutor::new();
+    emit_claude_processing(app, "Executing CDP generation workflow...").ok();
+
+    log::info!("🔄 Executing workflow...");
+    // Execute workflow
+    let result = executor
+        .execute(
+            WorkflowType::CdpAutomation,
+            message.clone(),
+            &agent_config,
+            screenshot_path,
+            html_content,
+            driver_ref,
+        )
+        .await
+        .map_err(|e| {
+            log::error!("❌ Workflow execution error: {}", e);
+            format!("Workflow execution failed: {}", e)
+        })?;
+
+    log::info!("✅ Workflow execution completed");
+
+    if result.success {
+        emit_success(app, result.message.clone()).ok();
+    } else {
+        emit_error(app, result.message.clone(), result.error.clone()).ok();
+    }
+
+    Ok(result)
 }
 
 /// Navigate to a URL
@@ -89,6 +378,18 @@ pub async fn navigate_to_url(
                 .unwrap_or_else(|_| "Unknown".to_string());
 
             emit_page_loaded(&app, &url, &title).ok();
+
+            // Inject chat UI after page loads
+            let chat_ui = ChatUI::new();
+            if let Ok(page) = driver.current_page().await {
+                if let Err(e) = chat_ui.inject(&page).await {
+                    log::warn!("Failed to inject chat UI: {}", e);
+                } else {
+                    log::info!("Chat UI injected successfully");
+                    emit_info(&app, "Chat UI injected").ok();
+                }
+            }
+
             emit_success(&app, format!("Successfully loaded: {}", title)).ok();
 
             Ok(NavigationResult {
@@ -260,12 +561,12 @@ pub async fn ask_claude(
     // Execute Claude
     match client.execute(input).await {
         Ok(response) => {
-            let preview = if response.text.len() > 200 {
-                format!("{}...", &response.text[..200])
+            let preview = if response.text().len() > 200 {
+                format!("{}...", &response.text()[..200])
             } else {
-                response.text.clone()
+                response.text().to_string()
             };
-            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_claude_response(&app, preview, response.text().len()).ok();
             emit_success(&app, "Claude response received").ok();
             Ok(response)
         }
@@ -349,12 +650,12 @@ pub async fn ask_claude_about_page(
     // Execute Claude
     let result = match client.execute(input).await {
         Ok(response) => {
-            let preview = if response.text.len() > 200 {
-                format!("{}...", &response.text[..200])
+            let preview = if response.text().len() > 200 {
+                format!("{}...", &response.text()[..200])
             } else {
-                response.text.clone()
+                response.text().to_string()
             };
-            emit_claude_response(&app, preview, response.text.len()).ok();
+            emit_claude_response(&app, preview, response.text().len()).ok();
             emit_success(&app, "Claude response received").ok();
             Ok(response)
         }

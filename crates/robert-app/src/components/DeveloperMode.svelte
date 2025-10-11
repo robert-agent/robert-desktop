@@ -7,18 +7,25 @@
     getDevTestServerStatus,
     launchBrowser,
     navigateToUrl,
+    devCaptureScreenshot,
+    devListScreenshots,
+    devDeleteAllScreenshots,
+    devDeleteScreenshot,
   } from '../lib/tauri';
-  import type { SystemPaths, TestServerStatus } from '../lib/types';
+  import type { SystemPaths, TestServerStatus, ScreenshotInfo } from '../lib/types';
 
   let systemPaths: SystemPaths | null = null;
   let serverStatus: TestServerStatus = { running: false, url: null, port: null };
+  let screenshots: ScreenshotInfo[] = [];
   let loading = false;
+  let screenshotLoading = false;
   let error: string | null = null;
   let statusCheckInterval: number | null = null;
 
   onMount(async () => {
     await loadSystemPaths();
     await checkServerStatus();
+    await loadScreenshots();
 
     // Poll server status every 2 seconds
     statusCheckInterval = window.setInterval(async () => {
@@ -101,6 +108,73 @@
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
+  }
+
+  // Screenshot management
+  async function loadScreenshots() {
+    try {
+      screenshots = await devListScreenshots();
+    } catch (e) {
+      console.error('Failed to load screenshots:', e);
+    }
+  }
+
+  async function handleCaptureScreenshot() {
+    try {
+      screenshotLoading = true;
+      error = null;
+      await devCaptureScreenshot();
+      await loadScreenshots();
+    } catch (e) {
+      error = `Failed to capture screenshot: ${e}`;
+      console.error(error);
+    } finally {
+      screenshotLoading = false;
+    }
+  }
+
+  async function handleDeleteScreenshot(path: string) {
+    if (!confirm('Delete this screenshot?')) return;
+
+    try {
+      screenshotLoading = true;
+      error = null;
+      await devDeleteScreenshot(path);
+      await loadScreenshots();
+    } catch (e) {
+      error = `Failed to delete screenshot: ${e}`;
+      console.error(error);
+    } finally {
+      screenshotLoading = false;
+    }
+  }
+
+  async function handleDeleteAllScreenshots() {
+    if (!confirm('Delete all screenshots? This cannot be undone.')) return;
+
+    try {
+      screenshotLoading = true;
+      error = null;
+      const count = await devDeleteAllScreenshots();
+      screenshots = [];
+      console.log(`Deleted ${count} screenshots`);
+    } catch (e) {
+      error = `Failed to delete screenshots: ${e}`;
+      console.error(error);
+    } finally {
+      screenshotLoading = false;
+    }
+  }
+
+  function formatTimestamp(timestamp: number): string {
+    return new Date(timestamp * 1000).toLocaleString();
+  }
+
+  function formatSize(sizeKb: number): string {
+    if (sizeKb < 1024) {
+      return `${sizeKb} KB`;
+    }
+    return `${(sizeKb / 1024).toFixed(2)} MB`;
   }
 </script>
 
@@ -255,6 +329,78 @@
           <li>The test page includes interactive elements for testing automation</li>
           <li>Check the DebugView to see CDP commands being executed</li>
         </ol>
+      </div>
+    {/if}
+  </section>
+
+  <!-- Screenshot Management Section -->
+  <section class="section">
+    <h3>📸 Screenshot Management</h3>
+    <p class="description">
+      Manually capture screenshots for testing and debugging. Screenshots are saved to the temp
+      directory and can be used with Claude API.
+    </p>
+
+    <div class="screenshot-controls">
+      <button
+        class="btn btn-primary"
+        on:click={handleCaptureScreenshot}
+        disabled={screenshotLoading}
+      >
+        {screenshotLoading ? 'Capturing...' : '📸 Save Screenshot'}
+      </button>
+      <button class="btn btn-secondary" on:click={loadScreenshots} disabled={screenshotLoading}>
+        🔄 Refresh List
+      </button>
+      {#if screenshots.length > 0}
+        <button
+          class="btn btn-danger"
+          on:click={handleDeleteAllScreenshots}
+          disabled={screenshotLoading}
+        >
+          {screenshotLoading ? 'Deleting...' : '🗑️ Delete All'}
+        </button>
+      {/if}
+    </div>
+
+    {#if screenshots.length === 0}
+      <div class="empty-state">
+        No screenshots captured yet. Click "Save Screenshot" to capture the current page.
+      </div>
+    {:else}
+      <div class="screenshot-list">
+        <div class="list-header">
+          <span class="count"
+            >{screenshots.length} screenshot{screenshots.length !== 1 ? 's' : ''}</span
+          >
+        </div>
+        {#each screenshots as screenshot (screenshot.path)}
+          <div class="screenshot-item">
+            <div class="screenshot-info">
+              <div class="screenshot-filename">{screenshot.filename}</div>
+              <div class="screenshot-meta">
+                <span class="meta-item">📅 {formatTimestamp(screenshot.timestamp)}</span>
+                <span class="meta-item">💾 {formatSize(screenshot.size_kb)}</span>
+              </div>
+            </div>
+            <div class="screenshot-actions">
+              <button
+                class="copy-btn"
+                on:click={() => copyToClipboard(screenshot.path)}
+                title="Copy path"
+              >
+                📋
+              </button>
+              <button
+                class="delete-btn"
+                on:click={() => handleDeleteScreenshot(screenshot.path)}
+                title="Delete"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        {/each}
       </div>
     {/if}
   </section>
@@ -492,5 +638,114 @@
 
   .server-guide li:last-child {
     margin-bottom: 0;
+  }
+
+  /* Screenshot Management Styles */
+  .screenshot-controls {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-danger {
+    background: #dc3545;
+    color: white;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: #c82333;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+    font-style: italic;
+    background: #f8f8f8;
+    border-radius: 4px;
+    border: 1px dashed #ddd;
+  }
+
+  .screenshot-list {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .list-header {
+    background: #f8f8f8;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .count {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.875rem;
+  }
+
+  .screenshot-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+  }
+
+  .screenshot-item:hover {
+    background: #fafafa;
+  }
+
+  .screenshot-item:last-child {
+    border-bottom: none;
+  }
+
+  .screenshot-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .screenshot-filename {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+    word-break: break-all;
+  }
+
+  .screenshot-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #666;
+  }
+
+  .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .screenshot-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 1rem;
+  }
+
+  .delete-btn {
+    background: transparent;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .delete-btn:hover {
+    background: #fee;
+    border-color: #fcc;
   }
 </style>
