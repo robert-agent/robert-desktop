@@ -342,14 +342,22 @@
     </p>
 
     <div class="screenshot-controls">
-      <button class="btn btn-primary" on:click={handleCaptureScreenshot} disabled={screenshotLoading}>
+      <button
+        class="btn btn-primary"
+        on:click={handleCaptureScreenshot}
+        disabled={screenshotLoading}
+      >
         {screenshotLoading ? 'Capturing...' : '📸 Save Screenshot'}
       </button>
       <button class="btn btn-secondary" on:click={loadScreenshots} disabled={screenshotLoading}>
         🔄 Refresh List
       </button>
       {#if screenshots.length > 0}
-        <button class="btn btn-danger" on:click={handleDeleteAllScreenshots} disabled={screenshotLoading}>
+        <button
+          class="btn btn-danger"
+          on:click={handleDeleteAllScreenshots}
+          disabled={screenshotLoading}
+        >
           {screenshotLoading ? 'Deleting...' : '🗑️ Delete All'}
         </button>
       {/if}
@@ -362,7 +370,9 @@
     {:else}
       <div class="screenshot-list">
         <div class="list-header">
-          <span class="count">{screenshots.length} screenshot{screenshots.length !== 1 ? 's' : ''}</span>
+          <span class="count"
+            >{screenshots.length} screenshot{screenshots.length !== 1 ? 's' : ''}</span
+          >
         </div>
         {#each screenshots as screenshot (screenshot.path)}
           <div class="screenshot-item">
