@@ -51,3 +51,11 @@ export interface TestServerStatus {
   url: string | null;
   port: number | null;
 }
+
+export interface ScreenshotInfo {
+  path: string;
+  filename: string;
+  timestamp: number;
+  size_bytes: number;
+  size_kb: number;
+}
