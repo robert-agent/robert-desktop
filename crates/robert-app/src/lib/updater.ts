@@ -15,7 +15,7 @@ export interface UpdateProgress {
   percentage: number;
 }
 
-export type UpdaterCallback = (progress: UpdateProgress) => void;
+export type UpdaterCallback = (_progress: UpdateProgress) => void;
 
 /**
  * Check for available updates silently (no user prompts)
@@ -61,9 +61,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
  * @param onProgress Optional callback for download progress
  * @returns True if update was successful, false otherwise
  */
-export async function downloadAndInstallUpdate(
-  onProgress?: UpdaterCallback
-): Promise<boolean> {
+export async function downloadAndInstallUpdate(onProgress?: UpdaterCallback): Promise<boolean> {
   try {
     console.log('[Updater] Starting update download and installation...');
 
@@ -91,10 +89,12 @@ export async function downloadAndInstallUpdate(
           }
           break;
 
-        case 'Progress':
+        case 'Progress': {
           downloadedBytes += event.data.chunkLength;
           const percentage = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
-          console.log(`[Updater] Progress: ${downloadedBytes}/${totalBytes} bytes (${percentage.toFixed(1)}%)`);
+          console.log(
+            `[Updater] Progress: ${downloadedBytes}/${totalBytes} bytes (${percentage.toFixed(1)}%)`
+          );
           if (onProgress) {
             onProgress({
               downloaded: downloadedBytes,
@@ -103,6 +103,7 @@ export async function downloadAndInstallUpdate(
             });
           }
           break;
+        }
 
         case 'Finished':
           console.log('[Updater] Download complete, installing...');
@@ -120,7 +121,7 @@ export async function downloadAndInstallUpdate(
     console.log('[Updater] Update installed successfully, relaunching app...');
 
     // Small delay to ensure progress UI updates
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     // Relaunch the application
     await relaunch();
