@@ -77,7 +77,7 @@
   onMount(async () => {
     if (autoCheck) {
       // Wait a few seconds after app startup to check
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
       await handleCheckForUpdates();
 
       // Show modal if update is available
@@ -129,10 +129,7 @@
             <p>Downloading update...</p>
             {#if downloadProgress}
               <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  style="width: {downloadProgress.percentage}%"
-                ></div>
+                <div class="progress-fill" style="width: {downloadProgress.percentage}%"></div>
               </div>
               <p class="progress-text">
                 {formatBytes(downloadProgress.downloaded)} / {formatBytes(downloadProgress.total)}
@@ -148,9 +145,11 @@
         {:else if updateInfo?.available}
           <div class="update-info">
             <p class="version-info">
-              <strong>Current version:</strong> {updateInfo.currentVersion}
+              <strong>Current version:</strong>
+              {updateInfo.currentVersion}
               <br />
-              <strong>New version:</strong> {updateInfo.version}
+              <strong>New version:</strong>
+              {updateInfo.version}
             </p>
 
             {#if updateInfo.body}
