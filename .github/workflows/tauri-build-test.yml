@@ -70,7 +70,9 @@ jobs:
         working-directory: crates/robert-app
         run: bunx tauri build --target ${{ matrix.target }} --bundles app,dmg
         # Skip updater bundles to avoid requiring signing keys for test builds
-
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - name: Verify build artifacts (macOS)
         if: matrix.platform == 'macos-latest'
         working-directory: crates/robert-app
