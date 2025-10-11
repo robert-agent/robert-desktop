@@ -27,6 +27,7 @@ serde_json = "1"
 robert-webdriver = { path = "../../robert-webdriver" }
 tokio = { workspace = true }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 chrono = "0.4"
 warp = "0.3"
 reqwest = "0.12"

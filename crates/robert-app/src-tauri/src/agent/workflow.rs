@@ -137,7 +137,12 @@ impl WorkflowExecutor {
                 html_content.clone(),
                 &agent_config.settings.model,
             )
-            .await?;
+            .await
+            .map_err(|e| {
+                log::error!("❌ Claude API call failed in workflow");
+                log::error!("Error details: {:?}", e);
+                e
+            })?;
 
         log::info!("╔═══════════════════════════════════════════════════════════╗");
         log::info!("║  ✨ INFERENCE RESPONSE RECEIVED                           ║");

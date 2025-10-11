@@ -7,7 +7,10 @@ pub use developer_mode::*;
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::{CdpValidator, ChromeDriver, ChatUI, ValidationResult};
+use robert_webdriver::{
+    capture_step_frame, ActionInfo, CaptureOptions, CdpValidator, ChatUI, ChromeDriver,
+    ScreenshotFormat, ValidationResult,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -89,53 +92,81 @@ async fn start_chat_polling(
                 }
                 _ = interval.tick() => {
                     // Check for unprocessed messages
-                    let driver_lock = driver.lock().await;
-                    if let Some(drv) = driver_lock.as_ref() {
-                        if let Ok(page) = drv.current_page().await {
-                            match chat_ui.get_unprocessed_messages(&page).await {
-                                Ok(messages) if !messages.is_empty() => {
-                                    log::info!("📬 Found {} unprocessed chat message(s)", messages.len());
+                    let messages_to_process = {
+                        let driver_lock = driver.lock().await;
+                        if let Some(drv) = driver_lock.as_ref() {
+                            if let Ok(page) = drv.current_page().await {
+                                match chat_ui.get_unprocessed_messages(&page).await {
+                                    Ok(messages) if !messages.is_empty() => {
+                                        log::info!("📬 Found {} unprocessed chat message(s)", messages.len());
+                                        Some(messages)
+                                    }
+                                    Ok(_) => None,
+                                    Err(e) => {
+                                        log::warn!("Error checking for chat messages: {}", e);
+                                        None
+                                    }
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }; // Lock is dropped here
 
-                                    for msg in &messages {
-                                        log::info!("💬 User message: {}", msg.text);
-                                        emit_info(&app, format!("Chat message: {}", msg.text)).ok();
+                    // Process messages outside of the lock
+                    if let Some(messages) = messages_to_process {
+                        for msg in &messages {
+                            log::info!("💬 User message: {}", msg.text);
+                            emit_info(&app, format!("Chat message: {}", msg.text)).ok();
 
-                                        // Process message through CDP generation workflow
-                                        match process_chat_message_internal(
-                                            &app,
-                                            &driver,
-                                            msg.text.clone(),
-                                        ).await {
-                                            Ok(result) => {
-                                                let response = if result.success {
-                                                    result.message
-                                                } else {
-                                                    format!("Error: {}", result.error.unwrap_or_else(|| "Unknown error".to_string()))
-                                                };
-                                                if let Err(e) = chat_ui.send_agent_message(&page, &response).await {
-                                                    log::error!("Failed to send agent response: {}", e);
-                                                }
-                                            }
-                                            Err(e) => {
-                                                let error_msg = format!("Workflow failed: {}", e);
-                                                log::error!("{}", error_msg);
-                                                if let Err(e) = chat_ui.send_agent_message(&page, &error_msg).await {
-                                                    log::error!("Failed to send error message: {}", e);
-                                                }
+                            // Process message through CDP generation workflow
+                            match process_chat_message_internal(
+                                &app,
+                                &driver,
+                                msg.text.clone(),
+                            ).await {
+                                Ok(result) => {
+                                    let response = if result.success {
+                                        result.message
+                                    } else {
+                                        format!("Error: {}", result.error.unwrap_or_else(|| "Unknown error".to_string()))
+                                    };
+
+                                    // Reacquire lock to send response
+                                    let driver_lock = driver.lock().await;
+                                    if let Some(drv) = driver_lock.as_ref() {
+                                        if let Ok(page) = drv.current_page().await {
+                                            if let Err(e) = chat_ui.send_agent_message(&page, &response).await {
+                                                log::error!("Failed to send agent response: {}", e);
                                             }
                                         }
                                     }
-
-                                    // Clear processed messages
-                                    if let Err(e) = chat_ui.clear_unprocessed_messages(&page).await {
-                                        log::error!("Failed to clear unprocessed messages: {}", e);
-                                    }
-                                }
-                                Ok(_) => {
-                                    // No messages, continue polling
                                 }
                                 Err(e) => {
-                                    log::warn!("Error checking for chat messages: {}", e);
+                                    let error_msg = format!("Workflow failed: {}", e);
+                                    log::error!("{}", error_msg);
+
+                                    // Reacquire lock to send error
+                                    let driver_lock = driver.lock().await;
+                                    if let Some(drv) = driver_lock.as_ref() {
+                                        if let Ok(page) = drv.current_page().await {
+                                            if let Err(e) = chat_ui.send_agent_message(&page, &error_msg).await {
+                                                log::error!("Failed to send error message: {}", e);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Clear processed messages (reacquire lock)
+                        let driver_lock = driver.lock().await;
+                        if let Some(drv) = driver_lock.as_ref() {
+                            if let Ok(page) = drv.current_page().await {
+                                if let Err(e) = chat_ui.clear_unprocessed_messages(&page).await {
+                                    log::error!("Failed to clear unprocessed messages: {}", e);
                                 }
                             }
                         }
@@ -184,74 +215,95 @@ async fn process_chat_message_internal(
 
     log::info!("✓ Agent config loaded: {}", agent_config.name);
 
-    // Get screenshot and HTML
-    log::info!("📸 Attempting to capture screenshot...");
+    // Capture step frame with screenshot and HTML
+    log::info!("📸 Capturing step frame...");
+    log::debug!("Acquiring driver lock...");
     let driver_lock = driver.lock().await;
+    log::debug!("Driver lock acquired");
     let driver_ref = driver_lock.as_ref();
 
-    let screenshot_path = if let Some(drv) = driver_ref {
+    let (screenshot_path, html_content) = if let Some(drv) = driver_ref {
+        log::debug!("Driver available, setting up capture options...");
+
+        // Set up capture options for step frame
         let temp_dir = std::env::temp_dir().join("robert-chat");
-        log::debug!("Screenshot temp directory: {:?}", temp_dir);
+        let screenshot_dir = temp_dir.join("screenshots");
+        let dom_dir = temp_dir.join("dom");
 
-        match tokio::fs::create_dir_all(&temp_dir).await {
-            Ok(_) => {
-                log::debug!("✓ Temp directory created/verified");
-                let timestamp = chrono::Utc::now().timestamp();
-                let screenshot_path = temp_dir.join(format!("chat-screenshot-{}.png", timestamp));
-                log::debug!("Target screenshot path: {:?}", screenshot_path);
+        log::debug!("Temp dir: {:?}", temp_dir);
+        log::debug!("Screenshot dir: {:?}", screenshot_dir);
+        log::debug!("DOM dir: {:?}", dom_dir);
 
-                match drv.screenshot_to_file(&screenshot_path).await {
-                    Ok(_) => {
-                        // Verify file was actually written
-                        match tokio::fs::metadata(&screenshot_path).await {
-                            Ok(metadata) => {
-                                let size_kb = metadata.len() / 1024;
-                                log::info!("✓ Screenshot captured successfully: {:?} ({} KB)", screenshot_path, size_kb);
-                                emit_info(app, format!("Captured screenshot ({} KB)", size_kb)).ok();
-                                Some(screenshot_path)
-                            }
-                            Err(e) => {
-                                log::error!("❌ Screenshot file not found after save: {}", e);
-                                emit_error(app, "Screenshot save verification failed", Some(e.to_string())).ok();
-                                None
-                            }
+        let options = CaptureOptions {
+            screenshot_dir,
+            dom_dir: Some(dom_dir),
+            screenshot_format: ScreenshotFormat::Png,
+            save_html: true,
+            compute_hashes: false, // Don't need hashes for immediate processing
+            extract_interactive_elements: false, // Don't need interactive elements for chat messages
+        };
+
+        log::debug!("Creating action info...");
+        // Create action info
+        let action = Some(ActionInfo {
+            action_type: "user_instruction".to_string(),
+            intent: message.clone(),
+            target: None,
+        });
+
+        log::info!("🎬 Calling capture_step_frame...");
+        // Capture the step frame
+        let capture_result = capture_step_frame(drv, 0, 0, &options, Some(message.clone()), action).await;
+        log::info!("📦 capture_step_frame returned");
+
+        match capture_result {
+            Ok(step_frame) => {
+                log::info!("✅ Step frame captured successfully (match arm)");
+                emit_info(
+                    app,
+                    format!(
+                        "Captured step frame: {} KB screenshot, {} KB HTML",
+                        step_frame.screenshot.size_bytes / 1024,
+                        step_frame.dom.html_path.as_ref().map(|_| "saved").unwrap_or("none")
+                    ),
+                )
+                .ok();
+
+                // Extract screenshot path and HTML for workflow
+                let screenshot = PathBuf::from(step_frame.screenshot.path);
+
+                // Read HTML from file if saved
+                let html = if let Some(html_path) = step_frame.dom.html_path {
+                    match tokio::fs::read_to_string(&html_path).await {
+                        Ok(content) => Some(content),
+                        Err(e) => {
+                            log::warn!("⚠️  Failed to read HTML from file: {}", e);
+                            None
                         }
                     }
-                    Err(e) => {
-                        log::error!("❌ Screenshot capture failed: {}", e);
-                        emit_error(app, "Failed to capture screenshot", Some(e.to_string())).ok();
-                        None
-                    }
-                }
-            }
-            Err(e) => {
-                log::error!("❌ Failed to create temp directory {:?}: {}", temp_dir, e);
-                emit_error(app, "Failed to create screenshot directory", Some(e.to_string())).ok();
-                None
-            }
-        }
-    } else {
-        log::warn!("⚠️  No driver available for screenshot (browser not launched)");
-        emit_error(app, "Cannot capture screenshot", Some("Browser not launched".to_string())).ok();
-        None
-    };
+                } else {
+                    None
+                };
 
-    log::info!("📄 Attempting to extract HTML...");
-    let html_content = if let Some(drv) = driver_ref {
-        match drv.get_page_source().await {
-            Ok(html) => {
-                log::info!("✓ HTML extracted ({} KB)", html.len() / 1024);
-                emit_info(app, format!("Extracted {} KB of HTML", html.len() / 1024)).ok();
-                Some(html)
+                (Some(screenshot), html)
             }
             Err(e) => {
-                log::warn!("⚠️  HTML extraction failed: {}", e);
-                None
+                log::error!("❌ Step frame capture failed (error match arm)");
+                log::error!("Error details: {}", e);
+                log::error!("Error debug: {:?}", e);
+                emit_error(app, "Step frame capture failed", Some(e.to_string())).ok();
+                (None, None)
             }
         }
     } else {
-        log::warn!("⚠️  No driver available for HTML extraction");
-        None
+        log::warn!("⚠️  No driver available (browser not launched)");
+        emit_error(
+            app,
+            "Cannot capture step frame",
+            Some("Browser not launched".to_string()),
+        )
+        .ok();
+        (None, None)
     };
 
     log::info!("🚀 Initiating workflow executor...");
