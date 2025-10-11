@@ -7,9 +7,10 @@ pub use developer_mode::*;
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::{CdpValidator, ChromeDriver, ValidationResult};
+use robert_webdriver::{CdpValidator, ChromeDriver, ChatUI, ValidationResult};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +46,13 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
             emit_success(&app, "Chrome is ready for automation").ok();
 
             *driver_lock = Some(driver);
+            drop(driver_lock);
+
+            // Start chat message polling task
+            let state_clone = state.inner().driver.clone();
+            let shutdown_clone = state.inner().chat_poll_shutdown.clone();
+            start_chat_polling(app.clone(), state_clone, shutdown_clone).await;
+
             Ok("Browser launched successfully".to_string())
         }
         Err(e) => {
@@ -53,6 +61,229 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
             Err(error_msg)
         }
     }
+}
+
+/// Start a background task to poll for chat messages
+async fn start_chat_polling(
+    app: AppHandle,
+    driver: Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
+    shutdown_holder: Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
+) {
+    log::info!("Starting chat message polling task");
+
+    let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel();
+
+    // Store shutdown channel
+    *shutdown_holder.lock().await = Some(shutdown_tx);
+
+    // Spawn polling task
+    tokio::spawn(async move {
+        let chat_ui = ChatUI::new();
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
+
+        loop {
+            tokio::select! {
+                _ = &mut shutdown_rx => {
+                    log::info!("Chat polling task shutting down");
+                    break;
+                }
+                _ = interval.tick() => {
+                    // Check for unprocessed messages
+                    let driver_lock = driver.lock().await;
+                    if let Some(drv) = driver_lock.as_ref() {
+                        if let Ok(page) = drv.current_page().await {
+                            match chat_ui.get_unprocessed_messages(&page).await {
+                                Ok(messages) if !messages.is_empty() => {
+                                    log::info!("📬 Found {} unprocessed chat message(s)", messages.len());
+
+                                    for msg in &messages {
+                                        log::info!("💬 User message: {}", msg.text);
+                                        emit_info(&app, format!("Chat message: {}", msg.text)).ok();
+
+                                        // Process message through CDP generation workflow
+                                        match process_chat_message_internal(
+                                            &app,
+                                            &driver,
+                                            msg.text.clone(),
+                                        ).await {
+                                            Ok(result) => {
+                                                let response = if result.success {
+                                                    result.message
+                                                } else {
+                                                    format!("Error: {}", result.error.unwrap_or_else(|| "Unknown error".to_string()))
+                                                };
+                                                if let Err(e) = chat_ui.send_agent_message(&page, &response).await {
+                                                    log::error!("Failed to send agent response: {}", e);
+                                                }
+                                            }
+                                            Err(e) => {
+                                                let error_msg = format!("Workflow failed: {}", e);
+                                                log::error!("{}", error_msg);
+                                                if let Err(e) = chat_ui.send_agent_message(&page, &error_msg).await {
+                                                    log::error!("Failed to send error message: {}", e);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Clear processed messages
+                                    if let Err(e) = chat_ui.clear_unprocessed_messages(&page).await {
+                                        log::error!("Failed to clear unprocessed messages: {}", e);
+                                    }
+                                }
+                                Ok(_) => {
+                                    // No messages, continue polling
+                                }
+                                Err(e) => {
+                                    log::warn!("Error checking for chat messages: {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+/// Internal helper to process chat messages (used by polling task)
+async fn process_chat_message_internal(
+    app: &AppHandle,
+    driver: &Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
+    message: String,
+) -> Result<crate::agent::WorkflowResult, String> {
+    use crate::agent::{AgentConfig, WorkflowExecutor, WorkflowType};
+
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  💬 PROCESSING CHAT MESSAGE                               ║");
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+    log::info!("📝 Message: {}", message);
+
+    emit_info(app, "Processing chat message...").ok();
+
+    // Load agent configuration
+    let agent_name = "cdp-generator";
+    let agent_config = {
+        let config_path = AgentConfig::config_path(agent_name)
+            .map_err(|e| format!("Failed to get config path: {}", e))?;
+
+        if config_path.exists() {
+            AgentConfig::load(&config_path)
+                .await
+                .map_err(|e| format!("Failed to load agent config: {}", e))?
+        } else {
+            let config = AgentConfig::default_cdp_agent();
+            config
+                .save(&config_path)
+                .await
+                .map_err(|e| format!("Failed to save agent config: {}", e))?;
+            emit_info(app, format!("Created default config for '{}'", agent_name)).ok();
+            config
+        }
+    };
+
+    log::info!("✓ Agent config loaded: {}", agent_config.name);
+
+    // Get screenshot and HTML
+    log::info!("📸 Attempting to capture screenshot...");
+    let driver_lock = driver.lock().await;
+    let driver_ref = driver_lock.as_ref();
+
+    let screenshot_path = if let Some(drv) = driver_ref {
+        let temp_dir = std::env::temp_dir().join("robert-chat");
+        log::debug!("Screenshot temp directory: {:?}", temp_dir);
+
+        match tokio::fs::create_dir_all(&temp_dir).await {
+            Ok(_) => {
+                log::debug!("✓ Temp directory created/verified");
+                let timestamp = chrono::Utc::now().timestamp();
+                let screenshot_path = temp_dir.join(format!("chat-screenshot-{}.png", timestamp));
+                log::debug!("Target screenshot path: {:?}", screenshot_path);
+
+                match drv.screenshot_to_file(&screenshot_path).await {
+                    Ok(_) => {
+                        // Verify file was actually written
+                        match tokio::fs::metadata(&screenshot_path).await {
+                            Ok(metadata) => {
+                                let size_kb = metadata.len() / 1024;
+                                log::info!("✓ Screenshot captured successfully: {:?} ({} KB)", screenshot_path, size_kb);
+                                emit_info(app, format!("Captured screenshot ({} KB)", size_kb)).ok();
+                                Some(screenshot_path)
+                            }
+                            Err(e) => {
+                                log::error!("❌ Screenshot file not found after save: {}", e);
+                                emit_error(app, "Screenshot save verification failed", Some(e.to_string())).ok();
+                                None
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("❌ Screenshot capture failed: {}", e);
+                        emit_error(app, "Failed to capture screenshot", Some(e.to_string())).ok();
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("❌ Failed to create temp directory {:?}: {}", temp_dir, e);
+                emit_error(app, "Failed to create screenshot directory", Some(e.to_string())).ok();
+                None
+            }
+        }
+    } else {
+        log::warn!("⚠️  No driver available for screenshot (browser not launched)");
+        emit_error(app, "Cannot capture screenshot", Some("Browser not launched".to_string())).ok();
+        None
+    };
+
+    log::info!("📄 Attempting to extract HTML...");
+    let html_content = if let Some(drv) = driver_ref {
+        match drv.get_page_source().await {
+            Ok(html) => {
+                log::info!("✓ HTML extracted ({} KB)", html.len() / 1024);
+                emit_info(app, format!("Extracted {} KB of HTML", html.len() / 1024)).ok();
+                Some(html)
+            }
+            Err(e) => {
+                log::warn!("⚠️  HTML extraction failed: {}", e);
+                None
+            }
+        }
+    } else {
+        log::warn!("⚠️  No driver available for HTML extraction");
+        None
+    };
+
+    log::info!("🚀 Initiating workflow executor...");
+    let executor = WorkflowExecutor::new();
+    emit_claude_processing(app, "Executing CDP generation workflow...").ok();
+
+    log::info!("🔄 Executing workflow...");
+    // Execute workflow
+    let result = executor
+        .execute(
+            WorkflowType::CdpAutomation,
+            message.clone(),
+            &agent_config,
+            screenshot_path,
+            html_content,
+            driver_ref,
+        )
+        .await
+        .map_err(|e| {
+            log::error!("❌ Workflow execution error: {}", e);
+            format!("Workflow execution failed: {}", e)
+        })?;
+
+    log::info!("✅ Workflow execution completed");
+
+    if result.success {
+        emit_success(app, result.message.clone()).ok();
+    } else {
+        emit_error(app, result.message.clone(), result.error.clone()).ok();
+    }
+
+    Ok(result)
 }
 
 /// Navigate to a URL
@@ -89,6 +320,18 @@ pub async fn navigate_to_url(
                 .unwrap_or_else(|_| "Unknown".to_string());
 
             emit_page_loaded(&app, &url, &title).ok();
+
+            // Inject chat UI after page loads
+            let chat_ui = ChatUI::new();
+            if let Ok(page) = driver.current_page().await {
+                if let Err(e) = chat_ui.inject(&page).await {
+                    log::warn!("Failed to inject chat UI: {}", e);
+                } else {
+                    log::info!("Chat UI injected successfully");
+                    emit_info(&app, "Chat UI injected").ok();
+                }
+            }
+
             emit_success(&app, format!("Successfully loaded: {}", title)).ok();
 
             Ok(NavigationResult {

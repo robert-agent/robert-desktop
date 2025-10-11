@@ -118,10 +118,30 @@ impl ClaudeHealthCheck {
 
         if output.status.success() {
             let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            Ok(path)
-        } else {
-            anyhow::bail!("Claude CLI not found in PATH")
+            return Ok(path);
         }
+
+        // If not found in PATH, try common installation locations
+        if let Ok(home) = std::env::var("HOME") {
+            let common_paths = vec![
+                // User-specific installation (common for claude CLI)
+                format!("{home}/.claude/local/claude"),
+                // NPM global installation
+                format!("{home}/.npm-global/bin/claude"),
+                "/usr/local/bin/claude".to_string(),
+                // Homebrew installations
+                "/opt/homebrew/bin/claude".to_string(),
+                "/usr/local/Homebrew/bin/claude".to_string(),
+            ];
+
+            for path in common_paths {
+                if tokio::fs::metadata(&path).await.is_ok() {
+                    return Ok(path);
+                }
+            }
+        }
+
+        anyhow::bail!("Claude CLI not found in PATH or common installation locations")
     }
 
     /// Get Claude CLI version

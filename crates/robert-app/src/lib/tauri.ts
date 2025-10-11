@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { NavigationResult, SystemPaths, TestServerStatus } from './types';
+import type { NavigationResult, SystemPaths, TestServerStatus, ScreenshotInfo } from './types';
 
 export async function launchBrowser(): Promise<string> {
   return await invoke<string>('launch_browser');
@@ -32,4 +32,21 @@ export async function stopDevTestServer(): Promise<TestServerStatus> {
 
 export async function getDevTestServerStatus(): Promise<TestServerStatus> {
   return await invoke<TestServerStatus>('get_dev_test_server_status');
+}
+
+// Screenshot management commands
+export async function devCaptureScreenshot(): Promise<ScreenshotInfo> {
+  return await invoke<ScreenshotInfo>('dev_capture_screenshot');
+}
+
+export async function devListScreenshots(): Promise<ScreenshotInfo[]> {
+  return await invoke<ScreenshotInfo[]>('dev_list_screenshots');
+}
+
+export async function devDeleteAllScreenshots(): Promise<number> {
+  return await invoke<number>('dev_delete_all_screenshots');
+}
+
+export async function devDeleteScreenshot(path: string): Promise<void> {
+  return await invoke<void>('dev_delete_screenshot', { path });
 }

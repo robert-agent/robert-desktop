@@ -40,6 +40,11 @@ pub fn run() {
             commands::start_dev_test_server,
             commands::stop_dev_test_server,
             commands::get_dev_test_server_status,
+            // Developer mode screenshot commands
+            commands::dev_capture_screenshot,
+            commands::dev_list_screenshots,
+            commands::dev_delete_all_screenshots,
+            commands::dev_delete_screenshot,
             // Agent workflow commands
             commands::process_chat_message,
             commands::init_agent_configs,
