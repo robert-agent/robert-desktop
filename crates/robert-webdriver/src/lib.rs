@@ -1,6 +1,7 @@
 pub mod browser;
 pub mod cdp;
 pub mod error;
+pub mod step_frame;
 
 //  Re-export commonly used items
 pub use browser::chat::{ChatMessage, ChatUI};

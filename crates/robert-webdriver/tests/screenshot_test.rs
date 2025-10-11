@@ -29,6 +29,7 @@ async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
 #[tokio::test]
 async fn test_screenshot_returns_valid_png_data() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -59,6 +60,7 @@ async fn test_screenshot_returns_valid_png_data() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_screenshot_to_file_creates_valid_file() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -106,6 +108,7 @@ async fn test_screenshot_to_file_creates_valid_file() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_screenshot_multiple_times() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -126,11 +129,7 @@ async fn test_screenshot_multiple_times() -> anyhow::Result<()> {
         .iter()
         .enumerate()
     {
-        assert_eq!(
-            data[0], 0x89,
-            "Screenshot {} should be PNG",
-            i + 1
-        );
+        assert_eq!(data[0], 0x89, "Screenshot {} should be PNG", i + 1);
     }
 
     driver.close().await?;
@@ -140,6 +139,7 @@ async fn test_screenshot_multiple_times() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_screenshot_different_pages() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -170,6 +170,7 @@ async fn test_screenshot_different_pages() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_cdp_capture_screenshot_command() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -233,6 +234,7 @@ async fn test_cdp_capture_screenshot_command() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_cdp_screenshot_with_different_formats() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -339,6 +341,7 @@ struct ActionInfo {
 #[tokio::test]
 async fn test_screenshot_integration_with_step_frame() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -398,6 +401,7 @@ async fn test_screenshot_integration_with_step_frame() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_multiple_step_frames_with_screenshots() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -487,6 +491,7 @@ async fn test_multiple_step_frames_with_screenshots() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_step_frame_with_cdp_workflow() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -585,6 +590,7 @@ async fn test_screenshot_before_navigation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_screenshot_to_invalid_path() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -595,10 +601,7 @@ async fn test_screenshot_to_invalid_path() -> anyhow::Result<()> {
     let result = driver.screenshot_to_file(&invalid_path).await;
 
     // Should fail gracefully
-    assert!(
-        result.is_err(),
-        "Should fail when saving to invalid path"
-    );
+    assert!(result.is_err(), "Should fail when saving to invalid path");
 
     driver.close().await?;
     Ok(())

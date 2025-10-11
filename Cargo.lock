@@ -4408,6 +4408,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "spider_chrome",
  "spider_chromiumoxide_fetcher",
  "thiserror 1.0.69",

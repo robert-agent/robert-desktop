@@ -26,6 +26,7 @@ async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
 #[tokio::test]
 async fn test_screenshot_with_timeout() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -57,6 +58,7 @@ async fn test_screenshot_with_timeout() -> anyhow::Result<()> {
 async fn test_screenshot_immediately_after_navigation() -> anyhow::Result<()> {
     // This tests the exact scenario that might be causing hangs
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -101,6 +103,7 @@ async fn test_screenshot_immediately_after_navigation() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_screenshot_to_file_with_timeout() -> anyhow::Result<()> {
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -113,8 +116,11 @@ async fn test_screenshot_to_file_with_timeout() -> anyhow::Result<()> {
     println!("🔍 Testing screenshot_to_file with timeout...");
     let start = std::time::Instant::now();
 
-    let result =
-        timeout(Duration::from_secs(10), driver.screenshot_to_file(&screenshot_path)).await;
+    let result = timeout(
+        Duration::from_secs(10),
+        driver.screenshot_to_file(&screenshot_path),
+    )
+    .await;
 
     let elapsed = start.elapsed();
     println!("⏱️  screenshot_to_file took: {:?}", elapsed);
@@ -143,6 +149,7 @@ async fn test_screenshot_to_file_with_timeout() -> anyhow::Result<()> {
 async fn test_multiple_screenshots_rapid_succession() -> anyhow::Result<()> {
     // Test for race conditions when taking multiple screenshots quickly
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -188,6 +195,7 @@ async fn test_multiple_screenshots_rapid_succession() -> anyhow::Result<()> {
 async fn test_screenshot_after_javascript_execution() -> anyhow::Result<()> {
     // Test screenshot after DOM manipulation
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -227,6 +235,7 @@ async fn test_screenshot_after_javascript_execution() -> anyhow::Result<()> {
 async fn test_screenshot_on_slow_loading_page() -> anyhow::Result<()> {
     // Test screenshot when page might still be loading resources
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -263,6 +272,7 @@ async fn test_screenshot_on_slow_loading_page() -> anyhow::Result<()> {
 async fn test_diagnose_screenshot_performance() -> anyhow::Result<()> {
     // Measure screenshot performance to identify slowness
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -314,6 +324,7 @@ async fn test_diagnose_screenshot_performance() -> anyhow::Result<()> {
 async fn test_screenshot_with_explicit_page_ready_check() -> anyhow::Result<()> {
     // Test with explicit readyState checking before screenshot
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
@@ -321,9 +332,7 @@ async fn test_screenshot_with_explicit_page_ready_check() -> anyhow::Result<()> 
 
     // Check if page is ready
     println!("🔍 Checking page ready state...");
-    let ready_state: serde_json::Value = driver
-        .execute_script("document.readyState")
-        .await?;
+    let ready_state: serde_json::Value = driver.execute_script("document.readyState").await?;
     println!("  Page readyState: {}", ready_state);
 
     // Take screenshot
@@ -355,6 +364,7 @@ async fn test_screenshot_with_explicit_page_ready_check() -> anyhow::Result<()> 
 async fn test_screenshot_stress_concurrent_operations() -> anyhow::Result<()> {
     // Test screenshot while other operations are happening
     let server = TestServer::start().await;
+    server.wait_ready().await?;
     let url = server.url();
     let driver = create_headless_driver().await?;
 
