@@ -190,7 +190,7 @@ jobs:
             ### Changes
             <!-- Add release notes here -->
           releaseDraft: true
-          prerelease: ${{ needs.create-release.outputs.tag_name contains 'canary' }}
+          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
           includeUpdaterJson: true
           args: --target ${{ matrix.target }}
 
