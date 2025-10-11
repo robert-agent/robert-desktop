@@ -176,9 +176,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
-      - name: Rename DMG
+      - name: Collect build artifacts
         working-directory: crates/robert-app
         run: |
+          # Find and rename DMG
           DMG_PATH=$(find ../../target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -n 1)
           if [ -z "$DMG_PATH" ]; then
             echo "Error: No DMG file found"
@@ -188,6 +189,37 @@ jobs:
           cp "$DMG_PATH" "/tmp/$DMG_NAME"
           echo "DMG_PATH=/tmp/$DMG_NAME" >> $GITHUB_ENV
           echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
+
+          # Find updater artifacts (.tar.gz and .sig)
+          UPDATER_BUNDLE=$(find ../../target/${{ matrix.target }}/release/bundle/macos -name "*.app.tar.gz" | head -n 1)
+          UPDATER_SIG=$(find ../../target/${{ matrix.target }}/release/bundle/macos -name "*.app.tar.gz.sig" | head -n 1)
+
+          if [ -n "$UPDATER_BUNDLE" ] && [ -n "$UPDATER_SIG" ]; then
+            echo "Found updater artifacts:"
+            echo "  Bundle: $UPDATER_BUNDLE"
+            echo "  Signature: $UPDATER_SIG"
+
+            # Copy to temp directory with consistent naming
+            UPDATER_BUNDLE_NAME="Robert_${{ needs.create-release.outputs.tag_name }}_${{ matrix.arch }}.app.tar.gz"
+            UPDATER_SIG_NAME="Robert_${{ needs.create-release.outputs.tag_name }}_${{ matrix.arch }}.app.tar.gz.sig"
+
+            cp "$UPDATER_BUNDLE" "/tmp/$UPDATER_BUNDLE_NAME"
+            cp "$UPDATER_SIG" "/tmp/$UPDATER_SIG_NAME"
+
+            echo "UPDATER_BUNDLE_PATH=/tmp/$UPDATER_BUNDLE_NAME" >> $GITHUB_ENV
+            echo "UPDATER_BUNDLE_NAME=$UPDATER_BUNDLE_NAME" >> $GITHUB_ENV
+            echo "UPDATER_SIG_PATH=/tmp/$UPDATER_SIG_NAME" >> $GITHUB_ENV
+            echo "UPDATER_SIG_NAME=$UPDATER_SIG_NAME" >> $GITHUB_ENV
+
+            # Read signature content for manifest
+            SIGNATURE_CONTENT=$(cat "$UPDATER_SIG")
+            echo "SIGNATURE_CONTENT<<EOF" >> $GITHUB_ENV
+            echo "$SIGNATURE_CONTENT" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "Warning: Updater artifacts not found"
+            echo "UPDATER_BUNDLE_PATH=" >> $GITHUB_ENV
+          fi
 
       - name: Upload to GitHub Release
         uses: actions/github-script@v7
@@ -290,6 +322,32 @@ jobs:
             "${UPLOAD_URL}?name=${{ env.DMG_NAME }}" \
             --data-binary @"${{ env.DMG_PATH }}"
 
+          # Upload updater bundle if it exists
+          if [ -n "${{ env.UPDATER_BUNDLE_PATH }}" ]; then
+            # Check if updater bundle already exists and delete it
+            EXISTING_BUNDLE_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets" | \
+              jq -r ".[] | select(.name == \"${{ env.UPDATER_BUNDLE_NAME }}\") | .id // empty")
+
+            if [ -n "$EXISTING_BUNDLE_ID" ]; then
+              echo "Deleting existing updater bundle: ${{ env.UPDATER_BUNDLE_NAME }}"
+              curl -X DELETE \
+                -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_BUNDLE_ID}"
+            fi
+
+            echo "Uploading updater bundle: ${{ env.UPDATER_BUNDLE_NAME }}"
+            curl -X POST \
+              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Content-Type: application/gzip" \
+              "${UPLOAD_URL}?name=${{ env.UPDATER_BUNDLE_NAME }}" \
+              --data-binary @"${{ env.UPDATER_BUNDLE_PATH }}"
+
+            echo "Updater bundle uploaded successfully"
+          fi
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -297,9 +355,132 @@ jobs:
           path: ${{ env.DMG_PATH }}
           retention-days: 30
 
+  generate-updater-manifest:
+    name: Generate Updater Manifest
+    needs: [create-release, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate latest.json manifest
+        env:
+          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+
+          # Fetch release assets from robert-releases
+          echo "Fetching assets for release tag: $TAG_NAME"
+          ASSETS_JSON=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${TAG_NAME}")
+
+          RELEASE_ID=$(echo "$ASSETS_JSON" | jq -r '.id')
+          ASSETS=$(echo "$ASSETS_JSON" | jq -r '.assets')
+
+          echo "Release ID: $RELEASE_ID"
+          echo "Found assets: $(echo "$ASSETS" | jq -r '.[].name')"
+
+          # Get release date
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Start building the manifest JSON
+          cat > /tmp/latest.json <<EOF
+          {
+            "version": "${TAG_NAME}",
+            "notes": "Release $TAG_NAME - See GitHub release for full details",
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+          EOF
+
+          # Add platforms
+          FIRST=true
+
+          # darwin-aarch64 (Apple Silicon)
+          AARCH64_BUNDLE=$(echo "$ASSETS" | jq -r '.[] | select(.name | contains("aarch64.app.tar.gz") and (contains(".sig") | not)) | .browser_download_url')
+          AARCH64_SIG_ASSET=$(echo "$ASSETS" | jq -r '.[] | select(.name | contains("aarch64.app.tar.gz.sig")) | .url')
+
+          if [ -n "$AARCH64_BUNDLE" ] && [ -n "$AARCH64_SIG_ASSET" ]; then
+            echo "Found aarch64 bundle: $AARCH64_BUNDLE"
+
+            # Download signature file to read its content
+            AARCH64_SIG=$(curl -s -L -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/octet-stream" \
+              "$AARCH64_SIG_ASSET")
+
+            if [ "$FIRST" = false ]; then
+              echo "," >> /tmp/latest.json
+            fi
+            FIRST=false
+
+            cat >> /tmp/latest.json <<EOF
+              "darwin-aarch64": {
+                "signature": "$AARCH64_SIG",
+                "url": "$AARCH64_BUNDLE"
+              }
+          EOF
+          fi
+
+          # darwin-x86_64 (Intel)
+          X64_BUNDLE=$(echo "$ASSETS" | jq -r '.[] | select(.name | contains("x64.app.tar.gz") and (contains(".sig") | not)) | .browser_download_url')
+          X64_SIG_ASSET=$(echo "$ASSETS" | jq -r '.[] | select(.name | contains("x64.app.tar.gz.sig")) | .url')
+
+          if [ -n "$X64_BUNDLE" ] && [ -n "$X64_SIG_ASSET" ]; then
+            echo "Found x64 bundle: $X64_BUNDLE"
+
+            # Download signature file to read its content
+            X64_SIG=$(curl -s -L -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/octet-stream" \
+              "$X64_SIG_ASSET")
+
+            if [ "$FIRST" = false ]; then
+              echo "," >> /tmp/latest.json
+            fi
+            FIRST=false
+
+            cat >> /tmp/latest.json <<EOF
+              "darwin-x86_64": {
+                "signature": "$X64_SIG",
+                "url": "$X64_BUNDLE"
+              }
+          EOF
+          fi
+
+          # Close JSON
+          cat >> /tmp/latest.json <<EOF
+
+            }
+          }
+          EOF
+
+          echo "Generated manifest:"
+          cat /tmp/latest.json
+
+          # Upload latest.json to robert-releases repository
+          echo "Uploading latest.json to robert-releases..."
+
+          # Check if latest.json already exists and delete it
+          EXISTING_JSON_ID=$(echo "$ASSETS" | jq -r '.[] | select(.name == "latest.json") | .id // empty')
+          if [ -n "$EXISTING_JSON_ID" ]; then
+            echo "Deleting existing latest.json (ID: ${EXISTING_JSON_ID})"
+            curl -X DELETE \
+              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_JSON_ID}"
+          fi
+
+          # Get upload URL
+          UPLOAD_URL=$(echo "$ASSETS_JSON" | jq -r '.upload_url' | sed 's/{?name,label}//')
+
+          # Upload latest.json
+          curl -X POST \
+            -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
+            -H "Content-Type: application/json" \
+            "${UPLOAD_URL}?name=latest.json" \
+            --data-binary @/tmp/latest.json
+
+          echo "latest.json uploaded successfully"
+
   finalize-release:
     name: Finalize Release
-    needs: [create-release, build-macos]
+    needs: [create-release, build-macos, generate-updater-manifest]
     runs-on: ubuntu-latest
     steps:
       - name: Publish Release
