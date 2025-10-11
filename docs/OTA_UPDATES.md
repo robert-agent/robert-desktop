@@ -106,9 +106,11 @@ Paste the content into the `pubkey` field in `tauri.conf.json`.
 
 Go to your repository settings → Secrets and variables → Actions:
 
-- **TAURI_SIGNING_PRIVATE_KEY**: Paste the entire content of `.tauri-keys/robert.key`
+- **UPDATER_PRI_KEY**: Paste the entire content of `.tauri-keys/robert.key`
 - **TAURI_SIGNING_PRIVATE_KEY_PASSWORD**: Your key password
 - **RELEASES_REPO_TOKEN**: GitHub Personal Access Token with `repo` scope for `lucky-tensor/robert-releases`
+
+**Note:** The workflow uses `UPDATER_PRI_KEY` but maps it to the `TAURI_SIGNING_PRIVATE_KEY` environment variable that Tauri expects.
 
 ### Local Development
 
@@ -276,7 +278,7 @@ find target -name "*.app.tar.gz.sig"
 **Solution:**
 - Don't use `.env` files (they don't work for these variables)
 - Use `export` on Linux/macOS or `$env:` on Windows
-- For GitHub Actions, add as repository secrets
+- For GitHub Actions, ensure `UPDATER_PRI_KEY` secret is set (the workflow maps it to `TAURI_SIGNING_PRIVATE_KEY`)
 
 ## Security Considerations
 
