@@ -64,14 +64,14 @@ Go to repository → Settings → Secrets and variables → Actions → New repo
 
 Add these secrets:
 
-#### 1. TAURI_SIGNING_PRIVATE_KEY
+#### 1. UPDATER_PRI_KEY
 
 ```bash
 # Copy the ENTIRE content of the private key file
 cat .tauri-keys/robert.key
 ```
 
-- **Name:** `TAURI_SIGNING_PRIVATE_KEY`
+- **Name:** `UPDATER_PRI_KEY`
 - **Secret:** Paste the entire content (including all lines)
 
 #### 2. TAURI_SIGNING_PRIVATE_KEY_PASSWORD
@@ -187,7 +187,7 @@ If you need to rotate keys (compromised, best practice, etc.):
 
 **Solution:**
 - **Local:** Use `export` command before building
-- **CI/CD:** Ensure GitHub secret is set and referenced in workflow
+- **CI/CD:** Ensure `UPDATER_PRI_KEY` GitHub secret is set (the workflow maps it to `TAURI_SIGNING_PRIVATE_KEY`)
 
 ## Files Checklist
 
@@ -196,7 +196,7 @@ After completing setup:
 - [ ] `.tauri-keys/robert.key` exists (gitignored)
 - [ ] `.tauri-keys/robert.key.pub` exists (gitignored)
 - [ ] Public key added to `tauri.conf.json`
-- [ ] `TAURI_SIGNING_PRIVATE_KEY` GitHub secret set
+- [ ] `UPDATER_PRI_KEY` GitHub secret set
 - [ ] `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` GitHub secret set
 - [ ] `RELEASES_REPO_TOKEN` GitHub secret set
 - [ ] Private key backed up securely
