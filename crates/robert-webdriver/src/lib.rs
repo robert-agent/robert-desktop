@@ -12,3 +12,7 @@ pub use cdp::{
     ValidationResult,
 };
 pub use error::BrowserError;
+pub use step_frame::{
+    capture_step_frame, ActionInfo, CaptureOptions, ScreenshotFormat, StepFrame, ScreenshotInfo,
+    DomInfo, TranscriptInfo, InteractiveElement,
+};

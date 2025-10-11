@@ -231,8 +231,22 @@ pub async fn capture_step_frame(
     user_instruction: Option<String>,
     action_info: Option<ActionInfo>,
 ) -> Result<StepFrame> {
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  📸 CAPTURING STEP FRAME {}                              ║", frame_id);
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+
+    if let Some(ref instruction) = user_instruction {
+        log::info!("📝 User instruction: {}", instruction);
+    }
+    if let Some(ref action) = action_info {
+        log::info!("🎯 Action: {} - {}", action.action_type, action.intent);
+    }
+    log::info!("⏱️  Elapsed: {}ms", elapsed_ms);
+
     // 1. FAIL FAST: Access current page to verify connection
+    log::debug!("🔍 Verifying browser connection...");
     let page = driver.current_page().await.map_err(|e| {
+        log::error!("❌ Failed to access browser page: {}", e);
         BrowserError::Other(format!(
             "Failed to access browser page (connection failed): {}",
             e
@@ -241,29 +255,36 @@ pub async fn capture_step_frame(
 
     // Verify page is accessible by getting URL
     let _ = page.url().await.map_err(|e| {
+        log::error!("❌ Failed to get page URL: {}", e);
         BrowserError::Other(format!(
             "Failed to get page URL (browser not responding): {}",
             e
         ))
     })?;
 
+    log::debug!("✓ Browser connection verified");
+
     // 2. TAKE SCREENSHOT
+    log::info!("📸 Capturing screenshot...");
     let screenshot_filename = format!(
         "frame_{:04}.{}",
         frame_id,
         format_extension(options.screenshot_format)
     );
     let screenshot_path = options.screenshot_dir.join(&screenshot_filename);
+    log::debug!("Screenshot path: {:?}", screenshot_path);
 
     // Ensure screenshot directory exists
     tokio::fs::create_dir_all(&options.screenshot_dir)
         .await
         .map_err(|e| {
+            log::error!("❌ Failed to create screenshot directory: {}", e);
             BrowserError::Other(format!("Failed to create screenshot directory: {}", e))
         })?;
 
     // Capture screenshot
     driver.screenshot_to_file(&screenshot_path).await?;
+    log::info!("✓ Screenshot captured: {}", screenshot_filename);
 
     // Get screenshot file size
     let screenshot_metadata = tokio::fs::metadata(&screenshot_path)
@@ -280,9 +301,13 @@ pub async fn capture_step_frame(
     };
 
     // 3. SAVE DOM
+    log::info!("📄 Extracting DOM...");
     let url = driver.current_url().await?;
     let title = driver.title().await?;
+    log::debug!("URL: {}", url);
+    log::debug!("Title: {}", title);
     let html_content = driver.get_page_source().await?;
+    log::info!("✓ DOM extracted ({} KB)", html_content.len() / 1024);
 
     let (html_path, html_hash) = if options.save_html {
         if let Some(dom_dir) = &options.dom_dir {
@@ -322,7 +347,10 @@ pub async fn capture_step_frame(
 
     // 4. EXTRACT INTERACTIVE ELEMENTS (optional, expensive)
     let interactive_elements = if options.extract_interactive_elements {
-        Some(extract_interactive_elements_from_page(driver).await?)
+        log::info!("🔍 Extracting interactive elements...");
+        let elements = extract_interactive_elements_from_page(driver).await?;
+        log::info!("✓ Found {} interactive elements", elements.len());
+        Some(elements)
     } else {
         None
     };
@@ -343,6 +371,11 @@ pub async fn capture_step_frame(
     };
 
     // 6. CONSTRUCT STEP FRAME
+    log::info!("✅ Step frame {} captured successfully", frame_id);
+    log::info!("   Screenshot: {} KB", screenshot_size / 1024);
+    log::info!("   DOM: {} KB", html_content.len() / 1024);
+    log::info!("   URL: {}", url);
+
     Ok(StepFrame {
         frame_id,
         timestamp: chrono::Utc::now().to_rfc3339(),
