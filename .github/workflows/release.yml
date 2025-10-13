@@ -199,161 +199,32 @@ jobs:
           if-no-files-found: error
 
       - name: Upload artifacts to main repository release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
-          RELEASE_ID="${{ needs.create-release.outputs.release_id }}"
-          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
-
-          # Get upload URL
-          UPLOAD_URL=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}" | \
-            jq -r '.upload_url' | sed 's/{?name,label}//')
-
-          # Upload DMG
-          DMG_FILE=$(find "${BUNDLE_DIR}/dmg" -name "*.dmg" 2>/dev/null | head -n 1)
-          if [ -n "$DMG_FILE" ]; then
-            DMG_NAME=$(basename "$DMG_FILE")
-            echo "Uploading DMG: $DMG_NAME"
-            curl -X POST \
-              -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Content-Type: application/x-apple-diskimage" \
-              "${UPLOAD_URL}?name=${DMG_NAME}" \
-              --data-binary @"${DMG_FILE}"
-          fi
-
-          # Upload updater bundle (.tar.gz)
-          UPDATER_BUNDLE=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz" -not -name "*.sig" 2>/dev/null | head -n 1)
-          if [ -n "$UPDATER_BUNDLE" ]; then
-            BUNDLE_NAME=$(basename "$UPDATER_BUNDLE")
-            echo "Uploading updater bundle: $BUNDLE_NAME"
-            curl -X POST \
-              -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Content-Type: application/gzip" \
-              "${UPLOAD_URL}?name=${BUNDLE_NAME}" \
-              --data-binary @"${UPDATER_BUNDLE}"
-          fi
-
-          # Upload signature file (.sig)
-          UPDATER_SIG=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz.sig" 2>/dev/null | head -n 1)
-          if [ -n "$UPDATER_SIG" ]; then
-            SIG_NAME=$(basename "$UPDATER_SIG")
-            echo "Uploading signature: $SIG_NAME"
-            curl -X POST \
-              -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Content-Type: application/octet-stream" \
-              "${UPLOAD_URL}?name=${SIG_NAME}" \
-              --data-binary @"${UPDATER_SIG}"
-          fi
-
-          # Note: We don't upload latest.json to the release
-          # It will be added via PR to robert-releases instead
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: |
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+          draft: true
+          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
+          fail_on_unmatched_files: false
 
       - name: Upload to robert-releases repository
-        env:
-          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
-        run: |
-          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
-          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
-
-          # Check if release exists in robert-releases
-          RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${TAG_NAME}")
-
-          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id // empty')
-
-          # If release doesn't exist, create it
-          if [ -z "$RELEASE_ID" ]; then
-            RELEASE_RESPONSE=$(curl -s -X POST \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases" \
-              -d "{
-                \"tag_name\": \"${TAG_NAME}\",
-                \"name\": \"Robert ${TAG_NAME}\",
-                \"body\": \"Release assets for Robert ${TAG_NAME}\",
-                \"draft\": false,
-                \"prerelease\": ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
-              }")
-            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-            UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
-          else
-            UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
-          fi
-
-          # Upload DMG
-          DMG_FILE=$(find "${BUNDLE_DIR}/dmg" -name "*.dmg" 2>/dev/null | head -n 1)
-          if [ -n "$DMG_FILE" ]; then
-            DMG_NAME=$(basename "$DMG_FILE")
-            echo "Uploading DMG to robert-releases: $DMG_NAME"
-
-            # Delete existing asset if it exists
-            EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets" | \
-              jq -r ".[] | select(.name == \"${DMG_NAME}\") | .id // empty")
-
-            if [ -n "$EXISTING_ASSET_ID" ]; then
-              curl -X DELETE \
-                -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-                "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_ASSET_ID}"
-            fi
-
-            curl -X POST \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Content-Type: application/x-apple-diskimage" \
-              "${UPLOAD_URL}?name=${DMG_NAME}" \
-              --data-binary @"${DMG_FILE}"
-          fi
-
-          # Upload updater bundle (.tar.gz)
-          UPDATER_BUNDLE=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz" -not -name "*.sig" 2>/dev/null | head -n 1)
-          if [ -n "$UPDATER_BUNDLE" ]; then
-            BUNDLE_NAME=$(basename "$UPDATER_BUNDLE")
-            echo "Uploading updater bundle to robert-releases: $BUNDLE_NAME"
-
-            # Delete existing asset if it exists
-            EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets" | \
-              jq -r ".[] | select(.name == \"${BUNDLE_NAME}\") | .id // empty")
-
-            if [ -n "$EXISTING_ASSET_ID" ]; then
-              curl -X DELETE \
-                -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-                "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_ASSET_ID}"
-            fi
-
-            curl -X POST \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Content-Type: application/gzip" \
-              "${UPLOAD_URL}?name=${BUNDLE_NAME}" \
-              --data-binary @"${UPDATER_BUNDLE}"
-          fi
-
-          # Upload signature file (.sig)
-          UPDATER_SIG=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz.sig" 2>/dev/null | head -n 1)
-          if [ -n "$UPDATER_SIG" ]; then
-            SIG_NAME=$(basename "$UPDATER_SIG")
-            echo "Uploading signature to robert-releases: $SIG_NAME"
-
-            # Delete existing asset if it exists
-            EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets" | \
-              jq -r ".[] | select(.name == \"${SIG_NAME}\") | .id // empty")
-
-            if [ -n "$EXISTING_ASSET_ID" ]; then
-              curl -X DELETE \
-                -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-                "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_ASSET_ID}"
-            fi
-
-            curl -X POST \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Content-Type: application/octet-stream" \
-              "${UPLOAD_URL}?name=${SIG_NAME}" \
-              --data-binary @"${UPDATER_SIG}"
-          fi
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: lucky-tensor/robert-releases
+          token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          name: Robert ${{ needs.create-release.outputs.tag_name }}
+          body: Release assets for Robert ${{ needs.create-release.outputs.tag_name }}
+          files: |
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+          draft: false
+          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
+          fail_on_unmatched_files: false
 
   update-robert-releases:
     name: Update robert-releases Repository
