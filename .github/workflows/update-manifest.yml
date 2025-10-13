@@ -69,8 +69,8 @@ jobs:
           ASSETS_JSON=$(gh api repos/lucky-tensor/robert-releases/releases/tags/$TAG_NAME | jq '.assets')
 
           # macOS platforms
-          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and contains("apple") and endswith(".app.tar.gz")) | .browser_download_url')
-          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and contains("apple") and endswith(".app.tar.gz")) | .browser_download_url')
+          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
+          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
 
           # Windows platforms (prefer .msi over .exe)
           WINDOWS_X64_MSI_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".msi")) | .browser_download_url')
