@@ -58,12 +58,3 @@ jobs:
       - name: Run all tests
         run: cargo test --workspace --all-features --all-targets -- --nocapture
 
-      - name: Upload test artifacts on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-artifacts
-          path: |
-            target/debug/
-            !target/debug/deps/
-            !target/debug/build/

@@ -115,10 +115,3 @@ jobs:
             ls -lah ../../target/${{ matrix.target }}/release/bundle/deb/
           fi
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: robert-${{ matrix.name }}-${{ matrix.target }}
-          path: |
-            target/${{ matrix.target }}/release/bundle/
-          retention-days: 7
