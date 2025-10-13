@@ -7,26 +7,20 @@ on:
     branches:
       - 'canary-*'
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g., 0.1.0)'
-        required: true
-        type: string
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  IS_CANARY: ${{ github.ref_type == 'branch' && startsWith(github.ref_name, 'canary-') }}
 
 permissions:
   contents: write
 
 jobs:
-  create-release:
-    name: Create Release
+  get-version:
+    name: Get Version Info
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
       tag_name: ${{ steps.get_tag.outputs.tag }}
       commit_hash: ${{ steps.get_commit.outputs.short_hash }}
       version_with_hash: ${{ steps.get_commit.outputs.version_with_hash }}
@@ -46,15 +40,11 @@ jobs:
       - name: Get tag name
         id: get_tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
-            # For canary branches, use version from tauri.conf.json with canary suffix
-            echo "tag=${{ steps.get_version.outputs.version }}-canary" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [ "${{ env.IS_CANARY }}" = "true" ]; then
+            echo "tag=${VERSION}-canary" >> $GITHUB_OUTPUT
           else
-            # For tag pushes, use the tag name
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Get commit hash
@@ -64,75 +54,9 @@ jobs:
           echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
           echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
 
-      - name: Determine if prerelease
-        id: prerelease
-        run: |
-          if [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create or Update GitHub Release
-        id: create_release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tag = '${{ steps.get_tag.outputs.tag }}';
-            const isPrerelease = ${{ steps.prerelease.outputs.is_prerelease }};
-
-            // Check if release already exists
-            let release;
-            try {
-              const { data } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tag
-              });
-              release = data;
-              console.log(`Found existing release: ${release.id}`);
-            } catch (error) {
-              if (error.status === 404) {
-                // Release doesn't exist, create it
-                const { data } = await github.rest.repos.createRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: tag,
-                  name: `Robert ${tag}`,
-                  draft: true,
-                  prerelease: isPrerelease,
-                  body: `## Robert Browser Automation - Release ${tag}
-
-            **Version:** ${{ steps.get_commit.outputs.version_with_hash }}
-            **Commit:** \`${{ steps.get_commit.outputs.short_hash }}\`
-
-            ### Downloads
-            - **macOS (Apple Silicon)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_aarch64.dmg\`
-            - **macOS (Intel)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_x64.dmg\`
-
-            ### Installation
-            1. Download the appropriate DMG file for your system
-            2. Open the DMG and drag Robert to your Applications folder
-            3. Launch Robert from Applications
-
-            ### Changes
-            <!-- Add release notes here -->`
-                });
-                release = data;
-                console.log(`Created new release: ${release.id}`);
-              } else {
-                throw error;
-              }
-            }
-
-            core.setOutput('upload_url', release.upload_url);
-            core.setOutput('id', release.id);
-            return release.id;
-
   build-and-release:
     name: Build and Release
-    needs: create-release
+    needs: get-version
     strategy:
       fail-fast: false
       matrix:
@@ -166,134 +90,33 @@ jobs:
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build with Tauri CLI
-        working-directory: crates/robert-app
+      - name: Build and release with Tauri Action
+        uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          bunx tauri build --target ${{ matrix.target }}
-
-      - name: Find and save latest.json for PR
-        if: matrix.target == 'aarch64-apple-darwin'
-        run: |
-          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
-          LATEST_JSON=$(find "${BUNDLE_DIR}/macos" -name "*.json" 2>/dev/null | head -n 1)
-
-          if [ -n "$LATEST_JSON" ]; then
-            echo "Found updater manifest: $LATEST_JSON"
-            cat "$LATEST_JSON"
-            cp "$LATEST_JSON" /tmp/latest.json
-          else
-            echo "Error: latest.json not found in bundle directory"
-            find "${BUNDLE_DIR}" -type f 2>/dev/null || true
-            exit 1
-          fi
-
-      - name: Upload latest.json for PR creation
-        if: matrix.target == 'aarch64-apple-darwin'
-        uses: actions/upload-artifact@v4
         with:
-          name: latest-json
-          path: /tmp/latest.json
-          if-no-files-found: error
+          owner: lucky-tensor
+          repo: robert-releases
+          releaseCommitish: ${{ github.sha }}
+          tagName: ${{ needs.get-version.outputs.tag_name }}
+          releaseName: Robert ${{ needs.get-version.outputs.tag_name }}
+          releaseBody: |
+            ## Robert Browser Automation - Release ${{ needs.get-version.outputs.tag_name }}
 
-      - name: Upload artifacts to main repository release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.create-release.outputs.tag_name }}
-          files: |
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
-          draft: true
-          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
-          fail_on_unmatched_files: false
+            **Version:** ${{ needs.get-version.outputs.version_with_hash }}
+            **Commit:** `${{ needs.get-version.outputs.commit_hash }}`
 
-      - name: Upload to robert-releases repository
-        uses: softprops/action-gh-release@v2
-        with:
-          repository: lucky-tensor/robert-releases
-          token: ${{ secrets.RELEASES_REPO_TOKEN }}
-          tag_name: ${{ needs.create-release.outputs.tag_name }}
-          name: Robert ${{ needs.create-release.outputs.tag_name }}
-          body: Release assets for Robert ${{ needs.create-release.outputs.tag_name }}
-          files: |
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
-            crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
-          draft: false
-          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
-          fail_on_unmatched_files: false
+            ### Installation
+            1. Download the appropriate DMG file for your system
+            2. Open the DMG and drag Robert to your Applications folder
+            3. Launch Robert from Applications
 
-  update-robert-releases:
-    name: Update robert-releases Repository
-    needs: [create-release, build-and-release]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download latest.json artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: latest-json
-          path: .
-
-      - name: Verify latest.json
-        run: |
-          if [ ! -f "latest.json" ]; then
-            echo "Error: latest.json not found"
-            ls -la
-            exit 1
-          fi
-          echo "Contents of latest.json:"
-          cat latest.json
-
-      - name: Checkout robert-releases repository
-        uses: actions/checkout@v4
-        with:
-          repository: lucky-tensor/robert-releases
-          token: ${{ secrets.RELEASES_REPO_TOKEN }}
-          path: robert-releases
-
-      - name: Copy latest.json to production directory
-        run: |
-          mkdir -p robert-releases/production
-          cp latest.json robert-releases/production/latest.json
-          echo "Contents of latest.json:"
-          cat robert-releases/production/latest.json
-
-      - name: Create Pull Request to robert-releases
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.RELEASES_REPO_TOKEN }}
-          path: robert-releases
-          commit-message: "Update production manifest for release ${{ needs.create-release.outputs.tag_name }}"
-          branch: update-manifest-${{ needs.create-release.outputs.tag_name }}
-          delete-branch: true
-          title: "Update production manifest for release ${{ needs.create-release.outputs.tag_name }}"
-          body: |
-            This PR updates the production updater manifest for Robert release ${{ needs.create-release.outputs.tag_name }}.
-
-            **Version:** ${{ needs.create-release.outputs.tag_name }}
-            **Commit:** ${{ needs.create-release.outputs.commit_hash }}
-
-            This was automatically generated by the release workflow.
-          labels: |
-            automated
-            release
-
-  finalize-release:
-    name: Finalize Release
-    needs: [create-release, build-and-release, update-robert-releases]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish Release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: ${{ needs.create-release.outputs.release_id }},
-              draft: false
-            });
+            ### Changes
+            <!-- Add release notes here -->
+          releaseDraft: false
+          prerelease: ${{ env.IS_CANARY == 'true' }}
+          includeUpdaterJson: false
+          args: --target ${{ matrix.target }}
+          projectPath: crates/robert-app
