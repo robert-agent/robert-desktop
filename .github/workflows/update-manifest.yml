@@ -194,7 +194,8 @@ jobs:
           # Check if PR already exists, if not create one
           if gh pr view "$BRANCH_NAME" --repo lucky-tensor/robert-releases &>/dev/null; then
             echo "PR already exists for branch $BRANCH_NAME"
-            gh pr view "$BRANCH_NAME" --repo lucky-tensor/robert-releases --web
+            PR_URL=$(gh pr view "$BRANCH_NAME" --repo lucky-tensor/robert-releases --json url --jq '.url')
+            echo "PR URL: $PR_URL"
           else
             # Create pull request
             gh pr create \
