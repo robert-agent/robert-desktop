@@ -2,6 +2,9 @@ name: Update Release Manifest
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - updater-manifest
 
 env:
   CARGO_TERM_COLOR: always
