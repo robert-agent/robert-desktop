@@ -166,39 +166,96 @@ jobs:
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build and upload to main repo
-        uses: tauri-apps/tauri-action@v0
+      - name: Build with Tauri CLI
+        working-directory: crates/robert-app
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          bunx tauri build --target ${{ matrix.target }}
+
+      - name: Find and save latest.json for PR
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: |
+          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
+          LATEST_JSON=$(find "${BUNDLE_DIR}/macos" -name "*.json" 2>/dev/null | head -n 1)
+
+          if [ -n "$LATEST_JSON" ]; then
+            echo "Found updater manifest: $LATEST_JSON"
+            cat "$LATEST_JSON"
+            cp "$LATEST_JSON" /tmp/latest.json
+          else
+            echo "Error: latest.json not found in bundle directory"
+            find "${BUNDLE_DIR}" -type f 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Upload latest.json for PR creation
+        if: matrix.target == 'aarch64-apple-darwin'
+        uses: actions/upload-artifact@v4
         with:
-          projectPath: crates/robert-app
-          tagName: ${{ needs.create-release.outputs.tag_name }}
-          releaseName: Robert ${{ needs.create-release.outputs.tag_name }}
-          releaseBody: |
-            ## Robert Browser Automation - Release ${{ needs.create-release.outputs.tag_name }}
+          name: latest-json
+          path: /tmp/latest.json
+          if-no-files-found: error
 
-            **Version:** ${{ needs.create-release.outputs.version_with_hash }}
-            **Commit:** `${{ needs.create-release.outputs.commit_hash }}`
+      - name: Upload artifacts to main repository release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+          RELEASE_ID="${{ needs.create-release.outputs.release_id }}"
+          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
 
-            ### Installation
-            1. Download the appropriate DMG file for your system
-            2. Open the DMG and drag Robert to your Applications folder
-            3. Launch Robert from Applications
+          # Get upload URL
+          UPLOAD_URL=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}" | \
+            jq -r '.upload_url' | sed 's/{?name,label}//')
 
-            ### Changes
-            <!-- Add release notes here -->
-          releaseDraft: true
-          prerelease: ${{ contains(needs.create-release.outputs.tag_name, 'canary') }}
-          includeUpdaterJson: true
-          args: --target ${{ matrix.target }}
+          # Upload DMG
+          DMG_FILE=$(find "${BUNDLE_DIR}/dmg" -name "*.dmg" 2>/dev/null | head -n 1)
+          if [ -n "$DMG_FILE" ]; then
+            DMG_NAME=$(basename "$DMG_FILE")
+            echo "Uploading DMG: $DMG_NAME"
+            curl -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/x-apple-diskimage" \
+              "${UPLOAD_URL}?name=${DMG_NAME}" \
+              --data-binary @"${DMG_FILE}"
+          fi
+
+          # Upload updater bundle (.tar.gz)
+          UPDATER_BUNDLE=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz" -not -name "*.sig" 2>/dev/null | head -n 1)
+          if [ -n "$UPDATER_BUNDLE" ]; then
+            BUNDLE_NAME=$(basename "$UPDATER_BUNDLE")
+            echo "Uploading updater bundle: $BUNDLE_NAME"
+            curl -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/gzip" \
+              "${UPLOAD_URL}?name=${BUNDLE_NAME}" \
+              --data-binary @"${UPDATER_BUNDLE}"
+          fi
+
+          # Upload signature file (.sig)
+          UPDATER_SIG=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz.sig" 2>/dev/null | head -n 1)
+          if [ -n "$UPDATER_SIG" ]; then
+            SIG_NAME=$(basename "$UPDATER_SIG")
+            echo "Uploading signature: $SIG_NAME"
+            curl -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              "${UPLOAD_URL}?name=${SIG_NAME}" \
+              --data-binary @"${UPDATER_SIG}"
+          fi
+
+          # Note: We don't upload latest.json to the release
+          # It will be added via PR to robert-releases instead
 
       - name: Upload to robert-releases repository
         env:
           RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           TAG_NAME="${{ needs.create-release.outputs.tag_name }}"
+          BUNDLE_DIR="crates/robert-app/src-tauri/target/${{ matrix.target }}/release/bundle"
 
           # Check if release exists in robert-releases
           RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
@@ -226,14 +283,11 @@ jobs:
             UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
           fi
 
-          # Find and upload build artifacts
-          BUNDLE_DIR="target/${{ matrix.target }}/release/bundle"
-
           # Upload DMG
-          DMG_FILE=$(find "${BUNDLE_DIR}/dmg" -name "*.dmg" | head -n 1)
+          DMG_FILE=$(find "${BUNDLE_DIR}/dmg" -name "*.dmg" 2>/dev/null | head -n 1)
           if [ -n "$DMG_FILE" ]; then
             DMG_NAME=$(basename "$DMG_FILE")
-            echo "Uploading DMG: $DMG_NAME"
+            echo "Uploading DMG to robert-releases: $DMG_NAME"
 
             # Delete existing asset if it exists
             EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
@@ -254,10 +308,10 @@ jobs:
           fi
 
           # Upload updater bundle (.tar.gz)
-          UPDATER_BUNDLE=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz" -not -name "*.sig" | head -n 1)
+          UPDATER_BUNDLE=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz" -not -name "*.sig" 2>/dev/null | head -n 1)
           if [ -n "$UPDATER_BUNDLE" ]; then
             BUNDLE_NAME=$(basename "$UPDATER_BUNDLE")
-            echo "Uploading updater bundle: $BUNDLE_NAME"
+            echo "Uploading updater bundle to robert-releases: $BUNDLE_NAME"
 
             # Delete existing asset if it exists
             EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
@@ -278,10 +332,10 @@ jobs:
           fi
 
           # Upload signature file (.sig)
-          UPDATER_SIG=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz.sig" | head -n 1)
+          UPDATER_SIG=$(find "${BUNDLE_DIR}/macos" -name "*.app.tar.gz.sig" 2>/dev/null | head -n 1)
           if [ -n "$UPDATER_SIG" ]; then
             SIG_NAME=$(basename "$UPDATER_SIG")
-            echo "Uploading signature: $SIG_NAME"
+            echo "Uploading signature to robert-releases: $SIG_NAME"
 
             # Delete existing asset if it exists
             EXISTING_ASSET_ID=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
@@ -306,15 +360,21 @@ jobs:
     needs: [create-release, build-and-release]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main repository
-        uses: actions/checkout@v4
-
-      - name: Upload latest.json as artifact
-        uses: actions/upload-artifact@v4
+      - name: Download latest.json artifact
+        uses: actions/download-artifact@v4
         with:
-          name: updater-manifest
-          path: crates/robert-app/latest.json
-          if-no-files-found: error
+          name: latest-json
+          path: .
+
+      - name: Verify latest.json
+        run: |
+          if [ ! -f "latest.json" ]; then
+            echo "Error: latest.json not found"
+            ls -la
+            exit 1
+          fi
+          echo "Contents of latest.json:"
+          cat latest.json
 
       - name: Checkout robert-releases repository
         uses: actions/checkout@v4
@@ -326,7 +386,7 @@ jobs:
       - name: Copy latest.json to production directory
         run: |
           mkdir -p robert-releases/production
-          cp crates/robert-app/latest.json robert-releases/production/latest.json
+          cp latest.json robert-releases/production/latest.json
           echo "Contents of latest.json:"
           cat robert-releases/production/latest.json
 
