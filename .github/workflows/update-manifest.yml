@@ -188,8 +188,8 @@ jobs:
           git add production/latest.json
           git commit -m "Update production/latest.json for release ${TAG_NAME}"
 
-          # Push branch
-          git push origin "$BRANCH_NAME"
+          # Push branch (force push to overwrite if branch exists)
+          git push -f origin "$BRANCH_NAME"
 
           # Create pull request
           gh pr create \
