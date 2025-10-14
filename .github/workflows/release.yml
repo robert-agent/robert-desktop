@@ -97,9 +97,78 @@ jobs:
           echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
           echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
 
+  create-release:
+    name: Create GitHub Release
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Create or get release
+        id: create_release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag_name }}
+          RELEASE_REPO: ${{ needs.prepare-release.outputs.full_repo }}
+          VERSION_WITH_HASH: ${{ needs.prepare-release.outputs.version_with_hash }}
+          COMMIT_HASH: ${{ needs.prepare-release.outputs.commit_hash }}
+          IS_CANARY: ${{ env.IS_CANARY }}
+        with:
+          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          result-encoding: string
+          script: |
+            const [owner, repo] = process.env.RELEASE_REPO.split('/');
+            const tag = process.env.RELEASE_TAG;
+
+            // Try to find existing release by tag
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag
+              });
+              console.log(`Found existing release: ${release.id}`);
+              core.setOutput('id', release.id);
+              return release.id;
+            } catch (error) {
+              if (error.status === 404) {
+                // Release doesn't exist, create it
+                const releaseType = process.env.IS_CANARY === 'true' ? 'Canary' : 'Production';
+                const releaseBody = [
+                  `## Robert Browser Automation - Release ${tag}`,
+                  '',
+                  `**Version:** ${process.env.VERSION_WITH_HASH}`,
+                  `**Commit:** \`${process.env.COMMIT_HASH}\``,
+                  `**Release Type:** ${releaseType}`,
+                  '',
+                  '### Installation',
+                  '1. Download the appropriate DMG file for your system',
+                  '2. Open the DMG and drag Robert to your Applications folder',
+                  '3. Launch Robert from Applications',
+                  '',
+                  '### Changes',
+                  '<!-- Add release notes here -->'
+                ].join('\n');
+
+                const { data: release } = await github.rest.repos.createRelease({
+                  owner,
+                  repo,
+                  tag_name: tag,
+                  name: `Robert ${tag}`,
+                  body: releaseBody,
+                  draft: false,
+                  prerelease: process.env.IS_CANARY === 'true'
+                });
+                console.log(`Created new release: ${release.id}`);
+                core.setOutput('id', release.id);
+                return release.id;
+              }
+              throw error;
+            }
+
   build-and-release:
     name: Build and Release
-    needs: prepare-release
+    needs: [prepare-release, create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -128,39 +197,76 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates/robert-app/src-tauri
+          save-if: true
 
       - name: Install frontend dependencies
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build and release with Tauri Action
-        uses: tauri-apps/tauri-action@v0
+      - name: Update productName for canary builds
+        if: ${{ env.IS_CANARY == 'true' }}
+        working-directory: crates/robert-app/src-tauri
+        run: |
+          COMMIT_HASH="${{ needs.prepare-release.outputs.commit_hash }}"
+          # Take first 4 characters of the 7-character hash
+          SHORT_HASH="${COMMIT_HASH:0:4}"
+          # Update productName to include canary and hash
+          jq --arg name "robert-canary-$SHORT_HASH" '.productName = $name' tauri.conf.json > tauri.conf.json.tmp
+          mv tauri.conf.json.tmp tauri.conf.json
+          echo "Updated productName to: robert-canary-$SHORT_HASH"
+          cat tauri.conf.json | jq -r '.productName'
+
+      - name: Build Tauri app
+        working-directory: crates/robert-app
+        run: bunx tauri build --target ${{ matrix.target }}
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Rename updater artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        working-directory: crates/robert-app
+        run: |
+          TARGET="${{ matrix.target }}"
+          BUNDLE_DIR="../../target/$TARGET/release/bundle"
+
+          # Determine architecture label for filename
+          if [ "$TARGET" = "aarch64-apple-darwin" ]; then
+            ARCH="aarch64"
+          else
+            ARCH="x64"
+          fi
+
+          # Get the productName from tauri.conf.json
+          PRODUCT_NAME=$(jq -r '.productName' src-tauri/tauri.conf.json)
+
+          echo "Looking for updater bundles in: $BUNDLE_DIR/macos"
+          ls -la "$BUNDLE_DIR/macos/" || true
+
+          # Rename the .app.tar.gz and .app.tar.gz.sig files
+          if [ -f "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz" ]; then
+            mv "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz" \
+               "$BUNDLE_DIR/macos/${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz"
+            echo "Renamed ${PRODUCT_NAME}.app.tar.gz to ${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz"
+          fi
+
+          if [ -f "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz.sig" ]; then
+            mv "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz.sig" \
+               "$BUNDLE_DIR/macos/${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz.sig"
+            echo "Renamed ${PRODUCT_NAME}.app.tar.gz.sig to ${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz.sig"
+          fi
+
+          echo "Updated bundle files:"
+          ls -la "$BUNDLE_DIR/macos/"
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v1
         with:
-          owner: robert-agent
-          repo: ${{ needs.prepare-release.outputs.repo }}
-          releaseCommitish: ${{ github.sha }}
-          tagName: ${{ needs.prepare-release.outputs.tag_name }}
-          releaseName: Robert ${{ needs.prepare-release.outputs.tag_name }}
-          releaseBody: |
-            ## Robert Browser Automation - Release ${{ needs.prepare-release.outputs.tag_name }}
-
-            **Version:** ${{ needs.prepare-release.outputs.version_with_hash }}
-            **Commit:** `${{ needs.prepare-release.outputs.commit_hash }}`
-            **Release Type:** ${{ env.IS_CANARY == 'true' && 'Canary' || 'Production' }}
-
-            ### Installation
-            1. Download the appropriate DMG file for your system
-            2. Open the DMG and drag Robert to your Applications folder
-            3. Launch Robert from Applications
-
-            ### Changes
-            <!-- Add release notes here -->
-          releaseDraft: false
-          prerelease: ${{ env.IS_CANARY == 'true' }}
-          includeUpdaterJson: false
-          args: --target ${{ matrix.target }}
-          projectPath: crates/robert-app
+          repository: robert-agent/${{ needs.prepare-release.outputs.repo }}
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          files: |
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}

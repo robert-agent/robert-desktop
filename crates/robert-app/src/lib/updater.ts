@@ -28,12 +28,14 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
     const update = await check();
 
     if (!update) {
-      console.error('[Updater] Failed to check for updates');
-      return null;
+      const errorMsg = '[Updater] Failed to check for updates - update service returned null';
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     if (!update.available) {
       console.log('[Updater] No update available, running latest version');
+      console.log(`[Updater] Current version: ${update.currentVersion}`);
       return {
         available: false,
         currentVersion: update.currentVersion,
@@ -42,6 +44,7 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
 
     console.log(`[Updater] Update available: ${update.version}`);
     console.log(`[Updater] Current version: ${update.currentVersion}`);
+    console.log(`[Updater] Release date: ${update.date}`);
 
     return {
       available: true,
@@ -51,8 +54,10 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
       body: update.body,
     };
   } catch (error) {
-    console.error('[Updater] Error checking for updates:', error);
-    return null;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Updater] Error checking for updates:', errorMsg);
+    console.error('[Updater] Full error:', error);
+    throw new Error(`Failed to check for updates: ${errorMsg}`);
   }
 }
 
@@ -68,9 +73,12 @@ export async function downloadAndInstallUpdate(onProgress?: UpdaterCallback): Pr
     const update = await check();
 
     if (!update || !update.available) {
-      console.error('[Updater] No update available to install');
-      return false;
+      const errorMsg = '[Updater] No update available to install';
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
+
+    console.log(`[Updater] Downloading version ${update.version}...`);
 
     let totalBytes = 0;
     let downloadedBytes = 0;
@@ -128,8 +136,10 @@ export async function downloadAndInstallUpdate(onProgress?: UpdaterCallback): Pr
 
     return true;
   } catch (error) {
-    console.error('[Updater] Error during update:', error);
-    return false;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('[Updater] Error during update:', errorMsg);
+    console.error('[Updater] Full error:', error);
+    throw new Error(`Update failed: ${errorMsg}`);
   }
 }
 

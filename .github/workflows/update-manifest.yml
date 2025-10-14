@@ -71,8 +71,10 @@ jobs:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           ref: main
           path: releases-repo
+          fetch-depth: 0
 
       - name: Update manifest from latest release
+        id: update_manifest
         working-directory: releases-repo
         env:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
@@ -85,6 +87,7 @@ jobs:
           PUBLISHED_AT=$(echo "$RELEASE_JSON" | jq -r '.published_at')
 
           echo "📦 Processing release: $TAG_NAME"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
 
           # Download signature files
           mkdir -p /tmp/signatures
@@ -143,7 +146,8 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
           REPO="${{ steps.set_repo.outputs.full_repo }}"
-          BRANCH_NAME="update-manifest-${{ env.RELEASE_TYPE }}"
+          TAG_NAME="${{ steps.update_manifest.outputs.tag_name }}"
+          BRANCH_NAME="update-manifest-$TAG_NAME"
 
           # Configure git
           git config user.name "github-actions[bot]"
@@ -155,22 +159,31 @@ jobs:
             exit 0
           fi
 
-          # Create and switch to branch
-          git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
+          # Fetch all remote branches
+          git fetch origin
+
+          # Check if branch exists remotely
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "Branch $BRANCH_NAME exists remotely, checking it out..."
+            git checkout -b "$BRANCH_NAME" origin/"$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
+          else
+            echo "Creating new branch $BRANCH_NAME..."
+            git checkout -b "$BRANCH_NAME"
+          fi
 
           # Commit and push
           git add latest.json
-          git commit -m "Update latest.json for ${{ env.RELEASE_TYPE }} release"
+          git commit -m "Update latest.json for ${{ env.RELEASE_TYPE }} release" || echo "No changes to commit"
           git push -u origin "$BRANCH_NAME" --force
 
           # Create PR if it doesn't exist
           if ! gh pr view "$BRANCH_NAME" --repo "$REPO" &>/dev/null; then
             gh pr create --repo "$REPO" \
-              --title "Update latest.json for ${{ env.RELEASE_TYPE }} release" \
-              --body "This PR updates the updater manifest with the latest release information." \
+              --title "Update latest.json for $TAG_NAME" \
+              --body "This PR updates the updater manifest with release $TAG_NAME." \
               --base main \
               --head "$BRANCH_NAME"
             echo "✅ Created pull request"
           else
-            echo "✅ Pull request already exists"
+            echo "✅ Pull request already exists, updated with new commit"
           fi
