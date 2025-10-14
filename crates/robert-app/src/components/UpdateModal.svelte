@@ -30,8 +30,14 @@
         }
       }
     } catch (err) {
-      error = `Failed to check for updates: ${err}`;
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      error = errorMessage;
+      console.error('[UpdateModal] Error checking for updates:', err);
+
+      // For auto-check, show the modal with error so user is aware
+      if (autoCheck && !visible) {
+        visible = true;
+      }
     } finally {
       checking = false;
     }
@@ -43,18 +49,14 @@
     downloadProgress = null;
 
     try {
-      const success = await downloadAndInstallUpdate((progress) => {
+      await downloadAndInstallUpdate((progress) => {
         downloadProgress = progress;
       });
-
-      if (!success) {
-        error = 'Failed to download and install update';
-        downloading = false;
-      }
       // If successful, app will relaunch - no need to update UI
     } catch (err) {
-      error = `Update failed: ${err}`;
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      error = errorMessage;
+      console.error('[UpdateModal] Error downloading/installing update:', err);
       downloading = false;
     }
   }
