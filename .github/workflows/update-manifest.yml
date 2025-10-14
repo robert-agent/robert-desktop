@@ -168,8 +168,10 @@ jobs:
           REPO="${{ steps.set_repo.outputs.full_repo }}"
           BRANCH_NAME="update-manifest-${TAG_NAME}"
 
+          # Configure git credentials with token
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${{ secrets.RELEASES_REPO_TOKEN }}@github.com/${REPO}.git"
 
           # Check if there are changes
           if git diff --quiet latest.json; then
