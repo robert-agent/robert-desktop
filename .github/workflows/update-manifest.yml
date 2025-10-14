@@ -47,12 +47,7 @@ jobs:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           ref: main
           path: releases-repo
-          persist-credentials: true
-
-      - name: Configure git authentication
-        working-directory: releases-repo
-        run: |
-          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${{ secrets.RELEASES_REPO_TOKEN }} | base64)"
+          persist-credentials: false
 
       # Step 2: Read release binaries and sigs, update latest.json in place
       - name: Update manifest from latest release
