@@ -2,7 +2,7 @@
 
 **Watch automation happen. Learn by seeing. Control everything. Own your data.**
 
-Robert is an open-source, local-first browser automation tool that brings automation to everyone—not just programmers. While Zapier requires API knowledge, Claude agents are black boxes, and GPT provides no visibility, Robert lets you **watch automation work in real-time** with beautiful visual feedback.
+Robert is a local-first browser automation tool that brings automation to everyone—not just programmers. While Zapier requires API knowledge, Claude agents are black boxes, and GPT provides no visibility, Robert lets you **watch automation work in real-time** with beautiful visual feedback.
 
 ## Why Robert?
 
