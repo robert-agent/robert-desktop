@@ -1,0 +1,226 @@
+name: Update Release Manifest
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - updater-manifest
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  update-manifest:
+    name: Update production/latest.json
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get latest release from robert-releases
+        id: get_release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          # Get the latest non-prerelease release
+          RELEASE_JSON=$(gh api repos/lucky-tensor/robert-releases/releases/latest)
+
+          # Extract release info
+          TAG_NAME=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          PUBLISHED_AT=$(echo "$RELEASE_JSON" | jq -r '.published_at')
+          RELEASE_NOTES=$(echo "$RELEASE_JSON" | jq -r '.body')
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "published_at=$PUBLISHED_AT" >> $GITHUB_OUTPUT
+
+          # Save release notes to a file for later use
+          echo "$RELEASE_NOTES" > release_notes.txt
+
+          echo "Found latest release: $TAG_NAME"
+          echo "Published at: $PUBLISHED_AT"
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.get_release.outputs.tag_name }}"
+
+          # Download all signature files (macOS and Windows)
+          echo "Downloading signature files for release $TAG_NAME"
+          mkdir -p signatures
+          gh release download "$TAG_NAME" \
+            --repo lucky-tensor/robert-releases \
+            --pattern "*.sig" \
+            --dir ./signatures
+
+          # List downloaded signatures
+          echo "Downloaded signatures:"
+          ls -la ./signatures/
+
+      - name: Get asset URLs and signatures
+        id: get_assets
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.get_release.outputs.tag_name }}"
+
+          # Get all release assets
+          ASSETS_JSON=$(gh api repos/lucky-tensor/robert-releases/releases/tags/$TAG_NAME | jq '.assets')
+
+          # macOS platforms
+          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
+          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
+
+          # Windows platforms (prefer .msi over .exe)
+          WINDOWS_X64_MSI_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".msi")) | .browser_download_url')
+          WINDOWS_X64_EXE_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url')
+
+          # Use MSI if available, otherwise EXE
+          if [ -n "$WINDOWS_X64_MSI_URL" ]; then
+            WINDOWS_X64_URL="$WINDOWS_X64_MSI_URL"
+            WINDOWS_SIG_FILE=$(ls signatures/*.msi.sig 2>/dev/null | head -1)
+          elif [ -n "$WINDOWS_X64_EXE_URL" ]; then
+            WINDOWS_X64_URL="$WINDOWS_X64_EXE_URL"
+            WINDOWS_SIG_FILE=$(ls signatures/*-setup.exe.sig 2>/dev/null | head -1)
+          else
+            WINDOWS_X64_URL=""
+            WINDOWS_SIG_FILE=""
+          fi
+
+          # Read signatures
+          MACOS_AARCH64_SIG=$(cat signatures/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
+          MACOS_X64_SIG=$(cat signatures/*x64*.app.tar.gz.sig 2>/dev/null || echo "")
+          WINDOWS_X64_SIG=$(cat "$WINDOWS_SIG_FILE" 2>/dev/null || echo "")
+
+          # Output for use in next step
+          echo "macos_aarch64_url=$MACOS_AARCH64_URL" >> $GITHUB_OUTPUT
+          echo "macos_x64_url=$MACOS_X64_URL" >> $GITHUB_OUTPUT
+          echo "windows_x64_url=$WINDOWS_X64_URL" >> $GITHUB_OUTPUT
+          echo "macos_aarch64_sig=$MACOS_AARCH64_SIG" >> $GITHUB_OUTPUT
+          echo "macos_x64_sig=$MACOS_X64_SIG" >> $GITHUB_OUTPUT
+          echo "windows_x64_sig=$WINDOWS_X64_SIG" >> $GITHUB_OUTPUT
+
+          echo "Platform URLs found:"
+          echo "macOS aarch64: $MACOS_AARCH64_URL"
+          echo "macOS x64: $MACOS_X64_URL"
+          echo "Windows x64: $WINDOWS_X64_URL"
+
+      - name: Checkout robert-releases repository
+        uses: actions/checkout@v4
+        with:
+          repository: lucky-tensor/robert-releases
+          token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          ref: main
+          path: robert-releases
+
+      - name: Update production/latest.json with jq
+        run: |
+          cd robert-releases
+
+          # Create production directory if it doesn't exist
+          mkdir -p production
+
+          # Initialize with empty platforms object if file doesn't exist
+          if [ ! -f production/latest.json ]; then
+            echo '{"version":"","notes":"","pub_date":"","platforms":{}}' > production/latest.json
+          fi
+
+          # Update version, notes, and pub_date
+          jq --arg version "${{ steps.get_release.outputs.tag_name }}" \
+             --arg notes "Release ${{ steps.get_release.outputs.tag_name }}" \
+             --arg pub_date "${{ steps.get_release.outputs.published_at }}" \
+             '.version = $version | .notes = $notes | .pub_date = $pub_date' \
+             production/latest.json > production/latest.json.tmp
+          mv production/latest.json.tmp production/latest.json
+
+          # Update macOS aarch64 platform if available
+          if [ -n "${{ steps.get_assets.outputs.macos_aarch64_url }}" ] && [ -n "${{ steps.get_assets.outputs.macos_aarch64_sig }}" ]; then
+            jq --arg sig "${{ steps.get_assets.outputs.macos_aarch64_sig }}" \
+               --arg url "${{ steps.get_assets.outputs.macos_aarch64_url }}" \
+               '.platforms["darwin-aarch64"] = {"signature": $sig, "url": $url}' \
+               production/latest.json > production/latest.json.tmp
+            mv production/latest.json.tmp production/latest.json
+          fi
+
+          # Update macOS x64 platform if available
+          if [ -n "${{ steps.get_assets.outputs.macos_x64_url }}" ] && [ -n "${{ steps.get_assets.outputs.macos_x64_sig }}" ]; then
+            jq --arg sig "${{ steps.get_assets.outputs.macos_x64_sig }}" \
+               --arg url "${{ steps.get_assets.outputs.macos_x64_url }}" \
+               '.platforms["darwin-x86_64"] = {"signature": $sig, "url": $url}' \
+               production/latest.json > production/latest.json.tmp
+            mv production/latest.json.tmp production/latest.json
+          fi
+
+          # Update Windows x64 platform if available
+          if [ -n "${{ steps.get_assets.outputs.windows_x64_url }}" ] && [ -n "${{ steps.get_assets.outputs.windows_x64_sig }}" ]; then
+            jq --arg sig "${{ steps.get_assets.outputs.windows_x64_sig }}" \
+               --arg url "${{ steps.get_assets.outputs.windows_x64_url }}" \
+               '.platforms["windows-x86_64"] = {"signature": $sig, "url": $url}' \
+               production/latest.json > production/latest.json.tmp
+            mv production/latest.json.tmp production/latest.json
+          fi
+
+          echo "Updated production/latest.json:"
+          cat production/latest.json
+
+      - name: Create Pull Request
+        working-directory: robert-releases
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          TAG_NAME="${{ steps.get_release.outputs.tag_name }}"
+          BRANCH_NAME="update-manifest-${TAG_NAME}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Check if there are changes
+          if git diff --quiet production/latest.json; then
+            echo "No changes to production/latest.json"
+            exit 0
+          fi
+
+          # Create a new branch
+          git checkout -b "$BRANCH_NAME"
+
+          # Commit changes
+          git add production/latest.json
+          git commit -m "Update production/latest.json for release ${TAG_NAME}"
+
+          # Push branch (force push to overwrite if branch exists)
+          git push -f origin "$BRANCH_NAME"
+
+          # Check if PR already exists, if not create one
+          if gh pr view "$BRANCH_NAME" --repo lucky-tensor/robert-releases &>/dev/null; then
+            echo "PR already exists for branch $BRANCH_NAME"
+            PR_URL=$(gh pr view "$BRANCH_NAME" --repo lucky-tensor/robert-releases --json url --jq '.url')
+            echo "PR URL: $PR_URL"
+          else
+            # Create pull request
+            gh pr create \
+              --title "Update production/latest.json for release ${TAG_NAME}" \
+              --body "$(cat <<'EOF'
+            ## Update Manifest for Release ${TAG_NAME}
+
+            This PR updates the updater manifest with the latest release information.
+
+            ### Platforms Updated
+            - macOS (Apple Silicon): ${{ steps.get_assets.outputs.macos_aarch64_url && '✅' || '❌' }}
+            - macOS (Intel): ${{ steps.get_assets.outputs.macos_x64_url && '✅' || '❌' }}
+            - Windows (x64): ${{ steps.get_assets.outputs.windows_x64_url && '✅' || '❌' }}
+
+            ### Manifest Contents
+            \`\`\`json
+            $(cat production/latest.json)
+            \`\`\`
+
+            ---
+            🤖 Generated by GitHub Actions
+          EOF
+            )" \
+              --base main \
+              --head "$BRANCH_NAME"
+
+            echo "Successfully created PR for manifest update"
+          fi
