@@ -37,6 +37,33 @@ jobs:
             echo "full_repo=robert-agent/robert-releases-canary" >> $GITHUB_OUTPUT
           fi
 
+      - name: Verify token access
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        run: |
+          REPO="${{ steps.set_repo.outputs.full_repo }}"
+          echo "Checking access to $REPO..."
+
+          if ! gh api repos/$REPO &>/dev/null; then
+            echo "❌ ERROR: Token does not have access to $REPO"
+            echo ""
+            echo "For Fine-grained Personal Access Tokens:"
+            echo "1. Go to: https://github.com/settings/personal-access-tokens"
+            echo "2. Click on your RELEASES_REPO_TOKEN"
+            echo "3. Under 'Repository access', select 'Only select repositories'"
+            echo "4. Add both:"
+            echo "   - robert-agent/robert-releases"
+            echo "   - robert-agent/robert-releases-canary"
+            echo "5. Under 'Repository permissions', ensure you have:"
+            echo "   - Contents: Read and write"
+            echo "   - Pull requests: Read and write"
+            echo "   - Metadata: Read-only (auto-selected)"
+            echo "6. Save changes and update the secret if the token changed"
+            exit 1
+          fi
+
+          echo "✅ Token has access to $REPO"
+
       - name: Checkout releases repository
         uses: actions/checkout@v4
         with:
