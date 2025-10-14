@@ -97,9 +97,75 @@ jobs:
           echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
           echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
 
+  create-release:
+    name: Create GitHub Release
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Create or get release
+        id: create_release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ needs.prepare-release.outputs.tag_name }}
+          RELEASE_REPO: ${{ needs.prepare-release.outputs.full_repo }}
+          VERSION_WITH_HASH: ${{ needs.prepare-release.outputs.version_with_hash }}
+          COMMIT_HASH: ${{ needs.prepare-release.outputs.commit_hash }}
+          IS_CANARY: ${{ env.IS_CANARY }}
+        with:
+          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.RELEASE_REPO.split('/');
+            const tag = process.env.RELEASE_TAG;
+
+            // Try to find existing release by tag
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag
+              });
+              console.log(`Found existing release: ${release.id}`);
+              return release.id;
+            } catch (error) {
+              if (error.status === 404) {
+                // Release doesn't exist, create it
+                const releaseType = process.env.IS_CANARY === 'true' ? 'Canary' : 'Production';
+                const releaseBody = [
+                  `## Robert Browser Automation - Release ${tag}`,
+                  '',
+                  `**Version:** ${process.env.VERSION_WITH_HASH}`,
+                  `**Commit:** \`${process.env.COMMIT_HASH}\``,
+                  `**Release Type:** ${releaseType}`,
+                  '',
+                  '### Installation',
+                  '1. Download the appropriate DMG file for your system',
+                  '2. Open the DMG and drag Robert to your Applications folder',
+                  '3. Launch Robert from Applications',
+                  '',
+                  '### Changes',
+                  '<!-- Add release notes here -->'
+                ].join('\n');
+
+                const { data: release } = await github.rest.repos.createRelease({
+                  owner,
+                  repo,
+                  tag_name: tag,
+                  name: `Robert ${tag}`,
+                  body: releaseBody,
+                  draft: false,
+                  prerelease: process.env.IS_CANARY === 'true'
+                });
+                console.log(`Created new release: ${release.id}`);
+                return release.id;
+              }
+              throw error;
+            }
+
   build-and-release:
     name: Build and Release
-    needs: prepare-release
+    needs: [prepare-release, create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -128,12 +194,13 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates/robert-app/src-tauri
+          save-if: true
 
       - name: Install frontend dependencies
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build and release with Tauri Action
+      - name: Build and upload to release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
@@ -142,25 +209,7 @@ jobs:
         with:
           owner: robert-agent
           repo: ${{ needs.prepare-release.outputs.repo }}
-          releaseCommitish: ${{ github.sha }}
-          tagName: ${{ needs.prepare-release.outputs.tag_name }}
-          releaseName: Robert ${{ needs.prepare-release.outputs.tag_name }}
-          releaseBody: |
-            ## Robert Browser Automation - Release ${{ needs.prepare-release.outputs.tag_name }}
-
-            **Version:** ${{ needs.prepare-release.outputs.version_with_hash }}
-            **Commit:** `${{ needs.prepare-release.outputs.commit_hash }}`
-            **Release Type:** ${{ env.IS_CANARY == 'true' && 'Canary' || 'Production' }}
-
-            ### Installation
-            1. Download the appropriate DMG file for your system
-            2. Open the DMG and drag Robert to your Applications folder
-            3. Launch Robert from Applications
-
-            ### Changes
-            <!-- Add release notes here -->
-          releaseDraft: false
-          prerelease: ${{ env.IS_CANARY == 'true' }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           includeUpdaterJson: false
           args: --target ${{ matrix.target }}
           projectPath: crates/robert-app
