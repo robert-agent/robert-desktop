@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Robert - Browser Automation",
+        "title": "robert",
         "width": 1280,
         "height": 800,
         "resizable": true,
@@ -38,7 +38,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://raw.githubusercontent.com/lucky-tensor/robert-releases/main/production/latest.json"
+        "https://raw.githubusercontent.com/lucky-tensor/robert-releases-canary/main/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4RTg2MDAzNEI0MzI1RDgKUldUWUpVTkxBMkRvcU1QNGdBZWhlVGJWb0tyQmM5UDNRQnM3ZEpDMEVyQTNPbFZJem5Mc092WGMK",
       "windows": {
