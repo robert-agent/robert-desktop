@@ -4,8 +4,10 @@
   import UrlInput from './components/UrlInput.svelte';
   import DebugView from './components/DebugView.svelte';
   import DeveloperMode from './components/DeveloperMode.svelte';
+  import UpdateModal from './components/UpdateModal.svelte';
 
   let showDeveloperMode = false;
+  let updateModalRef: UpdateModal;
 
   onMount(async () => {
     // Setup event listeners for debug events
@@ -20,6 +22,12 @@
   function toggleDeveloperMode() {
     showDeveloperMode = !showDeveloperMode;
   }
+
+  function handleCheckForUpdates() {
+    if (updateModalRef) {
+      updateModalRef.checkNow();
+    }
+  }
 </script>
 
 <div class="app-container">
@@ -29,9 +37,14 @@
         <h1>🤖 Robert</h1>
         <p>Browser Automation for Everyone</p>
       </div>
-      <button class="dev-mode-toggle" on:click={toggleDeveloperMode}>
-        {showDeveloperMode ? '✖' : '🛠️'} Developer Mode
-      </button>
+      <div class="header-buttons">
+        <button class="update-btn" on:click={handleCheckForUpdates} title="Check for updates">
+          🔄
+        </button>
+        <button class="dev-mode-toggle" on:click={toggleDeveloperMode}>
+          {showDeveloperMode ? '✖' : '🛠️'} Developer Mode
+        </button>
+      </div>
     </div>
   </header>
 
@@ -50,6 +63,9 @@
       </div>
     {/if}
   </main>
+
+  <!-- Update Modal with auto-check enabled -->
+  <UpdateModal bind:this={updateModalRef} autoCheck={true} />
 </div>
 
 <style>
@@ -95,6 +111,34 @@
     margin: 0.25rem 0 0 0;
     font-size: 0.9rem;
     opacity: 0.9;
+  }
+
+  .header-buttons {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .update-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .update-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: rotate(180deg);
   }
 
   .dev-mode-toggle {
