@@ -55,7 +55,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates/robert-app/src-tauri
-          shared-key: tauri-${{ matrix.platform }}
+          shared-key: tauri-${{ matrix.platform }}-${{ matrix.target }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
