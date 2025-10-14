@@ -84,18 +84,13 @@ jobs:
         id: get_tag
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
-          if [ "${{ env.IS_CANARY }}" = "true" ]; then
-            echo "tag=${VERSION}-canary" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Get commit hash
-        id: get_commit
-        run: |
           SHORT_HASH=$(git rev-parse --short=7 HEAD)
-          echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
-          echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
+
+          if [ "${{ env.IS_CANARY }}" = "true" ]; then
+            echo "tag=${VERSION}-canary.${SHORT_HASH}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${VERSION}.${SHORT_HASH}" >> $GITHUB_OUTPUT
+          fi
 
   create-release:
     name: Create GitHub Release
@@ -202,19 +197,6 @@ jobs:
       - name: Install frontend dependencies
         working-directory: crates/robert-app
         run: bun install
-
-      - name: Update productName for canary builds
-        if: ${{ env.IS_CANARY == 'true' }}
-        working-directory: crates/robert-app/src-tauri
-        run: |
-          COMMIT_HASH="${{ needs.prepare-release.outputs.commit_hash }}"
-          # Take first 4 characters of the 7-character hash
-          SHORT_HASH="${COMMIT_HASH:0:4}"
-          # Update productName to include canary and hash
-          jq --arg name "robert-canary-$SHORT_HASH" '.productName = $name' tauri.conf.json > tauri.conf.json.tmp
-          mv tauri.conf.json.tmp tauri.conf.json
-          echo "Updated productName to: robert-canary-$SHORT_HASH"
-          cat tauri.conf.json | jq -r '.productName'
 
       - name: Build Tauri app
         working-directory: crates/robert-app
