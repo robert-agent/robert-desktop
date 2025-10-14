@@ -203,16 +203,70 @@ jobs:
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build and upload to release
-        uses: tauri-apps/tauri-action@v0
+      - name: Update productName for canary builds
+        if: ${{ env.IS_CANARY == 'true' }}
+        working-directory: crates/robert-app/src-tauri
+        run: |
+          COMMIT_HASH="${{ needs.prepare-release.outputs.commit_hash }}"
+          # Take first 4 characters of the 7-character hash
+          SHORT_HASH="${COMMIT_HASH:0:4}"
+          # Update productName to include canary and hash
+          jq --arg name "robert-canary-$SHORT_HASH" '.productName = $name' tauri.conf.json > tauri.conf.json.tmp
+          mv tauri.conf.json.tmp tauri.conf.json
+          echo "Updated productName to: robert-canary-$SHORT_HASH"
+          cat tauri.conf.json | jq -r '.productName'
+
+      - name: Build Tauri app
+        working-directory: crates/robert-app
+        run: bunx tauri build --target ${{ matrix.target }}
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Rename updater artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        working-directory: crates/robert-app
+        run: |
+          TARGET="${{ matrix.target }}"
+          BUNDLE_DIR="../../target/$TARGET/release/bundle"
+
+          # Determine architecture label for filename
+          if [ "$TARGET" = "aarch64-apple-darwin" ]; then
+            ARCH="aarch64"
+          else
+            ARCH="x64"
+          fi
+
+          # Get the productName from tauri.conf.json
+          PRODUCT_NAME=$(jq -r '.productName' src-tauri/tauri.conf.json)
+
+          echo "Looking for updater bundles in: $BUNDLE_DIR/macos"
+          ls -la "$BUNDLE_DIR/macos/" || true
+
+          # Rename the .app.tar.gz and .app.tar.gz.sig files
+          if [ -f "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz" ]; then
+            mv "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz" \
+               "$BUNDLE_DIR/macos/${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz"
+            echo "Renamed ${PRODUCT_NAME}.app.tar.gz to ${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz"
+          fi
+
+          if [ -f "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz.sig" ]; then
+            mv "$BUNDLE_DIR/macos/${PRODUCT_NAME}.app.tar.gz.sig" \
+               "$BUNDLE_DIR/macos/${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz.sig"
+            echo "Renamed ${PRODUCT_NAME}.app.tar.gz.sig to ${PRODUCT_NAME}_${ARCH}_updater.app.tar.gz.sig"
+          fi
+
+          echo "Updated bundle files:"
+          ls -la "$BUNDLE_DIR/macos/"
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v1
         with:
-          owner: robert-agent
-          repo: ${{ needs.prepare-release.outputs.repo }}
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          includeUpdaterJson: false
-          args: --target ${{ matrix.target }}
-          projectPath: crates/robert-app
+          repository: robert-agent/${{ needs.prepare-release.outputs.repo }}
+          tag_name: ${{ needs.prepare-release.outputs.tag_name }}
+          files: |
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            crates/robert-app/../../target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}

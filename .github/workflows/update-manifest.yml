@@ -71,6 +71,7 @@ jobs:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           ref: main
           path: releases-repo
+          fetch-depth: 0
 
       - name: Update manifest from latest release
         working-directory: releases-repo
@@ -155,12 +156,21 @@ jobs:
             exit 0
           fi
 
-          # Create and switch to branch
-          git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
+          # Fetch all remote branches
+          git fetch origin
+
+          # Check if branch exists remotely
+          if git ls-remote --heads origin "$BRANCH_NAME" | grep -q "$BRANCH_NAME"; then
+            echo "Branch $BRANCH_NAME exists remotely, checking it out..."
+            git checkout -b "$BRANCH_NAME" origin/"$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME"
+          else
+            echo "Creating new branch $BRANCH_NAME..."
+            git checkout -b "$BRANCH_NAME"
+          fi
 
           # Commit and push
           git add latest.json
-          git commit -m "Update latest.json for ${{ env.RELEASE_TYPE }} release"
+          git commit -m "Update latest.json for ${{ env.RELEASE_TYPE }} release" || echo "No changes to commit"
           git push -u origin "$BRANCH_NAME" --force
 
           # Create PR if it doesn't exist
@@ -172,5 +182,5 @@ jobs:
               --head "$BRANCH_NAME"
             echo "✅ Created pull request"
           else
-            echo "✅ Pull request already exists"
+            echo "✅ Pull request already exists, updated with new commit"
           fi
