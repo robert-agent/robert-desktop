@@ -138,7 +138,6 @@
   .update-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.5);
-    transform: rotate(180deg);
   }
 
   .dev-mode-toggle {
