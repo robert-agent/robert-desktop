@@ -7,26 +7,20 @@ on:
     branches:
       - 'canary-*'
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g., 0.1.0)'
-        required: true
-        type: string
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  IS_CANARY: ${{ github.ref_type == 'branch' && startsWith(github.ref_name, 'canary-') }}
 
 permissions:
   contents: write
 
 jobs:
-  create-release:
-    name: Create Release
+  get-version:
+    name: Get Version Info
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      release_id: ${{ steps.create_release.outputs.id }}
       tag_name: ${{ steps.get_tag.outputs.tag }}
       commit_hash: ${{ steps.get_commit.outputs.short_hash }}
       version_with_hash: ${{ steps.get_commit.outputs.version_with_hash }}
@@ -36,26 +30,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get version from Cargo.toml
+      - name: Get version from tauri.conf.json
         id: get_version
         run: |
-          VERSION=$(grep -m 1 '^version = ' crates/robert-app/src-tauri/Cargo.toml | cut -d '"' -f 2)
+          VERSION=$(jq -r '.version' crates/robert-app/src-tauri/tauri.conf.json)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
 
       - name: Get tag name
         id: get_tag
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
-            # For canary branches, use version from Cargo.toml with canary suffix
-            BRANCH_NAME=${GITHUB_REF#refs/heads/}
-            echo "tag=${{ steps.get_version.outputs.version }}-${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [ "${{ env.IS_CANARY }}" = "true" ]; then
+            echo "tag=${VERSION}-canary" >> $GITHUB_OUTPUT
           else
-            # For tag pushes, use the tag name but validate it matches Cargo.toml
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+            echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           fi
 
       - name: Get commit hash
@@ -65,89 +54,27 @@ jobs:
           echo "short_hash=$SHORT_HASH" >> $GITHUB_OUTPUT
           echo "version_with_hash=${{ steps.get_tag.outputs.tag }}-$SHORT_HASH" >> $GITHUB_OUTPUT
 
-      - name: Determine if prerelease
-        id: prerelease
-        run: |
-          if [[ "${{ github.ref }}" == refs/heads/canary-* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create or Update GitHub Release
-        id: create_release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const tag = '${{ steps.get_tag.outputs.tag }}';
-            const isPrerelease = ${{ steps.prerelease.outputs.is_prerelease }};
-
-            // Check if release already exists
-            let release;
-            try {
-              const { data } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: tag
-              });
-              release = data;
-              console.log(`Found existing release: ${release.id}`);
-            } catch (error) {
-              if (error.status === 404) {
-                // Release doesn't exist, create it
-                const { data } = await github.rest.repos.createRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: tag,
-                  name: `Robert ${tag}`,
-                  draft: true,
-                  prerelease: isPrerelease,
-                  body: `## Robert Browser Automation - Release ${tag}
-
-            **Version:** ${{ steps.get_commit.outputs.version_with_hash }}
-            **Commit:** \`${{ steps.get_commit.outputs.short_hash }}\`
-
-            ### Downloads
-            - **macOS (Apple Silicon)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_aarch64.dmg\`
-            - **macOS (Intel)**: \`Robert_${{ steps.get_commit.outputs.version_with_hash }}_x64.dmg\`
-
-            ### Installation
-            1. Download the appropriate DMG file for your system
-            2. Open the DMG and drag Robert to your Applications folder
-            3. Launch Robert from Applications
-
-            ### Changes
-            <!-- Add release notes here -->`
-                });
-                release = data;
-                console.log(`Created new release: ${release.id}`);
-              } else {
-                throw error;
-              }
-            }
-
-            core.setOutput('upload_url', release.upload_url);
-            core.setOutput('id', release.id);
-            return release.id;
-
-  build-macos:
-    name: Build macOS
-    needs: create-release
+  build-and-release:
+    name: Build and Release
+    needs: get-version
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - target: aarch64-apple-darwin
-            arch: aarch64
-            name: Apple Silicon
-          - target: x86_64-apple-darwin
-            arch: x64
-            name: Intel
-    runs-on: macos-latest
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -158,158 +85,38 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates/robert-app/src-tauri
-          shared-key: release-macos-${{ matrix.target }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
       - name: Install frontend dependencies
         working-directory: crates/robert-app
         run: bun install
 
-      - name: Build Tauri app
-        working-directory: crates/robert-app
-        run: bunx tauri build --target ${{ matrix.target }}
+      - name: Build and release with Tauri Action
+        uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Rename DMG
-        working-directory: crates/robert-app
-        run: |
-          DMG_PATH=$(find ../../target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -n 1)
-          if [ -z "$DMG_PATH" ]; then
-            echo "Error: No DMG file found"
-            exit 1
-          fi
-          DMG_NAME="Robert_${{ needs.create-release.outputs.version_with_hash }}_${{ matrix.arch }}.dmg"
-          cp "$DMG_PATH" "/tmp/$DMG_NAME"
-          echo "DMG_PATH=/tmp/$DMG_NAME" >> $GITHUB_ENV
-          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
-
-      - name: Upload to GitHub Release
-        uses: actions/github-script@v7
-        env:
-          DMG_PATH: ${{ env.DMG_PATH }}
-          DMG_NAME: ${{ env.DMG_NAME }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const assetName = process.env.DMG_NAME;
-            const assetPath = process.env.DMG_PATH;
-            const releaseId = ${{ needs.create-release.outputs.release_id }};
+          owner: lucky-tensor
+          repo: robert-releases
+          releaseCommitish: ${{ github.sha }}
+          tagName: ${{ needs.get-version.outputs.tag_name }}
+          releaseName: Robert ${{ needs.get-version.outputs.tag_name }}
+          releaseBody: |
+            ## Robert Browser Automation - Release ${{ needs.get-version.outputs.tag_name }}
 
-            // Check if asset already exists and delete it
-            const { data: assets } = await github.rest.repos.listReleaseAssets({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: releaseId
-            });
+            **Version:** ${{ needs.get-version.outputs.version_with_hash }}
+            **Commit:** `${{ needs.get-version.outputs.commit_hash }}`
 
-            const existingAsset = assets.find(asset => asset.name === assetName);
-            if (existingAsset) {
-              console.log(`Deleting existing asset: ${assetName} (ID: ${existingAsset.id})`);
-              await github.rest.repos.deleteReleaseAsset({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                asset_id: existingAsset.id
-              });
-            }
+            ### Installation
+            1. Download the appropriate DMG file for your system
+            2. Open the DMG and drag Robert to your Applications folder
+            3. Launch Robert from Applications
 
-            // Upload the new asset
-            console.log(`Uploading asset: ${assetName}`);
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: releaseId,
-              name: assetName,
-              data: fs.readFileSync(assetPath)
-            });
-
-      - name: Upload to robert-releases repository
-        env:
-          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
-        run: |
-          # Check if release exists in robert-releases
-          RELEASE_RESPONSE=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/tags/${{ needs.create-release.outputs.tag_name }}")
-
-          RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id // empty')
-
-          # If release doesn't exist, create it
-          if [ -z "$RELEASE_ID" ]; then
-            RELEASE_RESPONSE=$(curl -s -X POST \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases" \
-              -d "{
-                \"tag_name\": \"${{ needs.create-release.outputs.tag_name }}\",
-                \"name\": \"Robert ${{ needs.create-release.outputs.tag_name }}\",
-                \"body\": \"Release assets for Robert ${{ needs.create-release.outputs.version_with_hash }}\",
-                \"draft\": false,
-                \"prerelease\": ${{ steps.prerelease.outputs.is_prerelease || 'false' }}
-              }")
-            RELEASE_ID=$(echo "$RELEASE_RESPONSE" | jq -r '.id')
-          fi
-
-          # Get assets for the release
-          ASSETS=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}/assets")
-
-          # Check if asset with same name exists and delete it
-          EXISTING_ASSET_ID=$(echo "$ASSETS" | jq -r ".[] | select(.name == \"${{ env.DMG_NAME }}\") | .id // empty")
-          if [ -n "$EXISTING_ASSET_ID" ]; then
-            echo "Deleting existing asset: ${{ env.DMG_NAME }} (ID: ${EXISTING_ASSET_ID})"
-            curl -X DELETE \
-              -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/assets/${EXISTING_ASSET_ID}"
-          fi
-
-          # Get upload URL
-          UPLOAD_URL=$(echo "$RELEASE_RESPONSE" | jq -r '.upload_url // empty')
-          if [ -z "$UPLOAD_URL" ]; then
-            # Fetch it again if we're using an existing release
-            UPLOAD_URL=$(curl -s -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/lucky-tensor/robert-releases/releases/${RELEASE_ID}" | \
-              jq -r '.upload_url')
-          fi
-          UPLOAD_URL=$(echo "$UPLOAD_URL" | sed 's/{?name,label}//')
-
-          # Upload the DMG as a release asset
-          echo "Uploading asset: ${{ env.DMG_NAME }}"
-          curl -X POST \
-            -H "Authorization: token ${RELEASES_REPO_TOKEN}" \
-            -H "Content-Type: application/x-apple-diskimage" \
-            "${UPLOAD_URL}?name=${{ env.DMG_NAME }}" \
-            --data-binary @"${{ env.DMG_PATH }}"
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: robert-macos-${{ matrix.arch }}
-          path: ${{ env.DMG_PATH }}
-          retention-days: 30
-
-  finalize-release:
-    name: Finalize Release
-    needs: [create-release, build-macos]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Publish Release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: ${{ needs.create-release.outputs.release_id }},
-              draft: false
-            });
+            ### Changes
+            <!-- Add release notes here -->
+          releaseDraft: false
+          prerelease: ${{ env.IS_CANARY == 'true' }}
+          includeUpdaterJson: false
+          args: --target ${{ matrix.target }}
+          projectPath: crates/robert-app
