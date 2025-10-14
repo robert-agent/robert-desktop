@@ -115,6 +115,7 @@ jobs:
           IS_CANARY: ${{ env.IS_CANARY }}
         with:
           github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          result-encoding: string
           script: |
             const [owner, repo] = process.env.RELEASE_REPO.split('/');
             const tag = process.env.RELEASE_TAG;
@@ -127,6 +128,7 @@ jobs:
                 tag
               });
               console.log(`Found existing release: ${release.id}`);
+              core.setOutput('id', release.id);
               return release.id;
             } catch (error) {
               if (error.status === 404) {
@@ -158,6 +160,7 @@ jobs:
                   prerelease: process.env.IS_CANARY === 'true'
                 });
                 console.log(`Created new release: ${release.id}`);
+                core.setOutput('id', release.id);
                 return release.id;
               }
               throw error;
