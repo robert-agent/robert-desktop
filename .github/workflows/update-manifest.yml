@@ -120,7 +120,6 @@ jobs:
         with:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           path: releases-repo
-          push-to-fork: ${{ steps.set_repo.outputs.full_repo }}
           branch: update-manifest-${{ env.RELEASE_TYPE }}
           commit-message: Update latest.json for ${{ env.RELEASE_TYPE }} release
           title: Update latest.json for ${{ env.RELEASE_TYPE }} release
