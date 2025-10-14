@@ -39,73 +39,7 @@ jobs:
             echo "full_repo=robert-agent/robert-releases-canary" >> $GITHUB_OUTPUT
           fi
 
-      - name: Get release data and download signatures
-        id: get_release
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
-        run: |
-          REPO="${{ steps.set_repo.outputs.full_repo }}"
-
-          # Get the latest non-prerelease release with all asset info in one call
-          RELEASE_JSON=$(gh api repos/$REPO/releases/latest)
-
-          # Extract release info
-          TAG_NAME=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
-          PUBLISHED_AT=$(echo "$RELEASE_JSON" | jq -r '.published_at')
-
-          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "published_at=$PUBLISHED_AT" >> $GITHUB_OUTPUT
-          echo "Found latest release: $TAG_NAME published at $PUBLISHED_AT"
-
-          # Download signature files
-          echo "Downloading signature files..."
-          mkdir -p signatures
-          gh release download "$TAG_NAME" \
-            --repo "$REPO" \
-            --pattern "*.sig" \
-            --dir ./signatures
-
-          # Extract all asset info from the single API call
-          ASSETS_JSON=$(echo "$RELEASE_JSON" | jq '.assets')
-
-          # macOS platforms
-          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
-          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
-
-          # Windows platforms (prefer .msi over .exe)
-          WINDOWS_X64_MSI_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".msi")) | .browser_download_url')
-          WINDOWS_X64_EXE_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | endswith("-setup.exe")) | .browser_download_url')
-
-          # Use MSI if available, otherwise EXE
-          if [ -n "$WINDOWS_X64_MSI_URL" ]; then
-            WINDOWS_X64_URL="$WINDOWS_X64_MSI_URL"
-            WINDOWS_SIG_FILE=$(ls signatures/*.msi.sig 2>/dev/null | head -1)
-          elif [ -n "$WINDOWS_X64_EXE_URL" ]; then
-            WINDOWS_X64_URL="$WINDOWS_X64_EXE_URL"
-            WINDOWS_SIG_FILE=$(ls signatures/*-setup.exe.sig 2>/dev/null | head -1)
-          else
-            WINDOWS_X64_URL=""
-            WINDOWS_SIG_FILE=""
-          fi
-
-          # Read signatures
-          MACOS_AARCH64_SIG=$(cat signatures/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
-          MACOS_X64_SIG=$(cat signatures/*x64*.app.tar.gz.sig 2>/dev/null || echo "")
-          WINDOWS_X64_SIG=$(cat "$WINDOWS_SIG_FILE" 2>/dev/null || echo "")
-
-          # Output for use in next step
-          echo "macos_aarch64_url=$MACOS_AARCH64_URL" >> $GITHUB_OUTPUT
-          echo "macos_x64_url=$MACOS_X64_URL" >> $GITHUB_OUTPUT
-          echo "windows_x64_url=$WINDOWS_X64_URL" >> $GITHUB_OUTPUT
-          echo "macos_aarch64_sig=$MACOS_AARCH64_SIG" >> $GITHUB_OUTPUT
-          echo "macos_x64_sig=$MACOS_X64_SIG" >> $GITHUB_OUTPUT
-          echo "windows_x64_sig=$WINDOWS_X64_SIG" >> $GITHUB_OUTPUT
-
-          echo "✅ Platform assets:"
-          echo "  macOS aarch64: $([ -n "$MACOS_AARCH64_URL" ] && echo '✅' || echo '❌')"
-          echo "  macOS x64: $([ -n "$MACOS_X64_URL" ] && echo '✅' || echo '❌')"
-          echo "  Windows x64: $([ -n "$WINDOWS_X64_URL" ] && echo '✅' || echo '❌')"
-
+      # Step 1: Get the release repo and latest.json
       - name: Checkout releases repository
         uses: actions/checkout@v4
         with:
@@ -114,84 +48,88 @@ jobs:
           ref: main
           path: releases-repo
 
-      - name: Update manifest with jq
+      # Step 2: Read release binaries and sigs, update latest.json in place
+      - name: Update manifest from latest release
         working-directory: releases-repo
-        id: update_manifest
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
         run: |
-          # Initialize with empty platforms object if file doesn't exist
+          REPO="${{ steps.set_repo.outputs.full_repo }}"
+
+          # Get the latest release
+          RELEASE_JSON=$(gh api repos/$REPO/releases/latest)
+          TAG_NAME=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          PUBLISHED_AT=$(echo "$RELEASE_JSON" | jq -r '.published_at')
+
+          echo "📦 Processing release: $TAG_NAME"
+
+          # Download signature files
+          mkdir -p /tmp/signatures
+          gh release download "$TAG_NAME" --repo "$REPO" --pattern "*.sig" --dir /tmp/signatures 2>/dev/null || true
+
+          # Get asset URLs
+          ASSETS_JSON=$(echo "$RELEASE_JSON" | jq '.assets')
+
+          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
+          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
+          WINDOWS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | (contains("x64") and endswith(".msi")) or endswith("-setup.exe")) | .browser_download_url' | head -1)
+
+          # Read signatures
+          MACOS_AARCH64_SIG=$(cat /tmp/signatures/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
+          MACOS_X64_SIG=$(cat /tmp/signatures/*x64*.app.tar.gz.sig 2>/dev/null || echo "")
+          WINDOWS_X64_SIG=$(cat /tmp/signatures/*.msi.sig 2>/dev/null || cat /tmp/signatures/*-setup.exe.sig 2>/dev/null || echo "")
+
+          # Initialize latest.json if it doesn't exist
           if [ ! -f latest.json ]; then
             echo '{"version":"","notes":"","pub_date":"","platforms":{}}' > latest.json
           fi
 
-          # Build platforms object based on available assets
-          PLATFORMS_JSON='{}'
+          # Build platforms object
+          PLATFORMS='{}'
 
-          if [ -n "${{ steps.get_release.outputs.macos_aarch64_url }}" ] && [ -n "${{ steps.get_release.outputs.macos_aarch64_sig }}" ]; then
-            PLATFORMS_JSON=$(echo "$PLATFORMS_JSON" | jq \
-              --arg sig "${{ steps.get_release.outputs.macos_aarch64_sig }}" \
-              --arg url "${{ steps.get_release.outputs.macos_aarch64_url }}" \
-              '.["darwin-aarch64"] = {"signature": $sig, "url": $url}')
+          if [ -n "$MACOS_AARCH64_URL" ] && [ -n "$MACOS_AARCH64_SIG" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$MACOS_AARCH64_URL" --arg sig "$MACOS_AARCH64_SIG" \
+              '.["darwin-aarch64"] = {url: $url, signature: $sig}')
           fi
 
-          if [ -n "${{ steps.get_release.outputs.macos_x64_url }}" ] && [ -n "${{ steps.get_release.outputs.macos_x64_sig }}" ]; then
-            PLATFORMS_JSON=$(echo "$PLATFORMS_JSON" | jq \
-              --arg sig "${{ steps.get_release.outputs.macos_x64_sig }}" \
-              --arg url "${{ steps.get_release.outputs.macos_x64_url }}" \
-              '.["darwin-x86_64"] = {"signature": $sig, "url": $url}')
+          if [ -n "$MACOS_X64_URL" ] && [ -n "$MACOS_X64_SIG" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$MACOS_X64_URL" --arg sig "$MACOS_X64_SIG" \
+              '.["darwin-x86_64"] = {url: $url, signature: $sig}')
           fi
 
-          if [ -n "${{ steps.get_release.outputs.windows_x64_url }}" ] && [ -n "${{ steps.get_release.outputs.windows_x64_sig }}" ]; then
-            PLATFORMS_JSON=$(echo "$PLATFORMS_JSON" | jq \
-              --arg sig "${{ steps.get_release.outputs.windows_x64_sig }}" \
-              --arg url "${{ steps.get_release.outputs.windows_x64_url }}" \
-              '.["windows-x86_64"] = {"signature": $sig, "url": $url}')
+          if [ -n "$WINDOWS_X64_URL" ] && [ -n "$WINDOWS_X64_SIG" ]; then
+            PLATFORMS=$(echo "$PLATFORMS" | jq --arg url "$WINDOWS_X64_URL" --arg sig "$WINDOWS_X64_SIG" \
+              '.["windows-x86_64"] = {url: $url, signature: $sig}')
           fi
 
-          # Update entire manifest in one jq operation
-          jq --arg version "${{ steps.get_release.outputs.tag_name }}" \
-             --arg notes "Release ${{ steps.get_release.outputs.tag_name }}" \
-             --arg pub_date "${{ steps.get_release.outputs.published_at }}" \
-             --argjson platforms "$PLATFORMS_JSON" \
+          # Update latest.json
+          jq --arg version "$TAG_NAME" \
+             --arg notes "Release $TAG_NAME" \
+             --arg pub_date "$PUBLISHED_AT" \
+             --argjson platforms "$PLATFORMS" \
              '.version = $version | .notes = $notes | .pub_date = $pub_date | .platforms = $platforms' \
              latest.json > latest.json.tmp
           mv latest.json.tmp latest.json
 
-          echo "✅ Updated latest.json:"
+          echo "✅ Updated latest.json for release $TAG_NAME"
           cat latest.json
 
-          # Save platform status for PR body
-          MACOS_AARCH64_STATUS="${{ steps.get_release.outputs.macos_aarch64_url && '✅' || '❌' }}"
-          MACOS_X64_STATUS="${{ steps.get_release.outputs.macos_x64_url && '✅' || '❌' }}"
-          WINDOWS_X64_STATUS="${{ steps.get_release.outputs.windows_x64_url && '✅' || '❌' }}"
-
-          echo "macos_aarch64_status=$MACOS_AARCH64_STATUS" >> $GITHUB_OUTPUT
-          echo "macos_x64_status=$MACOS_X64_STATUS" >> $GITHUB_OUTPUT
-          echo "windows_x64_status=$WINDOWS_X64_STATUS" >> $GITHUB_OUTPUT
-
+      # Step 3: Send PR
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.RELEASES_REPO_TOKEN }}
           path: releases-repo
-          branch: update-manifest-${{ steps.get_release.outputs.tag_name }}
-          title: Update latest.json for release ${{ steps.get_release.outputs.tag_name }}
+          push-to-fork: ${{ steps.set_repo.outputs.full_repo }}
+          branch: update-manifest-${{ env.RELEASE_TYPE }}
+          commit-message: Update latest.json for ${{ env.RELEASE_TYPE }} release
+          title: Update latest.json for ${{ env.RELEASE_TYPE }} release
           body: |
-            ## Update Manifest for Release ${{ steps.get_release.outputs.tag_name }}
+            ## Update Manifest
 
             This PR updates the updater manifest with the latest release information.
 
-            ### Platforms Updated
-            - macOS (Apple Silicon): ${{ steps.update_manifest.outputs.macos_aarch64_status }}
-            - macOS (Intel): ${{ steps.update_manifest.outputs.macos_x64_status }}
-            - Windows (x64): ${{ steps.update_manifest.outputs.windows_x64_status }}
-
-            ### Manifest Contents
-            ```json
-            ${{ steps.update_manifest.outputs.manifest_content }}
-            ```
-
             ---
             🤖 Generated by GitHub Actions
-          commit-message: Update latest.json for release ${{ steps.get_release.outputs.tag_name }}
           committer: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
           author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
