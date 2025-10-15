@@ -868,15 +868,18 @@ pub async fn execute_cdp_script(
     emit_info(&app, "Parsing CDP script...").ok();
 
     // Parse JSON into CdpScript
-    let script: CdpScript = serde_json::from_str(&script_json)
-        .map_err(|e| {
-            let msg = format!("Failed to parse CDP script: {}", e);
-            log::error!("❌ {}", msg);
-            emit_error(&app, msg.clone(), Some(e.to_string())).ok();
-            msg
-        })?;
+    let script: CdpScript = serde_json::from_str(&script_json).map_err(|e| {
+        let msg = format!("Failed to parse CDP script: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
 
-    log::info!("✓ Parsed CDP script: {} ({} commands)", script.name, script.cdp_commands.len());
+    log::info!(
+        "✓ Parsed CDP script: {} ({} commands)",
+        script.name,
+        script.cdp_commands.len()
+    );
     emit_info(&app, format!("Validating script: {}", script.name)).ok();
 
     // Validate script using the comprehensive CDP validator
@@ -912,7 +915,10 @@ pub async fn execute_cdp_script(
         emit_error(
             &app,
             msg.clone(),
-            Some(format!("First error: {}", validation_result.errors[0].message)),
+            Some(format!(
+                "First error: {}",
+                validation_result.errors[0].message
+            )),
         )
         .ok();
         return Err(msg);
@@ -962,7 +968,11 @@ pub async fn execute_cdp_script(
     })?;
 
     log::info!("🚀 Executing {} CDP commands...", script.cdp_commands.len());
-    emit_info(&app, format!("Executing {} commands...", script.cdp_commands.len())).ok();
+    emit_info(
+        &app,
+        format!("Executing {} commands...", script.cdp_commands.len()),
+    )
+    .ok();
 
     // Create executor and execute script
     let executor = CdpExecutor::new(page);
@@ -989,14 +999,22 @@ pub async fn execute_cdp_script(
     for result in &report.results {
         match result.status {
             robert_webdriver::CommandStatus::Success => {
-                log::info!("  ✓ Step {}: {} ({:?})", result.step, result.method, result.duration);
+                log::info!(
+                    "  ✓ Step {}: {} ({:?})",
+                    result.step,
+                    result.method,
+                    result.duration
+                );
             }
             robert_webdriver::CommandStatus::Failed => {
                 log::error!(
                     "  ✗ Step {}: {} failed - {} ({:?})",
                     result.step,
                     result.method,
-                    result.error.as_ref().unwrap_or(&"Unknown error".to_string()),
+                    result
+                        .error
+                        .as_ref()
+                        .unwrap_or(&"Unknown error".to_string()),
                     result.duration
                 );
             }
