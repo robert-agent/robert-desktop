@@ -13,6 +13,7 @@
     devDeleteScreenshot,
   } from '../lib/tauri';
   import type { SystemPaths, TestServerStatus, ScreenshotInfo } from '../lib/types';
+  import CdpDebugger from './CdpDebugger.svelte';
 
   let systemPaths: SystemPaths | null = null;
   let serverStatus: TestServerStatus = { running: false, url: null, port: null };
@@ -331,6 +332,11 @@
         </ol>
       </div>
     {/if}
+  </section>
+
+  <!-- CDP Debugger Section -->
+  <section class="section">
+    <CdpDebugger />
   </section>
 
   <!-- Screenshot Management Section -->
