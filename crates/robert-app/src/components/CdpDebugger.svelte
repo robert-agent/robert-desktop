@@ -41,7 +41,7 @@
       JSON.parse(scriptJson);
       validationError = null;
     } catch (e) {
-      validationError = `Invalid JSON: ${e.message}`;
+      validationError = `Invalid JSON: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
 
@@ -126,7 +126,7 @@
       on:input={validateJson}
       placeholder="Enter CDP script JSON..."
       spellcheck="false"
-    />
+    ></textarea>
 
     {#if validationError}
       <div class="validation-error">
