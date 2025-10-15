@@ -97,8 +97,10 @@
 </script>
 
 {#if visible}
-  <div class="modal-overlay" on:click={handleClose} role="presentation">
-    <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true">
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="modal-overlay" on:click={handleClose}>
+    <div class="modal" on:click|stopPropagation role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
         <h2>
           {#if checking}
