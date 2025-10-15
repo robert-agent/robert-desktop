@@ -59,3 +59,32 @@ export interface ScreenshotInfo {
   size_bytes: number;
   size_kb: number;
 }
+
+// CDP Execution types
+export type CommandStatus = 'success' | 'failed' | 'skipped';
+
+export interface CommandResult {
+  step: number;
+  method: string;
+  status: CommandStatus;
+  duration: {
+    secs: number;
+    nanos: number;
+  };
+  response?: any;
+  error?: string;
+  saved_file?: string;
+}
+
+export interface ExecutionReport {
+  script_name: string;
+  total_commands: number;
+  successful: number;
+  failed: number;
+  skipped: number;
+  total_duration: {
+    secs: number;
+    nanos: number;
+  };
+  results: CommandResult[];
+}

@@ -8,8 +8,8 @@ use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, 
 use crate::events::*;
 use crate::state::AppState;
 use robert_webdriver::{
-    capture_step_frame, ActionInfo, CaptureOptions, CdpValidator, ChatUI, ChromeDriver,
-    ScreenshotFormat, ValidationResult,
+    capture_step_frame, ActionInfo, CaptureOptions, CdpExecutor, CdpScript, CdpValidator, ChatUI,
+    ChromeDriver, ExecutionReport, ScreenshotFormat, ValidationResult,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -855,4 +855,187 @@ pub async fn validate_cdp_script_file(
     }
 
     Ok(result)
+}
+
+/// Execute a CDP script from JSON string
+#[tauri::command]
+pub async fn execute_cdp_script(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    script_json: String,
+) -> Result<ExecutionReport, String> {
+    log::info!("🎬 [CDP Debug] Executing CDP script from JSON");
+    emit_info(&app, "Parsing CDP script...").ok();
+
+    // Parse JSON into CdpScript
+    let script: CdpScript = serde_json::from_str(&script_json)
+        .map_err(|e| {
+            let msg = format!("Failed to parse CDP script: {}", e);
+            log::error!("❌ {}", msg);
+            emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+            msg
+        })?;
+
+    log::info!("✓ Parsed CDP script: {} ({} commands)", script.name, script.cdp_commands.len());
+    emit_info(&app, format!("Validating script: {}", script.name)).ok();
+
+    // Validate script using the comprehensive CDP validator
+    let validator = CdpValidator::new();
+    let validation_result = validator.validate_json(&script_json);
+
+    if !validation_result.is_valid {
+        let msg = format!(
+            "CDP script validation failed: {} error(s), {} warning(s)",
+            validation_result.errors.len(),
+            validation_result.warnings.len()
+        );
+        log::error!("❌ {}", msg);
+
+        // Log detailed validation errors
+        for error in &validation_result.errors {
+            let location = if let Some(idx) = error.location.command_index {
+                format!("command {}", idx)
+            } else {
+                error.location.field_path.clone()
+            };
+            log::error!("  ✗ Error at {}: {}", location, error.message);
+            if let Some(suggestion) = &error.suggestion {
+                log::error!("    💡 Suggestion: {}", suggestion);
+            }
+        }
+
+        // Log warnings
+        for warning in &validation_result.warnings {
+            log::warn!("  ⚠️  Warning: {}", warning);
+        }
+
+        emit_error(
+            &app,
+            msg.clone(),
+            Some(format!("First error: {}", validation_result.errors[0].message)),
+        )
+        .ok();
+        return Err(msg);
+    }
+
+    // Log warnings if any
+    if !validation_result.warnings.is_empty() {
+        log::warn!(
+            "⚠️  Script has {} warning(s) but passed validation",
+            validation_result.warnings.len()
+        );
+        for warning in &validation_result.warnings {
+            log::warn!("  ⚠️  {}", warning);
+        }
+        emit_info(
+            &app,
+            format!(
+                "Script validated with {} warning(s)",
+                validation_result.warnings.len()
+            ),
+        )
+        .ok();
+    } else {
+        log::info!("✓ Script validation passed with no warnings");
+        emit_success(&app, "Script validation passed").ok();
+    }
+
+    emit_info(&app, format!("Executing script: {}", script.name)).ok();
+
+    // Get driver
+    let driver_lock = state.driver.lock().await;
+    if driver_lock.is_none() {
+        let msg = "Browser not launched. Please launch browser first.";
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg, None).ok();
+        return Err(msg.to_string());
+    }
+
+    let driver = driver_lock.as_ref().unwrap();
+
+    // Get current page
+    let page = driver.current_page().await.map_err(|e| {
+        let msg = format!("Failed to get current page: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
+
+    log::info!("🚀 Executing {} CDP commands...", script.cdp_commands.len());
+    emit_info(&app, format!("Executing {} commands...", script.cdp_commands.len())).ok();
+
+    // Create executor and execute script
+    let executor = CdpExecutor::new(page);
+    let report = executor.execute_script(&script).await.map_err(|e| {
+        let msg = format!("CDP script execution failed: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
+
+    // Log results
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  📊 CDP EXECUTION REPORT                                  ║");
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+    log::info!("Script: {}", report.script_name);
+    log::info!("Total commands: {}", report.total_commands);
+    log::info!("✅ Successful: {}", report.successful);
+    log::info!("❌ Failed: {}", report.failed);
+    log::info!("⏭️  Skipped: {}", report.skipped);
+    log::info!("⏱️  Total duration: {:?}", report.total_duration);
+    log::info!("📈 Success rate: {:.1}%", report.success_rate());
+
+    // Log individual command results
+    for result in &report.results {
+        match result.status {
+            robert_webdriver::CommandStatus::Success => {
+                log::info!("  ✓ Step {}: {} ({:?})", result.step, result.method, result.duration);
+            }
+            robert_webdriver::CommandStatus::Failed => {
+                log::error!(
+                    "  ✗ Step {}: {} failed - {} ({:?})",
+                    result.step,
+                    result.method,
+                    result.error.as_ref().unwrap_or(&"Unknown error".to_string()),
+                    result.duration
+                );
+            }
+            robert_webdriver::CommandStatus::Skipped => {
+                log::warn!("  ⏭️  Step {}: {} skipped", result.step, result.method);
+            }
+        }
+    }
+
+    // Emit appropriate event
+    if report.is_success() {
+        emit_success(
+            &app,
+            format!(
+                "CDP script '{}' executed successfully ({} commands, {:.1}s)",
+                report.script_name,
+                report.successful,
+                report.total_duration.as_secs_f64()
+            ),
+        )
+        .ok();
+    } else {
+        emit_error(
+            &app,
+            format!(
+                "CDP script '{}' completed with {} error(s)",
+                report.script_name, report.failed
+            ),
+            Some(format!(
+                "Success rate: {:.1}% ({}/{} commands)",
+                report.success_rate(),
+                report.successful,
+                report.total_commands
+            )),
+        )
+        .ok();
+    }
+
+    log::info!("✓ CDP script execution completed");
+
+    Ok(report)
 }
