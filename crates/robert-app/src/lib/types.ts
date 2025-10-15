@@ -63,6 +63,15 @@ export interface ScreenshotInfo {
 // CDP Execution types
 export type CommandStatus = 'success' | 'failed' | 'skipped';
 
+// JSON value type matching serde_json::Value from Rust
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 export interface CommandResult {
   step: number;
   method: string;
@@ -71,7 +80,7 @@ export interface CommandResult {
     secs: number;
     nanos: number;
   };
-  response?: any;
+  response?: JsonValue;
   error?: string;
   saved_file?: string;
 }

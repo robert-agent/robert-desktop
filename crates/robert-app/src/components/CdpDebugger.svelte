@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { executeCdpScript, launchBrowser } from '../lib/tauri';
-  import type { ExecutionReport, CommandResult } from '../lib/types';
+  import { executeCdpScript } from '../lib/tauri';
+  import type { ExecutionReport } from '../lib/types';
 
   // Template CDP script for clicking the "Click Me" button
   const defaultTemplate = `{
@@ -13,7 +13,7 @@
     {
       "method": "Runtime.evaluate",
       "params": {
-        "expression": "document.getElementById('test-button').click()",
+        "expression": "document.getElementById('alert-button').click()",
         "returnByValue": true
       },
       "description": "Click the 'Click Me' button by ID"
@@ -136,7 +136,11 @@
   </div>
 
   <div class="execute-section">
-    <button class="btn btn-primary btn-large" on:click={handleExecute} disabled={executing || !!validationError}>
+    <button
+      class="btn btn-primary btn-large"
+      on:click={handleExecute}
+      disabled={executing || !!validationError}
+    >
       {#if executing}
         Executing...
       {:else}
