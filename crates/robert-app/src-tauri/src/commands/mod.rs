@@ -26,7 +26,12 @@ pub struct NavigationResult {
 
 /// Launch the browser (sandboxed mode with auto-download)
 #[tauri::command]
-pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
+pub async fn launch_browser(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    screen_width: Option<u32>,
+    screen_height: Option<u32>,
+) -> Result<String, String> {
     emit_info(&app, "Initializing browser...").ok();
 
     // Check if Chrome needs to be downloaded
@@ -46,15 +51,20 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
     match ChromeDriver::launch_auto().await {
         Ok(driver) => {
             emit_chrome_launched(&app, "Browser launched successfully!").ok();
+
+            // Position the browser window if screen dimensions provided
+            if let (Some(width), Some(height)) = (screen_width, screen_height) {
+                if let Err(e) = driver.position_window(width, height).await {
+                    log::warn!("Failed to position browser window: {}", e);
+                }
+            }
+
             emit_success(&app, "Chrome is ready for automation").ok();
 
             *driver_lock = Some(driver);
             drop(driver_lock);
 
-            // Start chat message polling task
-            let state_clone = state.inner().driver.clone();
-            let shutdown_clone = state.inner().chat_poll_shutdown.clone();
-            start_chat_polling(app.clone(), state_clone, shutdown_clone).await;
+            // NOTE: Chat polling disabled - chat is now in the Tauri app
 
             Ok("Browser launched successfully".to_string())
         }
@@ -379,16 +389,7 @@ pub async fn navigate_to_url(
 
             emit_page_loaded(&app, &url, &title).ok();
 
-            // Inject chat UI after page loads
-            let chat_ui = ChatUI::new();
-            if let Ok(page) = driver.current_page().await {
-                if let Err(e) = chat_ui.inject(&page).await {
-                    log::warn!("Failed to inject chat UI: {}", e);
-                } else {
-                    log::info!("Chat UI injected successfully");
-                    emit_info(&app, "Chat UI injected").ok();
-                }
-            }
+            // NOTE: Chat UI injection disabled - chat is now in the Tauri app
 
             emit_success(&app, format!("Successfully loaded: {}", title)).ok();
 

@@ -87,6 +87,7 @@
 <style>
   .url-input-container {
     padding: 1.5rem;
+    padding-right: 4rem;
     background: #f5f5f5;
     border-bottom: 2px solid #e0e0e0;
   }
