@@ -7,7 +7,9 @@ pub use developer_mode::*;
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
 use crate::events::*;
 use crate::state::AppState;
-use robert_webdriver::{CdpExecutor, CdpScript, CdpValidator, ChromeDriver, ExecutionReport, ValidationResult};
+use robert_webdriver::{
+    CdpExecutor, CdpScript, CdpValidator, ChromeDriver, ExecutionReport, ValidationResult,
+};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, State};
