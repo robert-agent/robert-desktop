@@ -97,3 +97,22 @@ export interface ExecutionReport {
   };
   results: CommandResult[];
 }
+
+// Agent workflow types
+export type WorkflowType = 'CdpAutomation' | 'ConfigUpdate';
+
+export interface ChatMessageRequest {
+  message: string;
+  workflow_type: WorkflowType;
+  agent_name?: string;
+  include_screenshot?: boolean;
+  include_html?: boolean;
+}
+
+export interface WorkflowResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  cdp_script?: string;
+  execution_report?: ExecutionReport;
+}

@@ -13,10 +13,12 @@
     "windows": [
       {
         "title": "robert",
-        "width": 1280,
-        "height": 800,
+        "width": 480,
+        "height": 1080,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "x": null,
+        "y": 0
       }
     ],
     "security": {
