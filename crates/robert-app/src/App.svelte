@@ -26,11 +26,14 @@
 
   async function positionWindow() {
     try {
-      const { appWindow, currentMonitor } = await import('@tauri-apps/api/window');
+      const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      const { currentMonitor } = await import('@tauri-apps/api/window');
+      const { LogicalSize, LogicalPosition } = await import('@tauri-apps/api/dpi');
 
       // Wait a bit for window to be ready
       await new Promise((resolve) => setTimeout(resolve, 200));
 
+      const appWindow = getCurrentWebviewWindow();
       const monitor = await currentMonitor();
       if (!monitor) {
         console.warn('Could not get current monitor');
@@ -56,9 +59,9 @@
       console.log(`Positioning window: ${appWidth}x${screenHeight} at (${appX}, ${appY})`);
 
       // Set size first, then position
-      await appWindow.setSize({ width: appWidth, height: screenHeight });
+      await appWindow.setSize(new LogicalSize(appWidth, screenHeight));
       await new Promise((resolve) => setTimeout(resolve, 50));
-      await appWindow.setPosition({ x: appX, y: appY });
+      await appWindow.setPosition(new LogicalPosition(appX, appY));
 
       console.log('Window positioned successfully');
     } catch (error) {
