@@ -236,8 +236,8 @@
 
   .menu-container {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 1.5rem;
+    right: 1.5rem;
     z-index: 1000;
   }
 
