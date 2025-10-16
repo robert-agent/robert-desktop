@@ -1,6 +1,11 @@
 //! Chat UI Tests
 //!
 //! Tests for the chat UI injection and messaging functionality.
+//!
+//! NOTE: These tests are currently IGNORED because chat UI injection
+//! has been disabled in favor of the Tauri app chat interface.
+//! The chat UI code is kept for potential future use but is not
+//! currently active in the application.
 
 mod test_server;
 
@@ -19,6 +24,7 @@ async fn create_headless_driver() -> anyhow::Result<ChromeDriver> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_chat_ui_injection() -> anyhow::Result<()> {
     // Start local test server
     let server = TestServer::start().await;
@@ -58,6 +64,7 @@ async fn test_chat_ui_injection() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_send_agent_message() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
@@ -86,6 +93,7 @@ async fn test_send_agent_message() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_clear_chat_messages() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
@@ -114,6 +122,7 @@ async fn test_clear_chat_messages() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_chat_ui_persists_across_navigation() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
@@ -153,6 +162,7 @@ async fn test_chat_ui_persists_across_navigation() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_chat_ui_collapse_expand() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
@@ -202,6 +212,7 @@ async fn test_chat_ui_collapse_expand() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_chat_ui_can_be_disabled() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
@@ -230,6 +241,7 @@ async fn test_chat_ui_can_be_disabled() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+#[ignore = "Chat UI injection disabled - chat is now in Tauri app"]
 async fn test_manual_chat_ui_injection() -> anyhow::Result<()> {
     let server = TestServer::start().await;
     server.wait_ready().await?;
