@@ -274,7 +274,12 @@ async fn capture_screenshot_if_available(
         // Check if browser is still alive
         if !driver.is_alive().await {
             log::warn!("Browser connection is dead during screenshot capture, clearing state");
-            emit_error(app, "Browser connection lost", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+            emit_error(
+                app,
+                "Browser connection lost",
+                Some("The browser may have been closed manually or crashed.".to_string()),
+            )
+            .ok();
             *driver_lock = None;
             return None;
         }
@@ -301,7 +306,12 @@ async fn get_html_if_available(app: &AppHandle, state: &State<'_, AppState>) -> 
         // Check if browser is still alive
         if !driver.is_alive().await {
             log::warn!("Browser connection is dead during HTML extraction, clearing state");
-            emit_error(app, "Browser connection lost", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+            emit_error(
+                app,
+                "Browser connection lost",
+                Some("The browser may have been closed manually or crashed.".to_string()),
+            )
+            .ok();
             *driver_lock = None;
             return None;
         }
