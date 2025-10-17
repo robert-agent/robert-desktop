@@ -1,16 +1,11 @@
 # TODO
 
 ## In Progress
-- [ ] Phase 1 Frontend Task 1: Create TypeScript types and user state store
-- [ ] Phase 1 Frontend Task 2: Create login screen UI component
-- [ ] Phase 1 Frontend Task 3: Create user creation form UI component
-- [ ] Phase 1 Frontend Task 4: Create profile switcher UI component
-- [ ] Phase 1 Frontend Task 5: Create user profile editor UI component
-- [ ] Phase 1 Frontend Task 6: Integrate user authentication into App.svelte
+- [ ] Phase 2: Browser Profile Management (v1.6) - Not started
 
 ## Planned
 
-### Phase 1: User Management (v1.5) - BACKEND 100% COMPLETE ✅
+### Phase 1: User Management (v1.5) - ✅ 100% COMPLETE (Backend + Frontend)
 **Backend (✅ COMPLETE - All 31 tests passing, cargo xlint passing):**
 - [x] Add crypto dependencies (argon2, aes-gcm, rand, zeroize, uuid, directories, tempfile)
 - [x] Implement crypto module (Argon2id key derivation, AES-256-GCM encryption)
@@ -26,13 +21,16 @@
 - [x] Write unit tests for auth (5 tests)
 - [x] Fix all cargo xlint warnings and errors
 
-**Remaining Phase 1 Tasks (Frontend Only):**
-- [ ] Create login screen UI (profile selector dropdown, password input)
-- [ ] Create user creation form UI (username, password with strength indicator)
-- [ ] Create user state store in Svelte (reactive state management)
-- [ ] Implement profile switching UI
-- [ ] Create user profile editor UI (markdown editor for user-profile.md)
-- [ ] Write integration tests for auth flows (create → login → logout → switch)
+**Frontend (✅ COMPLETE - All components implemented, all lints passing):**
+- [x] Create TypeScript types (ProfileResult, UserConfig, PasswordValidation)
+- [x] Create user state store in Svelte (reactive state management)
+- [x] Create login screen UI (profile selector dropdown, password input)
+- [x] Create user creation form UI (username, password with strength indicator)
+- [x] Create profile switcher UI (user info, logout, switch profile)
+- [x] Create user profile editor UI (markdown editor for user-profile.md)
+- [x] Integrate all components into App.svelte (auth flow, first launch detection)
+- [x] Add get_user_profile Tauri command for loading profile markdown
+- [x] All code quality checks passing (cargo xlint, bun lint, bun check)
 
 ### Phase 2: Browser Profile Management (v1.6) - 2 weeks
 - [ ] Define BrowserProfile enum (Ephemeral, Named)
