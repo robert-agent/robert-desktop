@@ -16,7 +16,8 @@
   let messages: MessageContent[] = [];
   let loading = false;
   let browserLaunched = false;
-  let pendingClarification: { questions: ClarificationQuestion[]; originalMessage: string } | null = null;
+  let pendingClarification: { questions: ClarificationQuestion[]; originalMessage: string } | null =
+    null;
   let clarificationAnswers: Record<number, string> = {};
 
   onMount(async () => {

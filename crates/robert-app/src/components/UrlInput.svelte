@@ -64,9 +64,7 @@
 <div class="url-input-container">
   <div class="input-row">
     {#if !$browserLaunched}
-      <button on:click={handleLaunchBrowser} class="launch-button">
-        Launch Browser
-      </button>
+      <button on:click={handleLaunchBrowser} class="launch-button"> Launch Browser </button>
     {/if}
     <input
       type="text"
