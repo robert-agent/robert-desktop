@@ -7,13 +7,13 @@
 /// - Default user initialization
 ///
 /// All operations ensure data consistency and proper encryption.
-
+// Allow dead code for Phase 1 - these will be used when Tauri commands are implemented
+#[allow(dead_code)]
 use crate::profiles::{
     crypto::{derive_key, EncryptionKey},
     storage::{
-        create_user_directory, get_user_config_path, list_users as storage_list_users,
-        load_salt, load_user_config, load_user_profile, save_salt, save_user_config,
-        save_user_profile, user_exists,
+        create_user_directory, list_users as storage_list_users, load_salt, load_user_config,
+        save_salt, save_user_config, save_user_profile, user_exists,
     },
     types::{UserConfig, UserPreferences},
 };
@@ -26,6 +26,7 @@ use thiserror::Error;
 // ============================================================================
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum ManagerError {
     /// Storage error
     #[error("Storage error: {0}")]
@@ -59,8 +60,10 @@ pub type Result<T> = std::result::Result<T, ManagerError>;
 // ============================================================================
 
 /// User management operations
+#[allow(dead_code)]
 pub struct UserManager;
 
+#[allow(dead_code)]
 impl UserManager {
     /// Create a new user with password encryption
     ///
