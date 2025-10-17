@@ -135,6 +135,7 @@ Respond with ONLY valid JSON in one of the above formats."#,
     }
 
     /// Build CDP generation prompt with clarification answers
+    #[allow(dead_code)]
     pub fn build_cdp_prompt_with_clarification(
         &self,
         user_request: &str,
