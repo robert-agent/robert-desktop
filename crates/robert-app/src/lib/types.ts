@@ -59,3 +59,68 @@ export interface ScreenshotInfo {
   size_bytes: number;
   size_kb: number;
 }
+
+// CDP Execution types
+export type CommandStatus = 'success' | 'failed' | 'skipped';
+
+// JSON value type matching serde_json::Value from Rust
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export interface CommandResult {
+  step: number;
+  method: string;
+  status: CommandStatus;
+  duration: {
+    secs: number;
+    nanos: number;
+  };
+  response?: JsonValue;
+  error?: string;
+  saved_file?: string;
+}
+
+export interface ExecutionReport {
+  script_name: string;
+  total_commands: number;
+  successful: number;
+  failed: number;
+  skipped: number;
+  total_duration: {
+    secs: number;
+    nanos: number;
+  };
+  results: CommandResult[];
+}
+
+// Agent workflow types
+export type WorkflowType = 'cdp_automation' | 'config_update';
+
+export interface ChatMessageRequest {
+  message: string;
+  workflow_type: WorkflowType;
+  agent_name?: string;
+  include_screenshot?: boolean;
+  include_html?: boolean;
+}
+
+export interface ClarificationQuestion {
+  question: string;
+  options: string[];
+  context?: string;
+}
+
+export interface WorkflowResult {
+  success: boolean;
+  message: string;
+  error?: string;
+  cdp_script?: string;
+  execution_report?: ExecutionReport;
+  clarification?: ClarificationQuestion[];
+  understanding?: string;
+}

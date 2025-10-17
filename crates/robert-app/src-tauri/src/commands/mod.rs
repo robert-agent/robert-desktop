@@ -8,12 +8,10 @@ use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, 
 use crate::events::*;
 use crate::state::AppState;
 use robert_webdriver::{
-    capture_step_frame, ActionInfo, CaptureOptions, CdpValidator, ChatUI, ChromeDriver,
-    ScreenshotFormat, ValidationResult,
+    CdpExecutor, CdpScript, CdpValidator, ChromeDriver, ExecutionReport, ValidationResult,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,7 +24,12 @@ pub struct NavigationResult {
 
 /// Launch the browser (sandboxed mode with auto-download)
 #[tauri::command]
-pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Result<String, String> {
+pub async fn launch_browser(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    screen_width: Option<u32>,
+    screen_height: Option<u32>,
+) -> Result<String, String> {
     emit_info(&app, "Initializing browser...").ok();
 
     // Check if Chrome needs to be downloaded
@@ -46,15 +49,20 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
     match ChromeDriver::launch_auto().await {
         Ok(driver) => {
             emit_chrome_launched(&app, "Browser launched successfully!").ok();
+
+            // Position the browser window if screen dimensions provided
+            if let (Some(width), Some(height)) = (screen_width, screen_height) {
+                if let Err(e) = driver.position_window(width, height).await {
+                    log::warn!("Failed to position browser window: {}", e);
+                }
+            }
+
             emit_success(&app, "Chrome is ready for automation").ok();
 
             *driver_lock = Some(driver);
             drop(driver_lock);
 
-            // Start chat message polling task
-            let state_clone = state.inner().driver.clone();
-            let shutdown_clone = state.inner().chat_poll_shutdown.clone();
-            start_chat_polling(app.clone(), state_clone, shutdown_clone).await;
+            // NOTE: Chat polling disabled - chat is now in the Tauri app
 
             Ok("Browser launched successfully".to_string())
         }
@@ -66,284 +74,6 @@ pub async fn launch_browser(app: AppHandle, state: State<'_, AppState>) -> Resul
     }
 }
 
-/// Start a background task to poll for chat messages
-async fn start_chat_polling(
-    app: AppHandle,
-    driver: Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
-    shutdown_holder: Arc<tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
-) {
-    log::info!("Starting chat message polling task");
-
-    let (shutdown_tx, mut shutdown_rx) = tokio::sync::oneshot::channel();
-
-    // Store shutdown channel
-    *shutdown_holder.lock().await = Some(shutdown_tx);
-
-    // Spawn polling task
-    tokio::spawn(async move {
-        let chat_ui = ChatUI::new();
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(500));
-
-        loop {
-            tokio::select! {
-                _ = &mut shutdown_rx => {
-                    log::info!("Chat polling task shutting down");
-                    break;
-                }
-                _ = interval.tick() => {
-                    // Check for unprocessed messages
-                    let messages_to_process = {
-                        let driver_lock = driver.lock().await;
-                        if let Some(drv) = driver_lock.as_ref() {
-                            if let Ok(page) = drv.current_page().await {
-                                match chat_ui.get_unprocessed_messages(&page).await {
-                                    Ok(messages) if !messages.is_empty() => {
-                                        log::info!("📬 Found {} unprocessed chat message(s)", messages.len());
-                                        Some(messages)
-                                    }
-                                    Ok(_) => None,
-                                    Err(e) => {
-                                        log::warn!("Error checking for chat messages: {}", e);
-                                        None
-                                    }
-                                }
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    }; // Lock is dropped here
-
-                    // Process messages outside of the lock
-                    if let Some(messages) = messages_to_process {
-                        for msg in &messages {
-                            log::info!("💬 User message: {}", msg.text);
-                            emit_info(&app, format!("Chat message: {}", msg.text)).ok();
-
-                            // Process message through CDP generation workflow
-                            match process_chat_message_internal(
-                                &app,
-                                &driver,
-                                msg.text.clone(),
-                            ).await {
-                                Ok(result) => {
-                                    let response = if result.success {
-                                        result.message
-                                    } else {
-                                        format!("Error: {}", result.error.unwrap_or_else(|| "Unknown error".to_string()))
-                                    };
-
-                                    // Reacquire lock to send response
-                                    let driver_lock = driver.lock().await;
-                                    if let Some(drv) = driver_lock.as_ref() {
-                                        if let Ok(page) = drv.current_page().await {
-                                            if let Err(e) = chat_ui.send_agent_message(&page, &response).await {
-                                                log::error!("Failed to send agent response: {}", e);
-                                            }
-                                        }
-                                    }
-                                }
-                                Err(e) => {
-                                    let error_msg = format!("Workflow failed: {}", e);
-                                    log::error!("{}", error_msg);
-
-                                    // Reacquire lock to send error
-                                    let driver_lock = driver.lock().await;
-                                    if let Some(drv) = driver_lock.as_ref() {
-                                        if let Ok(page) = drv.current_page().await {
-                                            if let Err(e) = chat_ui.send_agent_message(&page, &error_msg).await {
-                                                log::error!("Failed to send error message: {}", e);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Clear processed messages (reacquire lock)
-                        let driver_lock = driver.lock().await;
-                        if let Some(drv) = driver_lock.as_ref() {
-                            if let Ok(page) = drv.current_page().await {
-                                if let Err(e) = chat_ui.clear_unprocessed_messages(&page).await {
-                                    log::error!("Failed to clear unprocessed messages: {}", e);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-/// Internal helper to process chat messages (used by polling task)
-async fn process_chat_message_internal(
-    app: &AppHandle,
-    driver: &Arc<tokio::sync::Mutex<Option<ChromeDriver>>>,
-    message: String,
-) -> Result<crate::agent::WorkflowResult, String> {
-    use crate::agent::{AgentConfig, WorkflowExecutor, WorkflowType};
-
-    log::info!("╔═══════════════════════════════════════════════════════════╗");
-    log::info!("║  💬 PROCESSING CHAT MESSAGE                               ║");
-    log::info!("╚═══════════════════════════════════════════════════════════╝");
-    log::info!("📝 Message: {}", message);
-
-    emit_info(app, "Processing chat message...").ok();
-
-    // Load agent configuration
-    let agent_name = "cdp-generator";
-    let agent_config = {
-        let config_path = AgentConfig::config_path(agent_name)
-            .map_err(|e| format!("Failed to get config path: {}", e))?;
-
-        if config_path.exists() {
-            AgentConfig::load(&config_path)
-                .await
-                .map_err(|e| format!("Failed to load agent config: {}", e))?
-        } else {
-            let config = AgentConfig::default_cdp_agent();
-            config
-                .save(&config_path)
-                .await
-                .map_err(|e| format!("Failed to save agent config: {}", e))?;
-            emit_info(app, format!("Created default config for '{}'", agent_name)).ok();
-            config
-        }
-    };
-
-    log::info!("✓ Agent config loaded: {}", agent_config.name);
-
-    // Capture step frame with screenshot and HTML
-    log::info!("📸 Capturing step frame...");
-    log::debug!("Acquiring driver lock...");
-    let driver_lock = driver.lock().await;
-    log::debug!("Driver lock acquired");
-    let driver_ref = driver_lock.as_ref();
-
-    let (screenshot_path, html_content) = if let Some(drv) = driver_ref {
-        log::debug!("Driver available, setting up capture options...");
-
-        // Set up capture options for step frame
-        let temp_dir = std::env::temp_dir().join("robert-chat");
-        let screenshot_dir = temp_dir.join("screenshots");
-        let dom_dir = temp_dir.join("dom");
-
-        log::debug!("Temp dir: {:?}", temp_dir);
-        log::debug!("Screenshot dir: {:?}", screenshot_dir);
-        log::debug!("DOM dir: {:?}", dom_dir);
-
-        let options = CaptureOptions {
-            screenshot_dir,
-            dom_dir: Some(dom_dir),
-            screenshot_format: ScreenshotFormat::Png,
-            save_html: true,
-            compute_hashes: false, // Don't need hashes for immediate processing
-            extract_interactive_elements: false, // Don't need interactive elements for chat messages
-        };
-
-        log::debug!("Creating action info...");
-        // Create action info
-        let action = Some(ActionInfo {
-            action_type: "user_instruction".to_string(),
-            intent: message.clone(),
-            target: None,
-        });
-
-        log::info!("🎬 Calling capture_step_frame...");
-        // Capture the step frame
-        let capture_result =
-            capture_step_frame(drv, 0, 0, &options, Some(message.clone()), action).await;
-        log::info!("📦 capture_step_frame returned");
-
-        match capture_result {
-            Ok(step_frame) => {
-                log::info!("✅ Step frame captured successfully (match arm)");
-                emit_info(
-                    app,
-                    format!(
-                        "Captured step frame: {} KB screenshot, {} KB HTML",
-                        step_frame.screenshot.size_bytes / 1024,
-                        step_frame
-                            .dom
-                            .html_path
-                            .as_ref()
-                            .map(|_| "saved")
-                            .unwrap_or("none")
-                    ),
-                )
-                .ok();
-
-                // Extract screenshot path and HTML for workflow
-                let screenshot = PathBuf::from(step_frame.screenshot.path);
-
-                // Read HTML from file if saved
-                let html = if let Some(html_path) = step_frame.dom.html_path {
-                    match tokio::fs::read_to_string(&html_path).await {
-                        Ok(content) => Some(content),
-                        Err(e) => {
-                            log::warn!("⚠️  Failed to read HTML from file: {}", e);
-                            None
-                        }
-                    }
-                } else {
-                    None
-                };
-
-                (Some(screenshot), html)
-            }
-            Err(e) => {
-                log::error!("❌ Step frame capture failed (error match arm)");
-                log::error!("Error details: {}", e);
-                log::error!("Error debug: {:?}", e);
-                emit_error(app, "Step frame capture failed", Some(e.to_string())).ok();
-                (None, None)
-            }
-        }
-    } else {
-        log::warn!("⚠️  No driver available (browser not launched)");
-        emit_error(
-            app,
-            "Cannot capture step frame",
-            Some("Browser not launched".to_string()),
-        )
-        .ok();
-        (None, None)
-    };
-
-    log::info!("🚀 Initiating workflow executor...");
-    let executor = WorkflowExecutor::new();
-    emit_claude_processing(app, "Executing CDP generation workflow...").ok();
-
-    log::info!("🔄 Executing workflow...");
-    // Execute workflow
-    let result = executor
-        .execute(
-            WorkflowType::CdpAutomation,
-            message.clone(),
-            &agent_config,
-            screenshot_path,
-            html_content,
-            driver_ref,
-        )
-        .await
-        .map_err(|e| {
-            log::error!("❌ Workflow execution error: {}", e);
-            format!("Workflow execution failed: {}", e)
-        })?;
-
-    log::info!("✅ Workflow execution completed");
-
-    if result.success {
-        emit_success(app, result.message.clone()).ok();
-    } else {
-        emit_error(app, result.message.clone(), result.error.clone()).ok();
-    }
-
-    Ok(result)
-}
-
 /// Navigate to a URL
 #[tauri::command]
 pub async fn navigate_to_url(
@@ -352,12 +82,26 @@ pub async fn navigate_to_url(
     url: String,
 ) -> Result<NavigationResult, String> {
     // Ensure browser is launched
-    let driver_lock = state.driver.lock().await;
+    let mut driver_lock = state.driver.lock().await;
 
     if driver_lock.is_none() {
         let msg = "Browser not launched. Please launch browser first.";
         emit_error(&app, msg, None).ok();
         return Err(msg.to_string());
+    }
+
+    // Check if browser is still alive
+    let driver = driver_lock.as_ref().unwrap();
+    if !driver.is_alive().await {
+        log::warn!("Browser connection is dead, clearing state");
+        emit_error(
+            &app,
+            "Browser connection lost. Please launch browser again.",
+            Some("The browser may have been closed manually or crashed.".to_string()),
+        )
+        .ok();
+        *driver_lock = None;
+        return Err("Browser connection lost. Please launch browser again.".to_string());
     }
 
     let driver = driver_lock.as_ref().unwrap();
@@ -379,16 +123,7 @@ pub async fn navigate_to_url(
 
             emit_page_loaded(&app, &url, &title).ok();
 
-            // Inject chat UI after page loads
-            let chat_ui = ChatUI::new();
-            if let Ok(page) = driver.current_page().await {
-                if let Err(e) = chat_ui.inject(&page).await {
-                    log::warn!("Failed to inject chat UI: {}", e);
-                } else {
-                    log::info!("Chat UI injected successfully");
-                    emit_info(&app, "Chat UI injected").ok();
-                }
-            }
+            // NOTE: Chat UI injection disabled - chat is now in the Tauri app
 
             emit_success(&app, format!("Successfully loaded: {}", title)).ok();
 
@@ -855,4 +590,205 @@ pub async fn validate_cdp_script_file(
     }
 
     Ok(result)
+}
+
+/// Execute a CDP script from JSON string
+#[tauri::command]
+pub async fn execute_cdp_script(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    script_json: String,
+) -> Result<ExecutionReport, String> {
+    log::info!("🎬 [CDP Debug] Executing CDP script from JSON");
+    emit_info(&app, "Parsing CDP script...").ok();
+
+    // Parse JSON into CdpScript
+    let script: CdpScript = serde_json::from_str(&script_json).map_err(|e| {
+        let msg = format!("Failed to parse CDP script: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
+
+    log::info!(
+        "✓ Parsed CDP script: {} ({} commands)",
+        script.name,
+        script.cdp_commands.len()
+    );
+    emit_info(&app, format!("Validating script: {}", script.name)).ok();
+
+    // Validate script using the comprehensive CDP validator
+    let validator = CdpValidator::new();
+    let validation_result = validator.validate_json(&script_json);
+
+    if !validation_result.is_valid {
+        let msg = format!(
+            "CDP script validation failed: {} error(s), {} warning(s)",
+            validation_result.errors.len(),
+            validation_result.warnings.len()
+        );
+        log::error!("❌ {}", msg);
+
+        // Log detailed validation errors
+        for error in &validation_result.errors {
+            let location = if let Some(idx) = error.location.command_index {
+                format!("command {}", idx)
+            } else {
+                error.location.field_path.clone()
+            };
+            log::error!("  ✗ Error at {}: {}", location, error.message);
+            if let Some(suggestion) = &error.suggestion {
+                log::error!("    💡 Suggestion: {}", suggestion);
+            }
+        }
+
+        // Log warnings
+        for warning in &validation_result.warnings {
+            log::warn!("  ⚠️  Warning: {}", warning);
+        }
+
+        emit_error(
+            &app,
+            msg.clone(),
+            Some(format!(
+                "First error: {}",
+                validation_result.errors[0].message
+            )),
+        )
+        .ok();
+        return Err(msg);
+    }
+
+    // Log warnings if any
+    if !validation_result.warnings.is_empty() {
+        log::warn!(
+            "⚠️  Script has {} warning(s) but passed validation",
+            validation_result.warnings.len()
+        );
+        for warning in &validation_result.warnings {
+            log::warn!("  ⚠️  {}", warning);
+        }
+        emit_info(
+            &app,
+            format!(
+                "Script validated with {} warning(s)",
+                validation_result.warnings.len()
+            ),
+        )
+        .ok();
+    } else {
+        log::info!("✓ Script validation passed with no warnings");
+        emit_success(&app, "Script validation passed").ok();
+    }
+
+    emit_info(&app, format!("Executing script: {}", script.name)).ok();
+
+    // Get driver
+    let driver_lock = state.driver.lock().await;
+    if driver_lock.is_none() {
+        let msg = "Browser not launched. Please launch browser first.";
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg, None).ok();
+        return Err(msg.to_string());
+    }
+
+    let driver = driver_lock.as_ref().unwrap();
+
+    // Get current page
+    let page = driver.current_page().await.map_err(|e| {
+        let msg = format!("Failed to get current page: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
+
+    log::info!("🚀 Executing {} CDP commands...", script.cdp_commands.len());
+    emit_info(
+        &app,
+        format!("Executing {} commands...", script.cdp_commands.len()),
+    )
+    .ok();
+
+    // Create executor and execute script
+    let executor = CdpExecutor::new(page);
+    let report = executor.execute_script(&script).await.map_err(|e| {
+        let msg = format!("CDP script execution failed: {}", e);
+        log::error!("❌ {}", msg);
+        emit_error(&app, msg.clone(), Some(e.to_string())).ok();
+        msg
+    })?;
+
+    // Log results
+    log::info!("╔═══════════════════════════════════════════════════════════╗");
+    log::info!("║  📊 CDP EXECUTION REPORT                                  ║");
+    log::info!("╚═══════════════════════════════════════════════════════════╝");
+    log::info!("Script: {}", report.script_name);
+    log::info!("Total commands: {}", report.total_commands);
+    log::info!("✅ Successful: {}", report.successful);
+    log::info!("❌ Failed: {}", report.failed);
+    log::info!("⏭️  Skipped: {}", report.skipped);
+    log::info!("⏱️  Total duration: {:?}", report.total_duration);
+    log::info!("📈 Success rate: {:.1}%", report.success_rate());
+
+    // Log individual command results
+    for result in &report.results {
+        match result.status {
+            robert_webdriver::CommandStatus::Success => {
+                log::info!(
+                    "  ✓ Step {}: {} ({:?})",
+                    result.step,
+                    result.method,
+                    result.duration
+                );
+            }
+            robert_webdriver::CommandStatus::Failed => {
+                log::error!(
+                    "  ✗ Step {}: {} failed - {} ({:?})",
+                    result.step,
+                    result.method,
+                    result
+                        .error
+                        .as_ref()
+                        .unwrap_or(&"Unknown error".to_string()),
+                    result.duration
+                );
+            }
+            robert_webdriver::CommandStatus::Skipped => {
+                log::warn!("  ⏭️  Step {}: {} skipped", result.step, result.method);
+            }
+        }
+    }
+
+    // Emit appropriate event
+    if report.is_success() {
+        emit_success(
+            &app,
+            format!(
+                "CDP script '{}' executed successfully ({} commands, {:.1}s)",
+                report.script_name,
+                report.successful,
+                report.total_duration.as_secs_f64()
+            ),
+        )
+        .ok();
+    } else {
+        emit_error(
+            &app,
+            format!(
+                "CDP script '{}' completed with {} error(s)",
+                report.script_name, report.failed
+            ),
+            Some(format!(
+                "Success rate: {:.1}% ({}/{} commands)",
+                report.success_rate(),
+                report.successful,
+                report.total_commands
+            )),
+        )
+        .ok();
+    }
+
+    log::info!("✓ CDP script execution completed");
+
+    Ok(report)
 }

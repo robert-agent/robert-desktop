@@ -1,8 +1,19 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { NavigationResult, SystemPaths, TestServerStatus, ScreenshotInfo } from './types';
+import type {
+  NavigationResult,
+  SystemPaths,
+  TestServerStatus,
+  ScreenshotInfo,
+  ExecutionReport,
+  ChatMessageRequest,
+  WorkflowResult,
+} from './types';
 
-export async function launchBrowser(): Promise<string> {
-  return await invoke<string>('launch_browser');
+export async function launchBrowser(screenWidth?: number, screenHeight?: number): Promise<string> {
+  return await invoke<string>('launch_browser', {
+    screenWidth: screenWidth ? screenWidth : null,
+    screenHeight: screenHeight ? screenHeight : null,
+  });
 }
 
 export async function navigateToUrl(url: string): Promise<NavigationResult> {
@@ -49,4 +60,14 @@ export async function devDeleteAllScreenshots(): Promise<number> {
 
 export async function devDeleteScreenshot(path: string): Promise<void> {
   return await invoke<void>('dev_delete_screenshot', { path });
+}
+
+// CDP script execution
+export async function executeCdpScript(scriptJson: string): Promise<ExecutionReport> {
+  return await invoke<ExecutionReport>('execute_cdp_script', { scriptJson });
+}
+
+// Agent workflow commands
+export async function processChatMessage(request: ChatMessageRequest): Promise<WorkflowResult> {
+  return await invoke<WorkflowResult>('process_chat_message', { request });
 }

@@ -289,10 +289,19 @@ impl ChromeDriver {
 
         let response = page.execute(params).await.map_err(|e| {
             eprintln!("❌ CDP Navigate failed: {}", e);
-            BrowserError::NavigationFailed(format!(
-                "Failed to navigate to {}: {}",
-                normalized_url, e
-            ))
+            let error_str = e.to_string();
+
+            // Detect "oneshot canceled" error which indicates browser connection is dead
+            if error_str.contains("oneshot canceled") {
+                BrowserError::NavigationFailed(
+                    "Browser connection lost. The browser may have been closed or crashed. Please launch the browser again.".to_string()
+                )
+            } else {
+                BrowserError::NavigationFailed(format!(
+                    "Failed to navigate to {}: {}",
+                    normalized_url, e
+                ))
+            }
         })?;
 
         // Check if navigation was successful
@@ -348,14 +357,7 @@ impl ChromeDriver {
         tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         eprintln!("✓ Navigation completed successfully");
 
-        // Inject chat UI if enabled
-        if self.chat_ui.is_enabled() {
-            eprintln!("💬 Injecting chat UI...");
-            if let Err(e) = self.chat_ui.inject(&page).await {
-                eprintln!("⚠️  Warning: Failed to inject chat UI: {}", e);
-                // Don't fail navigation if chat UI injection fails
-            }
-        }
+        // NOTE: Chat UI injection disabled - chat is now in the Tauri app
 
         Ok(())
     }
@@ -573,6 +575,28 @@ impl ChromeDriver {
         self.get_active_page().await
     }
 
+    /// Check if the browser is still alive and responsive
+    /// Returns true if the browser connection is healthy, false otherwise
+    pub async fn is_alive(&self) -> bool {
+        // Try to get pages - if this fails, the browser is dead
+        match self.browser.pages().await {
+            Ok(pages) => {
+                // If we can get pages, try a simple operation to verify connection
+                if let Some(page) = pages.first() {
+                    // Try to get the URL - if this times out or fails, browser is dead
+                    matches!(
+                        tokio::time::timeout(tokio::time::Duration::from_secs(2), page.url()).await,
+                        Ok(Ok(_))
+                    )
+                } else {
+                    // No pages but browser responded - still alive
+                    true
+                }
+            }
+            Err(_) => false,
+        }
+    }
+
     /// Close the browser connection
     pub async fn close(self) -> Result<()> {
         self.browser
@@ -756,6 +780,54 @@ impl ChromeDriver {
     pub async fn expand_chat(&self) -> Result<()> {
         let page = self.current_page().await?;
         self.chat_ui.expand(&page).await
+    }
+
+    /// Position the browser window
+    ///
+    /// Places the browser window on the left 3/4 of the screen (Robert app takes right 1/4)
+    pub async fn position_window(&self, screen_width: u32, screen_height: u32) -> Result<()> {
+        use chromiumoxide::cdp::browser_protocol::browser::{
+            Bounds, GetWindowForTargetParams, SetWindowBoundsParams,
+        };
+
+        let page = self.current_page().await?;
+        let target_id = page.target_id();
+
+        // Get the window ID for this target
+        let window_result = page
+            .execute(GetWindowForTargetParams {
+                target_id: Some(target_id.clone()),
+            })
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to get window: {}", e)))?;
+
+        let window_id = window_result.window_id;
+
+        // Calculate dimensions: left 3/4 of screen (Robert app takes right 1/4)
+        let browser_width = (screen_width * 3) / 4;
+        let browser_height = screen_height;
+        let browser_x = 0;
+        let browser_y = 0;
+
+        // Set window bounds
+        let bounds = Bounds {
+            left: Some(browser_x as i64),
+            top: Some(browser_y as i64),
+            width: Some(browser_width as i64),
+            height: Some(browser_height as i64),
+            window_state: Some(chromiumoxide::cdp::browser_protocol::browser::WindowState::Normal),
+        };
+
+        page.execute(SetWindowBoundsParams { window_id, bounds })
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to set window bounds: {}", e)))?;
+
+        eprintln!(
+            "✓ Browser window positioned: {}x{} at ({}, {})",
+            browser_width, browser_height, browser_x, browser_y
+        );
+
+        Ok(())
     }
 }
 
