@@ -331,6 +331,8 @@ impl WorkflowExecutor {
                             cdp_script: None,
                             execution_report: None,
                             error: Some(format!("Non-JSON response: {}", cleaned_json)),
+                            clarification: None,
+                            understanding: None,
                         });
                     }
 
@@ -341,6 +343,8 @@ impl WorkflowExecutor {
                         cdp_script: Some(claude_response.text().to_string()),
                         execution_report: None,
                         error: Some(format!("Parse error: {}", e)),
+                        clarification: None,
+                        understanding: None,
                     });
                 }
             };
@@ -357,6 +361,8 @@ impl WorkflowExecutor {
                 cdp_script: Some(claude_response.text().to_string()),
                 execution_report: None,
                 error: Some(format!("Validation error: {}", e)),
+                clarification: None,
+                understanding: None,
             });
         }
         log::info!("✓ CDP script validation passed");
@@ -417,6 +423,8 @@ impl WorkflowExecutor {
                         cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
                         execution_report: Some(serde_json::to_value(&report)?),
                         error: None,
+                        clarification: None,
+                        understanding: None,
                     })
                 }
                 Err(e) => {
@@ -432,6 +440,8 @@ impl WorkflowExecutor {
                         cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
                         execution_report: None,
                         error: Some(e.to_string()),
+                        clarification: None,
+                        understanding: None,
                     })
                 }
             }
@@ -446,6 +456,8 @@ impl WorkflowExecutor {
                 cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
                 execution_report: None,
                 error: None,
+                clarification: None,
+                understanding: None,
             })
         }
     }
@@ -509,6 +521,8 @@ impl WorkflowExecutor {
                         "updated_config": cleaned_toml,
                     })),
                     error: None,
+                    clarification: None,
+                    understanding: None,
                 })
             }
             Err(e) => Ok(WorkflowResult {
@@ -521,6 +535,8 @@ impl WorkflowExecutor {
                     "Parse error: {}\n\nGenerated config:\n{}",
                     e, cleaned_toml
                 )),
+                clarification: None,
+                understanding: None,
             }),
         }
     }
