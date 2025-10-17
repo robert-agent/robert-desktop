@@ -1,13 +1,23 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { launchBrowser, processChatMessage } from '../lib/tauri';
-  import type { WorkflowType } from '../lib/types';
+  import type { WorkflowType, ClarificationQuestion } from '../lib/types';
   import UrlInput from './UrlInput.svelte';
 
+  type MessageContent = {
+    role: 'user' | 'agent';
+    text: string;
+    timestamp: Date;
+    clarification?: ClarificationQuestion[];
+    understanding?: string;
+  };
+
   let message = '';
-  let messages: Array<{ role: 'user' | 'agent'; text: string; timestamp: Date }> = [];
+  let messages: MessageContent[] = [];
   let loading = false;
   let browserLaunched = false;
+  let pendingClarification: { questions: ClarificationQuestion[]; originalMessage: string } | null = null;
+  let clarificationAnswers: Record<number, string> = {};
 
   onMount(async () => {
     // Check if browser is already launched
@@ -45,26 +55,47 @@
         include_html: true,
       });
 
-      // Add agent response to chat
-      messages = [
-        ...messages,
-        {
-          role: 'agent',
-          text: result.message,
-          timestamp: new Date(),
-        },
-      ];
+      // Check if clarification is needed
+      if (result.clarification && result.clarification.length > 0) {
+        // Agent needs clarification
+        pendingClarification = {
+          questions: result.clarification,
+          originalMessage: userMessage,
+        };
+        clarificationAnswers = {}; // Reset answers
 
-      // If there was an error, show it
-      if (!result.success && result.error) {
         messages = [
           ...messages,
           {
             role: 'agent',
-            text: `Error details: ${result.error}`,
+            text: result.understanding || result.message,
+            timestamp: new Date(),
+            clarification: result.clarification,
+            understanding: result.understanding,
+          },
+        ];
+      } else {
+        // Normal response
+        messages = [
+          ...messages,
+          {
+            role: 'agent',
+            text: result.message,
             timestamp: new Date(),
           },
         ];
+
+        // If there was an error, show it
+        if (!result.success && result.error) {
+          messages = [
+            ...messages,
+            {
+              role: 'agent',
+              text: `Error details: ${result.error}`,
+              timestamp: new Date(),
+            },
+          ];
+        }
       }
     } catch (error) {
       console.error('Error processing message:', error);
@@ -93,6 +124,86 @@
       hour: '2-digit',
       minute: '2-digit',
     });
+  }
+
+  async function handleSubmitClarification() {
+    if (!pendingClarification) return;
+
+    // Check if all questions are answered
+    const unansweredQuestions = pendingClarification.questions
+      .map((_, i) => i)
+      .filter((i) => !clarificationAnswers[i]);
+
+    if (unansweredQuestions.length > 0) {
+      alert('Please answer all questions before submitting.');
+      return;
+    }
+
+    loading = true;
+
+    // Build clarification text
+    const clarificationText = pendingClarification.questions
+      .map((q, i) => `${q.question} → ${clarificationAnswers[i]}`)
+      .join('\n');
+
+    // Add clarification as user message
+    messages = [
+      ...messages,
+      {
+        role: 'user',
+        text: `Clarification:\n${clarificationText}`,
+        timestamp: new Date(),
+      },
+    ];
+
+    const originalMessage = pendingClarification.originalMessage;
+    pendingClarification = null;
+
+    try {
+      // TODO: We need to send the clarification along with the original message
+      // For now, we'll send a combined message
+      const combinedMessage = `${originalMessage}\n\nClarification provided:\n${clarificationText}`;
+
+      const result = await processChatMessage({
+        message: combinedMessage,
+        workflow_type: 'cdp_automation' as WorkflowType,
+        agent_name: 'cdp-generator',
+        include_screenshot: true,
+        include_html: true,
+      });
+
+      messages = [
+        ...messages,
+        {
+          role: 'agent',
+          text: result.message,
+          timestamp: new Date(),
+        },
+      ];
+
+      if (!result.success && result.error) {
+        messages = [
+          ...messages,
+          {
+            role: 'agent',
+            text: `Error details: ${result.error}`,
+            timestamp: new Date(),
+          },
+        ];
+      }
+    } catch (error) {
+      console.error('Error processing clarification:', error);
+      messages = [
+        ...messages,
+        {
+          role: 'agent',
+          text: `Error: ${error}`,
+          timestamp: new Date(),
+        },
+      ];
+    } finally {
+      loading = false;
+    }
   }
 </script>
 
@@ -123,8 +234,47 @@
             <span class="timestamp">{formatTime(msg.timestamp)}</span>
           </div>
           <div class="message-text">{msg.text}</div>
+
+          {#if msg.clarification && msg.clarification.length > 0}
+            <div class="clarification-section">
+              <p class="clarification-prompt">I need some clarification:</p>
+              {#each msg.clarification as question, i}
+                <div class="clarification-question">
+                  <label class="question-label" for="clarification-{i}">
+                    {question.question}
+                  </label>
+                  {#if question.context}
+                    <p class="question-context">{question.context}</p>
+                  {/if}
+                  <select
+                    id="clarification-{i}"
+                    bind:value={clarificationAnswers[i]}
+                    class="answer-select"
+                    disabled={!pendingClarification}
+                  >
+                    <option value="">-- Select an option --</option>
+                    {#each question.options as option}
+                      <option value={option}>{option}</option>
+                    {/each}
+                  </select>
+                </div>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/each}
+
+      {#if pendingClarification}
+        <div class="clarification-submit">
+          <button
+            on:click={handleSubmitClarification}
+            class="submit-clarification-button"
+            disabled={loading}
+          >
+            Submit Answers
+          </button>
+        </div>
+      {/if}
     {/if}
   </div>
 
@@ -277,6 +427,93 @@
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.5;
+  }
+
+  .clarification-section {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+  }
+
+  .clarification-prompt {
+    font-weight: 600;
+    color: #495057;
+    margin: 0 0 1rem 0;
+  }
+
+  .clarification-question {
+    margin-bottom: 1rem;
+  }
+
+  .clarification-question:last-child {
+    margin-bottom: 0;
+  }
+
+  .question-label {
+    display: block;
+    font-weight: 500;
+    color: #212529;
+    margin-bottom: 0.5rem;
+  }
+
+  .question-context {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-style: italic;
+    margin: 0.25rem 0 0.5rem 0;
+  }
+
+  .answer-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+  }
+
+  .answer-select:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+  }
+
+  .answer-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+  }
+
+  .clarification-submit {
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+    margin-top: 1rem;
+  }
+
+  .submit-clarification-button {
+    padding: 0.75rem 2rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .submit-clarification-button:hover:not(:disabled) {
+    background: #5568d3;
+  }
+
+  .submit-clarification-button:disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
   }
 
   .input-container {

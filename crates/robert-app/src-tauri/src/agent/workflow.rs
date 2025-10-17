@@ -8,6 +8,31 @@ use robert_webdriver::ChromeDriver;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+/// Planning response types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "response_type", rename_all = "snake_case")]
+pub enum PlanningResponse {
+    /// Agent is ready to proceed
+    Ready {
+        understanding: String,
+        next_step: String,
+    },
+    /// Agent needs clarification
+    ClarificationNeeded {
+        questions: Vec<ClarificationQuestion>,
+        understanding: String,
+    },
+}
+
+/// A question that needs clarification
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClarificationQuestion {
+    pub question: String,
+    pub options: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<String>,
+}
+
 /// Type of workflow to execute
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -30,6 +55,12 @@ pub struct WorkflowResult {
     pub execution_report: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Clarification questions if the agent needs more information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clarification: Option<Vec<ClarificationQuestion>>,
+    /// Agent's understanding of the request so far
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub understanding: Option<String>,
 }
 
 /// Workflow executor
@@ -94,9 +125,112 @@ impl WorkflowExecutor {
             (None, None)
         };
 
-        // Build prompt using template
-        log::info!("📝 Building prompt from template...");
+        // PHASE 1: Planning - Check if clarification is needed
+        log::info!("╔═══════════════════════════════════════════════════════════╗");
+        log::info!("║  📋 PHASE 1: PLANNING                                     ║");
+        log::info!("╚═══════════════════════════════════════════════════════════╝");
+        log::info!("📝 Building planning prompt...");
+
         let template = PromptTemplate::new(PromptType::CdpGeneration);
+        let planning_prompt = template.build_planning_prompt(
+            &user_message,
+            current_url.as_deref(),
+            page_title.as_deref(),
+            &agent_config.instructions,
+        );
+
+        log::info!("✓ Planning prompt created ({} chars)", planning_prompt.len());
+
+        // Call Claude for planning
+        let planning_response = self
+            .call_claude(
+                &planning_prompt,
+                screenshot_path.clone(),
+                html_content.clone(),
+                &agent_config.settings.model,
+            )
+            .await
+            .map_err(|e| {
+                log::error!("❌ Claude planning call failed");
+                log::error!("Error details: {:?}", e);
+                e
+            })?;
+
+        // Parse planning response
+        let cleaned_planning = planning_response.text().trim();
+        let cleaned_planning = if cleaned_planning.starts_with("```json") {
+            cleaned_planning
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim()
+        } else if cleaned_planning.starts_with("```") {
+            cleaned_planning
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim()
+        } else {
+            cleaned_planning
+        };
+
+        log::debug!("Planning response: {}", cleaned_planning);
+
+        let planning_result: PlanningResponse = match serde_json::from_str(cleaned_planning) {
+            Ok(result) => result,
+            Err(e) => {
+                log::error!("❌ Failed to parse planning response as JSON");
+                log::error!("Parse error: {}", e);
+                log::error!("Response: {}", cleaned_planning);
+                return Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::CdpAutomation,
+                    message: "Failed to parse planning response".to_string(),
+                    cdp_script: None,
+                    execution_report: None,
+                    error: Some(format!("Parse error: {}", e)),
+                    clarification: None,
+                    understanding: None,
+                });
+            }
+        };
+
+        // Check if clarification is needed
+        match planning_result {
+            PlanningResponse::ClarificationNeeded {
+                questions,
+                understanding,
+            } => {
+                log::info!("⚠️  Clarification needed - returning questions to user");
+                log::info!("Understanding: {}", understanding);
+                log::info!("Questions: {:?}", questions);
+
+                return Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::CdpAutomation,
+                    message: "Need clarification before proceeding".to_string(),
+                    cdp_script: None,
+                    execution_report: None,
+                    error: None,
+                    clarification: Some(questions),
+                    understanding: Some(understanding),
+                });
+            }
+            PlanningResponse::Ready {
+                understanding,
+                next_step,
+            } => {
+                log::info!("✓ Ready to proceed with CDP generation");
+                log::info!("Understanding: {}", understanding);
+                log::info!("Next step: {}", next_step);
+                // Continue to Phase 2
+            }
+        }
+
+        // PHASE 2: CDP Script Generation
+        log::info!("╔═══════════════════════════════════════════════════════════╗");
+        log::info!("║  ⚙️  PHASE 2: CDP SCRIPT GENERATION                       ║");
+        log::info!("╚═══════════════════════════════════════════════════════════╝");
+        log::info!("📝 Building CDP generation prompt...");
+
         let prompt = template.build_cdp_prompt(
             &user_message,
             current_url.as_deref(),
@@ -155,8 +289,28 @@ impl WorkflowExecutor {
 
         // Parse the generated script
         log::info!("🔍 Parsing CDP script from JSON...");
+
+        // Clean up the response - remove markdown code blocks if present
+        let response_text = claude_response.text().trim();
+        let cleaned_json = if response_text.starts_with("```json") {
+            response_text
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim()
+        } else if response_text.starts_with("```") {
+            response_text
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim()
+        } else {
+            response_text
+        };
+
+        log::debug!("Cleaned response length: {} chars", cleaned_json.len());
+        log::debug!("Cleaned response preview: {}...", &cleaned_json.chars().take(200).collect::<String>());
+
         let cdp_script: robert_webdriver::CdpScript =
-            match serde_json::from_str::<robert_webdriver::CdpScript>(claude_response.text()) {
+            match serde_json::from_str::<robert_webdriver::CdpScript>(cleaned_json) {
                 Ok(script) => {
                     log::info!("✓ CDP script parsed successfully");
                     log::info!("📊 Commands in script: {}", script.cdp_commands.len());
@@ -165,6 +319,21 @@ impl WorkflowExecutor {
                 Err(e) => {
                     log::error!("❌ Failed to parse CDP script JSON");
                     log::error!("⚠️  Parse error: {}", e);
+                    log::error!("Response that failed to parse: {}", cleaned_json);
+
+                    // Check if the response contains questions or non-JSON content
+                    if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
+                        log::error!("⚠️  Claude appears to have asked a question instead of generating JSON");
+                        return Ok(WorkflowResult {
+                            success: false,
+                            workflow_type: WorkflowType::CdpAutomation,
+                            message: "Claude asked for clarification instead of generating a script. Please provide more specific instructions.".to_string(),
+                            cdp_script: None,
+                            execution_report: None,
+                            error: Some(format!("Non-JSON response: {}", cleaned_json)),
+                        });
+                    }
+
                     return Ok(WorkflowResult {
                         success: false,
                         workflow_type: WorkflowType::CdpAutomation,

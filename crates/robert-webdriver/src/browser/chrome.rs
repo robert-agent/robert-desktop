@@ -584,13 +584,13 @@ impl ChromeDriver {
                 // If we can get pages, try a simple operation to verify connection
                 if let Some(page) = pages.first() {
                     // Try to get the URL - if this times out or fails, browser is dead
-                    match tokio::time::timeout(
-                        tokio::time::Duration::from_secs(2),
-                        page.url()
-                    ).await {
-                        Ok(Ok(_)) => true,
-                        _ => false,
-                    }
+                    matches!(
+                        tokio::time::timeout(
+                            tokio::time::Duration::from_secs(2),
+                            page.url()
+                        ).await,
+                        Ok(Ok(_))
+                    )
                 } else {
                     // No pages but browser responded - still alive
                     true

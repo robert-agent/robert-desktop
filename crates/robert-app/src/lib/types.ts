@@ -109,10 +109,18 @@ export interface ChatMessageRequest {
   include_html?: boolean;
 }
 
+export interface ClarificationQuestion {
+  question: string;
+  options: string[];
+  context?: string;
+}
+
 export interface WorkflowResult {
   success: boolean;
   message: string;
   error?: string;
   cdp_script?: string;
   execution_report?: ExecutionReport;
+  clarification?: ClarificationQuestion[];
+  understanding?: string;
 }
