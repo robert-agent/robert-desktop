@@ -99,6 +99,7 @@ impl AuthService {
     /// # Parameters
     /// - `username`: The username to login
     /// - `password`: The user's password
+    /// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
     ///
     /// # Returns
     /// - `UserSession`: Active session data including encryption key
@@ -113,35 +114,42 @@ impl AuthService {
     /// ```no_run
     /// use crate::profiles::auth::AuthService;
     ///
-    /// let session = AuthService::login("alice", "password123")?;
+    /// let session = AuthService::login("alice", "password123", None)?;
     /// println!("Logged in as: {}", session.username);
     /// ```
-    pub fn login(username: &str, password: &str) -> Result<UserSession> {
+    pub fn login(
+        username: &str,
+        password: &str,
+        base_dir: Option<&std::path::Path>,
+    ) -> Result<UserSession> {
         log::info!("🔐 Login attempt for user: {}", username);
 
         // Check if user exists
-        if !user_exists(username)? {
+        if !user_exists(username, base_dir)? {
             log::warn!("❌ Login failed: User '{}' not found", username);
             return Err(AuthError::UserNotFound(username.to_string()));
         }
 
         // Load the salt
-        let salt = load_salt(username)?;
+        let salt = load_salt(username, base_dir)?;
 
         // Derive encryption key from password and salt
         let (encryption_key, _) = derive_key(password, Some(&salt))?;
 
         // Try to load user config with the derived key
         // If this succeeds, the password was correct
-        match load_user_config(username, &encryption_key) {
+        match load_user_config(username, &encryption_key, base_dir) {
             Ok(config) => {
                 log::info!("✅ Login successful for user: {}", username);
 
                 // Update last login timestamp
                 let mut updated_config = config.clone();
-                if let Err(e) =
-                    UserManager::update_last_login(username, &mut updated_config, &encryption_key)
-                {
+                if let Err(e) = UserManager::update_last_login(
+                    username,
+                    &mut updated_config,
+                    &encryption_key,
+                    base_dir,
+                ) {
                     log::warn!("⚠️  Failed to update last login timestamp: {}", e);
                     // Don't fail login for this, use original config
                 } else {
@@ -171,6 +179,7 @@ impl AuthService {
     /// # Parameters
     /// - `username`: Unique username for the new user
     /// - `password`: Password for the new user
+    /// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
     ///
     /// # Returns
     /// - `UserSession`: Active session for the newly created user
@@ -182,14 +191,18 @@ impl AuthService {
     /// ```no_run
     /// use crate::profiles::auth::AuthService;
     ///
-    /// let session = AuthService::create_and_login("alice", "secure_password")?;
+    /// let session = AuthService::create_and_login("alice", "secure_password", None)?;
     /// println!("Created and logged in as: {}", session.username);
     /// ```
-    pub fn create_and_login(username: &str, password: &str) -> Result<UserSession> {
+    pub fn create_and_login(
+        username: &str,
+        password: &str,
+        base_dir: Option<&std::path::Path>,
+    ) -> Result<UserSession> {
         log::info!("👤 Creating new user: {}", username);
 
         // Create the user (this validates username and password)
-        let (encryption_key, config) = UserManager::create_user(username, password)?;
+        let (encryption_key, config) = UserManager::create_user(username, password, base_dir)?;
 
         log::info!("✅ User '{}' created successfully", username);
 
@@ -205,6 +218,7 @@ impl AuthService {
     /// # Parameters
     /// - `username`: The username to verify
     /// - `password`: The password to check
+    /// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
     ///
     /// # Returns
     /// - `true` if password is correct
@@ -213,16 +227,20 @@ impl AuthService {
     /// # Errors
     /// - Returns error if user doesn't exist or storage fails
     #[allow(dead_code)]
-    pub fn verify_password(username: &str, password: &str) -> Result<bool> {
-        if !user_exists(username)? {
+    pub fn verify_password(
+        username: &str,
+        password: &str,
+        base_dir: Option<&std::path::Path>,
+    ) -> Result<bool> {
+        if !user_exists(username, base_dir)? {
             return Err(AuthError::UserNotFound(username.to_string()));
         }
 
-        let salt = load_salt(username)?;
+        let salt = load_salt(username, base_dir)?;
         let (encryption_key, _) = derive_key(password, Some(&salt))?;
 
         // Try to load config - if it succeeds, password is correct
-        match load_user_config(username, &encryption_key) {
+        match load_user_config(username, &encryption_key, base_dir) {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
@@ -241,18 +259,13 @@ mod tests {
 
     fn setup_test_user(username: &str, password: &str) -> (TempDir, EncryptionKey) {
         let temp_dir = TempDir::new().unwrap();
-        // Use a unique temp directory per test
-        let home = temp_dir.path().to_path_buf();
-        std::env::set_var("HOME", &home);
+        let base_dir = temp_dir.path();
 
         let (key, salt) = derive_key(password, None).unwrap();
 
-        // Create .robert directory first
-        std::fs::create_dir_all(home.join(".robert/users")).unwrap();
-
         // Create user directory structure
-        create_user_directory(username).unwrap();
-        save_salt(username, &salt).unwrap();
+        create_user_directory(username, Some(base_dir)).unwrap();
+        save_salt(username, &salt, Some(base_dir)).unwrap();
 
         // Create a test config
         let config = UserConfig {
@@ -274,36 +287,36 @@ mod tests {
             },
         };
 
-        save_user_config(username, &config, &key).unwrap();
+        save_user_config(username, &config, &key, Some(base_dir)).unwrap();
 
         (temp_dir, key)
     }
 
     #[test]
     fn test_login_success() {
-        let (_temp, _key) = setup_test_user("test_user_1", "password123");
+        let (temp_dir, _key) = setup_test_user("test_user_1", "password123");
 
-        let session = AuthService::login("test_user_1", "password123").unwrap();
+        let session =
+            AuthService::login("test_user_1", "password123", Some(temp_dir.path())).unwrap();
         assert_eq!(session.username, "test_user_1");
         assert_eq!(session.config.username, "test_user_1");
     }
 
     #[test]
     fn test_login_wrong_password() {
-        let (_temp, _key) = setup_test_user("test_user_2", "password123");
+        let (temp_dir, _key) = setup_test_user("test_user_2", "password123");
 
-        let result = AuthService::login("test_user_2", "wrongpassword");
+        let result = AuthService::login("test_user_2", "wrongpassword", Some(temp_dir.path()));
         assert!(matches!(result, Err(AuthError::InvalidPassword)));
     }
 
     #[test]
     fn test_login_user_not_found() {
         let temp_dir = TempDir::new().unwrap();
-        let home = temp_dir.path().to_path_buf();
-        std::env::set_var("HOME", &home);
-        std::fs::create_dir_all(home.join(".robert/users")).unwrap();
+        let base_dir = temp_dir.path();
+        std::fs::create_dir_all(base_dir.join(".robert/users")).unwrap();
 
-        let result = AuthService::login("nonexistent", "password");
+        let result = AuthService::login("nonexistent", "password", Some(base_dir));
         assert!(matches!(
             result,
             Err(AuthError::UserNotFound(username)) if username == "nonexistent"
@@ -312,17 +325,21 @@ mod tests {
 
     #[test]
     fn test_verify_password_correct() {
-        let (_temp, _key) = setup_test_user("test_user_3", "password123");
+        let (temp_dir, _key) = setup_test_user("test_user_3", "password123");
 
-        let is_correct = AuthService::verify_password("test_user_3", "password123").unwrap();
+        let is_correct =
+            AuthService::verify_password("test_user_3", "password123", Some(temp_dir.path()))
+                .unwrap();
         assert!(is_correct);
     }
 
     #[test]
     fn test_verify_password_incorrect() {
-        let (_temp, _key) = setup_test_user("test_user_4", "password123");
+        let (temp_dir, _key) = setup_test_user("test_user_4", "password123");
 
-        let is_correct = AuthService::verify_password("test_user_4", "wrongpassword").unwrap();
+        let is_correct =
+            AuthService::verify_password("test_user_4", "wrongpassword", Some(temp_dir.path()))
+                .unwrap();
         assert!(!is_correct);
     }
 }
