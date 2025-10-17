@@ -4,6 +4,7 @@ mod claude;
 mod commands;
 pub mod developer_mode;
 mod events;
+mod profiles;
 mod state;
 
 use state::AppState;
