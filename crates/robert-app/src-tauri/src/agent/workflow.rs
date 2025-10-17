@@ -139,7 +139,10 @@ impl WorkflowExecutor {
             &agent_config.instructions,
         );
 
-        log::info!("✓ Planning prompt created ({} chars)", planning_prompt.len());
+        log::info!(
+            "✓ Planning prompt created ({} chars)",
+            planning_prompt.len()
+        );
 
         // Call Claude for planning
         let planning_response = self
@@ -307,24 +310,31 @@ impl WorkflowExecutor {
         };
 
         log::debug!("Cleaned response length: {} chars", cleaned_json.len());
-        log::debug!("Cleaned response preview: {}...", &cleaned_json.chars().take(200).collect::<String>());
+        log::debug!(
+            "Cleaned response preview: {}...",
+            &cleaned_json.chars().take(200).collect::<String>()
+        );
 
-        let cdp_script: robert_webdriver::CdpScript =
-            match serde_json::from_str::<robert_webdriver::CdpScript>(cleaned_json) {
-                Ok(script) => {
-                    log::info!("✓ CDP script parsed successfully");
-                    log::info!("📊 Commands in script: {}", script.cdp_commands.len());
-                    script
-                }
-                Err(e) => {
-                    log::error!("❌ Failed to parse CDP script JSON");
-                    log::error!("⚠️  Parse error: {}", e);
-                    log::error!("Response that failed to parse: {}", cleaned_json);
+        let cdp_script: robert_webdriver::CdpScript = match serde_json::from_str::<
+            robert_webdriver::CdpScript,
+        >(cleaned_json)
+        {
+            Ok(script) => {
+                log::info!("✓ CDP script parsed successfully");
+                log::info!("📊 Commands in script: {}", script.cdp_commands.len());
+                script
+            }
+            Err(e) => {
+                log::error!("❌ Failed to parse CDP script JSON");
+                log::error!("⚠️  Parse error: {}", e);
+                log::error!("Response that failed to parse: {}", cleaned_json);
 
-                    // Check if the response contains questions or non-JSON content
-                    if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
-                        log::error!("⚠️  Claude appears to have asked a question instead of generating JSON");
-                        return Ok(WorkflowResult {
+                // Check if the response contains questions or non-JSON content
+                if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
+                    log::error!(
+                        "⚠️  Claude appears to have asked a question instead of generating JSON"
+                    );
+                    return Ok(WorkflowResult {
                             success: false,
                             workflow_type: WorkflowType::CdpAutomation,
                             message: "Claude asked for clarification instead of generating a script. Please provide more specific instructions.".to_string(),
@@ -334,20 +344,20 @@ impl WorkflowExecutor {
                             clarification: None,
                             understanding: None,
                         });
-                    }
-
-                    return Ok(WorkflowResult {
-                        success: false,
-                        workflow_type: WorkflowType::CdpAutomation,
-                        message: "Failed to parse CDP script JSON".to_string(),
-                        cdp_script: Some(claude_response.text().to_string()),
-                        execution_report: None,
-                        error: Some(format!("Parse error: {}", e)),
-                        clarification: None,
-                        understanding: None,
-                    });
                 }
-            };
+
+                return Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::CdpAutomation,
+                    message: "Failed to parse CDP script JSON".to_string(),
+                    cdp_script: Some(claude_response.text().to_string()),
+                    execution_report: None,
+                    error: Some(format!("Parse error: {}", e)),
+                    clarification: None,
+                    understanding: None,
+                });
+            }
+        };
 
         // Validate the script
         log::info!("🔎 Validating CDP script...");

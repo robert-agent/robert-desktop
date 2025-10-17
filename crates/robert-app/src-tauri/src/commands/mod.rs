@@ -94,7 +94,12 @@ pub async fn navigate_to_url(
     let driver = driver_lock.as_ref().unwrap();
     if !driver.is_alive().await {
         log::warn!("Browser connection is dead, clearing state");
-        emit_error(&app, "Browser connection lost. Please launch browser again.", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+        emit_error(
+            &app,
+            "Browser connection lost. Please launch browser again.",
+            Some("The browser may have been closed manually or crashed.".to_string()),
+        )
+        .ok();
         *driver_lock = None;
         return Err("Browser connection lost. Please launch browser again.".to_string());
     }
