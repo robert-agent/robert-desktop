@@ -15,13 +15,12 @@
 - [ ] Phase 2: Auth & Middleware - Write tests for rate limiting
 - [ ] Phase 2: Auth & Middleware - Implement rate limiting middleware
 - [ ] Phase 2: Auth & Middleware - Integration tests for auth flow
-- [ ] Phase 3: Claude CLI Integration - Write tests for mock executor
-- [ ] Phase 3: Claude CLI Integration - Implement mock executor
-- [ ] Phase 3: Claude CLI Integration - Write tests for real executor interface
-- [ ] Phase 3: Claude CLI Integration - Implement claude-cli process spawning
+- [ ] Phase 3: Claude CLI Integration - Write tests for executor interface
+- [ ] Phase 3: Claude CLI Integration - Implement claude-cli process spawning (real only, no mocks)
 - [ ] Phase 3: Claude CLI Integration - Implement stdout/stderr streaming
 - [ ] Phase 3: Claude CLI Integration - Add timeout and cleanup logic
-- [ ] Phase 4: Execute Endpoint - Write tests for execute endpoint with mock executor
+- [ ] Phase 3: Claude CLI Integration - Test with real claude-cli commands
+- [ ] Phase 4: Execute Endpoint - Write tests for execute endpoint
 - [ ] Phase 4: Execute Endpoint - Implement execute endpoint with SSE streaming
 - [ ] Phase 4: Execute Endpoint - Write tests for session management
 - [ ] Phase 4: Execute Endpoint - Implement session tracking and cancellation
