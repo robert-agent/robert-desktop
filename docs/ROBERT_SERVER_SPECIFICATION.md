@@ -354,7 +354,7 @@ cargo run --bin robert-server -- \
 - Verbose logging enabled by default
 - CORS enabled for all origins
 - Auto-reload on configuration changes
-- Mock mode for claude-cli (optional)
+- **Requires local claude-cli installation** - no mock mode
 
 #### Configuration: `config.dev.toml`
 
@@ -370,8 +370,7 @@ dev_token = "dev-token-12345"
 require_auth = false  # Optional: disable auth for local testing
 
 [claude]
-binary_path = "claude"
-mock_mode = false  # Set to true to use mock responses
+binary_path = "claude"  # Must be installed and available in PATH
 default_timeout_seconds = 300
 
 [logging]
@@ -424,40 +423,28 @@ cargo run --bin robert-server -- --dev
 }
 ```
 
-#### Mock Mode for Testing
+#### Prerequisites for Local Development
 
-For rapid testing without claude-cli dependency:
+**Required:**
+- `claude` CLI tool installed and configured locally
+- Valid Claude API credentials in local environment
+- Rust toolchain (stable)
 
-```rust
-// robert-server/src/mock.rs
-pub struct MockClaudeExecutor;
-
-impl MockClaudeExecutor {
-    pub async fn execute(&self, request: RobertRequest) -> impl Stream<Item = ClaudeEvent> {
-        // Return predefined responses for testing
-        stream! {
-            yield ClaudeEvent::Content {
-                text: "Mock response: Analyzing screenshot...".to_string()
-            };
-
-            yield ClaudeEvent::ToolUse {
-                tool: "cdp_command".to_string(),
-                params: json!({"command": "click", "selector": "#button"})
-            };
-
-            yield ClaudeEvent::Complete {
-                session_id: request.session_id,
-                status: "success".to_string()
-            };
-        }
-    }
-}
-```
-
-Enable mock mode:
+**Installation:**
 ```bash
-cargo run --bin robert-server -- --dev --mock
+# Install claude-cli (follow official instructions)
+# Ensure it's in PATH and working
+claude --version
+
+# Verify authentication
+claude chat "hello"
+
+# Install robert-server dependencies
+cd robert-server
+cargo build
 ```
+
+**Note:** There is no mock mode. Local development requires a functioning claude-cli installation. This ensures development and testing environments match production behavior.
 
 #### Testing Setup
 
@@ -495,7 +482,6 @@ npm run tauri test
 ROBERT_SERVER_URL=http://localhost:8443
 ROBERT_API_TOKEN=dev-token-12345
 CLAUDE_CLI_PATH=/usr/local/bin/claude
-MOCK_MODE=false
 LOG_LEVEL=debug
 ```
 
@@ -518,13 +504,8 @@ services:
     volumes:
       - ./robert-server:/app
       - ~/.config/claude:/root/.config/claude  # Mount claude-cli config
+      - ~/.anthropic:/root/.anthropic  # Mount API credentials
     command: cargo watch -x 'run -- --dev'
-
-  # Optional: Mock claude-cli for isolated testing
-  mock-claude:
-    build: ./test/mock-claude
-    volumes:
-      - mock-responses:/data
 ```
 
 Start with:
