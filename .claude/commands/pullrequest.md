@@ -12,9 +12,9 @@ Create or update a pull request from the current working branch, with optional a
 - NEVER force push to main/master branches
 - Maximum 200 words for PR description in bullet points
 - When pushing new commits: Do NOT wait for CI checks - exit immediately after push
-- When checking existing PR: Use engineer agent to fix code-related failures (not manual fixes)
-- Only resolve CI/CD failures that are code-related (not infrastructure/credentials)
-- Ask for user confirmation before using engineer agent to fix failures
+- When checking existing PR: Use engineer agent (at `.claude/agents/engineer.md`) to fix code-related failures
+  - Only resolve CI/CD failures that are code-related (not infrastructure/credentials)
+
 - **PR title format**: Use `[tag] lowercase description` format
   - Tags in brackets: `[feat]`, `[fix]`, `[chore]`, `[docs]`, `[refactor]`, etc.
   - First word after bracket is lowercase
