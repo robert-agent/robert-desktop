@@ -268,9 +268,17 @@ async fn capture_screenshot_if_available(
     app: &AppHandle,
     state: &State<'_, AppState>,
 ) -> Option<PathBuf> {
-    let driver_lock = state.driver.lock().await;
+    let mut driver_lock = state.driver.lock().await;
 
     if let Some(driver) = driver_lock.as_ref() {
+        // Check if browser is still alive
+        if !driver.is_alive().await {
+            log::warn!("Browser connection is dead during screenshot capture, clearing state");
+            emit_error(app, "Browser connection lost", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+            *driver_lock = None;
+            return None;
+        }
+
         let temp_dir = std::env::temp_dir().join("robert-chat");
         if tokio::fs::create_dir_all(&temp_dir).await.is_ok() {
             let timestamp = chrono::Utc::now().timestamp();
@@ -287,9 +295,17 @@ async fn capture_screenshot_if_available(
 }
 
 async fn get_html_if_available(app: &AppHandle, state: &State<'_, AppState>) -> Option<String> {
-    let driver_lock = state.driver.lock().await;
+    let mut driver_lock = state.driver.lock().await;
 
     if let Some(driver) = driver_lock.as_ref() {
+        // Check if browser is still alive
+        if !driver.is_alive().await {
+            log::warn!("Browser connection is dead during HTML extraction, clearing state");
+            emit_error(app, "Browser connection lost", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+            *driver_lock = None;
+            return None;
+        }
+
         if let Ok(html) = driver.get_page_source().await {
             emit_info(app, format!("Extracted {} KB of HTML", html.len() / 1024)).ok();
             return Some(html);

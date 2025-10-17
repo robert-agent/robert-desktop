@@ -39,7 +39,7 @@
       // Call the agent workflow to process the message
       const result = await processChatMessage({
         message: userMessage,
-        workflow_type: 'CdpAutomation' as WorkflowType,
+        workflow_type: 'cdp_automation' as WorkflowType,
         agent_name: 'cdp-generator',
         include_screenshot: true,
         include_html: true,

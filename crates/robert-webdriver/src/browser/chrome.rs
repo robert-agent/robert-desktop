@@ -289,10 +289,19 @@ impl ChromeDriver {
 
         let response = page.execute(params).await.map_err(|e| {
             eprintln!("❌ CDP Navigate failed: {}", e);
-            BrowserError::NavigationFailed(format!(
-                "Failed to navigate to {}: {}",
-                normalized_url, e
-            ))
+            let error_str = e.to_string();
+
+            // Detect "oneshot canceled" error which indicates browser connection is dead
+            if error_str.contains("oneshot canceled") {
+                BrowserError::NavigationFailed(
+                    "Browser connection lost. The browser may have been closed or crashed. Please launch the browser again.".to_string()
+                )
+            } else {
+                BrowserError::NavigationFailed(format!(
+                    "Failed to navigate to {}: {}",
+                    normalized_url, e
+                ))
+            }
         })?;
 
         // Check if navigation was successful
@@ -564,6 +573,31 @@ impl ChromeDriver {
     /// Returns the active page (excluding Chrome's new-tab-page)
     pub async fn current_page(&self) -> Result<chromiumoxide::page::Page> {
         self.get_active_page().await
+    }
+
+    /// Check if the browser is still alive and responsive
+    /// Returns true if the browser connection is healthy, false otherwise
+    pub async fn is_alive(&self) -> bool {
+        // Try to get pages - if this fails, the browser is dead
+        match self.browser.pages().await {
+            Ok(pages) => {
+                // If we can get pages, try a simple operation to verify connection
+                if let Some(page) = pages.first() {
+                    // Try to get the URL - if this times out or fails, browser is dead
+                    match tokio::time::timeout(
+                        tokio::time::Duration::from_secs(2),
+                        page.url()
+                    ).await {
+                        Ok(Ok(_)) => true,
+                        _ => false,
+                    }
+                } else {
+                    // No pages but browser responded - still alive
+                    true
+                }
+            }
+            Err(_) => false,
+        }
     }
 
     /// Close the browser connection

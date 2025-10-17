@@ -39,7 +39,15 @@
       $currentUrl = result.url;
       $currentTitle = result.title;
     } catch (err) {
-      errorMessage = `Navigation failed: ${err}`;
+      const errorStr = String(err);
+
+      // Check if browser connection was lost
+      if (errorStr.includes('Browser connection lost')) {
+        $browserLaunched = false;
+        errorMessage = 'Browser connection lost. Please launch the browser again.';
+      } else {
+        errorMessage = `Navigation failed: ${err}`;
+      }
       console.error(err);
     } finally {
       $isNavigating = false;
@@ -55,6 +63,11 @@
 
 <div class="url-input-container">
   <div class="input-row">
+    {#if !$browserLaunched}
+      <button on:click={handleLaunchBrowser} class="launch-button">
+        Launch Browser
+      </button>
+    {/if}
     <input
       type="text"
       bind:value={urlInput}
@@ -115,6 +128,23 @@
   .url-input:disabled {
     background: #e8e8e8;
     cursor: not-allowed;
+  }
+
+  .launch-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: #28a745;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+
+  .launch-button:hover {
+    background: #218838;
   }
 
   .go-button {
