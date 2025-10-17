@@ -113,85 +113,108 @@ pub type Result<T> = std::result::Result<T, StorageError>;
 
 /// Get the root Robert directory path
 ///
-/// Returns `~/.robert/` or platform-specific equivalent
-pub fn get_robert_dir() -> Result<PathBuf> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| StorageError::InvalidPath("Could not determine home directory".into()))?;
+/// Returns `~/.robert/` or platform-specific equivalent.
+/// If `base_dir` is provided, uses `base_dir/.robert` instead.
+/// This enables dependency injection for testing without modifying global environment variables.
+///
+/// # Parameters
+/// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
+///
+/// # Returns
+/// - `PathBuf`: Path to the Robert directory
+///
+/// # Errors
+/// - Returns error if home directory cannot be determined and base_dir is None
+pub fn get_robert_dir(base_dir: Option<&Path>) -> Result<PathBuf> {
+    let root = match base_dir {
+        Some(dir) => dir.to_path_buf(),
+        None => dirs::home_dir().ok_or_else(|| {
+            StorageError::InvalidPath("Could not determine home directory".into())
+        })?,
+    };
 
-    Ok(home.join(ROBERT_DIR))
+    Ok(root.join(ROBERT_DIR))
 }
 
 /// Get the users directory path
 ///
-/// Returns `~/.robert/users/`
-pub fn get_users_dir() -> Result<PathBuf> {
-    Ok(get_robert_dir()?.join(USERS_DIR))
+/// Returns `~/.robert/users/` or `base_dir/.robert/users/` if base_dir is provided
+pub fn get_users_dir(base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_robert_dir(base_dir)?.join(USERS_DIR))
 }
 
 /// Get the temporary directory path
 ///
-/// Returns `~/.robert/.tmp/`
-pub fn get_tmp_dir() -> Result<PathBuf> {
-    Ok(get_robert_dir()?.join(TMP_DIR))
+/// Returns `~/.robert/.tmp/` or `base_dir/.robert/.tmp/` if base_dir is provided
+pub fn get_tmp_dir(base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_robert_dir(base_dir)?.join(TMP_DIR))
 }
 
 /// Get a specific user's directory path
 ///
-/// Returns `~/.robert/users/{username}/`
-pub fn get_user_dir(username: &str) -> Result<PathBuf> {
+/// Returns `~/.robert/users/{username}/` or `base_dir/.robert/users/{username}/` if base_dir is provided
+pub fn get_user_dir(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
     validate_username(username)?;
-    Ok(get_users_dir()?.join(username))
+    Ok(get_users_dir(base_dir)?.join(username))
 }
 
 /// Get a user's browser profiles directory
 ///
 /// Returns `~/.robert/users/{username}/browser-profiles/`
-pub fn get_browser_profiles_dir(username: &str) -> Result<PathBuf> {
-    Ok(get_user_dir(username)?.join(BROWSER_PROFILES_DIR))
+pub fn get_browser_profiles_dir(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_user_dir(username, base_dir)?.join(BROWSER_PROFILES_DIR))
 }
 
 /// Get a specific browser profile directory
 ///
 /// Returns `~/.robert/users/{username}/browser-profiles/{profile_name}/`
-pub fn get_browser_profile_dir(username: &str, profile_name: &str) -> Result<PathBuf> {
+pub fn get_browser_profile_dir(
+    username: &str,
+    profile_name: &str,
+    base_dir: Option<&Path>,
+) -> Result<PathBuf> {
     validate_profile_name(profile_name)?;
-    Ok(get_browser_profiles_dir(username)?.join(profile_name))
+    Ok(get_browser_profiles_dir(username, base_dir)?.join(profile_name))
 }
 
 /// Get a user's commands directory
 ///
 /// Returns `~/.robert/users/{username}/commands/`
-pub fn get_commands_dir(username: &str) -> Result<PathBuf> {
-    Ok(get_user_dir(username)?.join(COMMANDS_DIR))
+pub fn get_commands_dir(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_user_dir(username, base_dir)?.join(COMMANDS_DIR))
 }
 
 /// Get a specific command file path
 ///
 /// Returns `~/.robert/users/{username}/commands/{command_name}.md`
-pub fn get_command_path(username: &str, command_name: &str) -> Result<PathBuf> {
+pub fn get_command_path(
+    username: &str,
+    command_name: &str,
+    base_dir: Option<&Path>,
+) -> Result<PathBuf> {
     validate_command_name(command_name)?;
-    Ok(get_commands_dir(username)?.join(format!("{}.md", command_name)))
+    Ok(get_commands_dir(username, base_dir)?.join(format!("{}.md", command_name)))
 }
 
 /// Get the salt file path for a user
 ///
 /// Returns `~/.robert/users/{username}/.salt`
-pub fn get_salt_path(username: &str) -> Result<PathBuf> {
-    Ok(get_user_dir(username)?.join(SALT_FILE))
+pub fn get_salt_path(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_user_dir(username, base_dir)?.join(SALT_FILE))
 }
 
 /// Get the user config file path
 ///
 /// Returns `~/.robert/users/{username}/user.json`
-pub fn get_user_config_path(username: &str) -> Result<PathBuf> {
-    Ok(get_user_dir(username)?.join(USER_CONFIG_FILE))
+pub fn get_user_config_path(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_user_dir(username, base_dir)?.join(USER_CONFIG_FILE))
 }
 
 /// Get the user profile markdown file path
 ///
 /// Returns `~/.robert/users/{username}/user-profile.md`
-pub fn get_user_profile_path(username: &str) -> Result<PathBuf> {
-    Ok(get_user_dir(username)?.join(USER_PROFILE_FILE))
+pub fn get_user_profile_path(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
+    Ok(get_user_dir(username, base_dir)?.join(USER_PROFILE_FILE))
 }
 
 // ============================================================================
@@ -267,10 +290,13 @@ fn validate_command_name(command_name: &str) -> Result<()> {
 ///
 /// Creates the root directory, users directory, and temporary directory
 /// if they don't already exist.
-pub fn initialize_robert_dir() -> Result<()> {
-    let robert_dir = get_robert_dir()?;
-    let users_dir = get_users_dir()?;
-    let tmp_dir = get_tmp_dir()?;
+///
+/// # Parameters
+/// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
+pub fn initialize_robert_dir(base_dir: Option<&Path>) -> Result<()> {
+    let robert_dir = get_robert_dir(base_dir)?;
+    let users_dir = get_users_dir(base_dir)?;
+    let tmp_dir = get_tmp_dir(base_dir)?;
 
     fs::create_dir_all(&robert_dir)?;
     fs::create_dir_all(&users_dir)?;
@@ -289,12 +315,16 @@ pub fn initialize_robert_dir() -> Result<()> {
 /// - `~/.robert/users/{username}/browser-profiles/default/`
 /// - `~/.robert/users/{username}/commands/`
 ///
+/// # Parameters
+/// - `username`: The username for the new directory
+/// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
+///
 /// # Errors
 /// Returns error if user directory already exists
-pub fn create_user_directory(username: &str) -> Result<PathBuf> {
+pub fn create_user_directory(username: &str, base_dir: Option<&Path>) -> Result<PathBuf> {
     validate_username(username)?;
 
-    let user_dir = get_user_dir(username)?;
+    let user_dir = get_user_dir(username, base_dir)?;
 
     // Check if user already exists
     if user_dir.exists() {
@@ -308,15 +338,15 @@ pub fn create_user_directory(username: &str) -> Result<PathBuf> {
     fs::create_dir_all(&user_dir)?;
 
     // Create browser profiles directory
-    let browser_profiles_dir = get_browser_profiles_dir(username)?;
+    let browser_profiles_dir = get_browser_profiles_dir(username, base_dir)?;
     fs::create_dir_all(&browser_profiles_dir)?;
 
     // Create default browser profile directory
-    let default_profile_dir = get_browser_profile_dir(username, DEFAULT_BROWSER_PROFILE)?;
+    let default_profile_dir = get_browser_profile_dir(username, DEFAULT_BROWSER_PROFILE, base_dir)?;
     fs::create_dir_all(&default_profile_dir)?;
 
     // Create commands directory
-    let commands_dir = get_commands_dir(username)?;
+    let commands_dir = get_commands_dir(username, base_dir)?;
     fs::create_dir_all(&commands_dir)?;
 
     log::info!("Created user directory: {}", user_dir.display());
@@ -325,11 +355,15 @@ pub fn create_user_directory(username: &str) -> Result<PathBuf> {
 }
 
 /// Create a named browser profile directory
-pub fn create_browser_profile(username: &str, profile_name: &str) -> Result<PathBuf> {
+pub fn create_browser_profile(
+    username: &str,
+    profile_name: &str,
+    base_dir: Option<&Path>,
+) -> Result<PathBuf> {
     validate_username(username)?;
     validate_profile_name(profile_name)?;
 
-    let profile_dir = get_browser_profile_dir(username, profile_name)?;
+    let profile_dir = get_browser_profile_dir(username, profile_name, base_dir)?;
 
     if profile_dir.exists() {
         return Err(StorageError::AlreadyExists(format!(
@@ -350,7 +384,11 @@ pub fn create_browser_profile(username: &str, profile_name: &str) -> Result<Path
 }
 
 /// Delete a browser profile directory
-pub fn delete_browser_profile(username: &str, profile_name: &str) -> Result<()> {
+pub fn delete_browser_profile(
+    username: &str,
+    profile_name: &str,
+    base_dir: Option<&Path>,
+) -> Result<()> {
     validate_username(username)?;
     validate_profile_name(profile_name)?;
 
@@ -361,7 +399,7 @@ pub fn delete_browser_profile(username: &str, profile_name: &str) -> Result<()> 
         ));
     }
 
-    let profile_dir = get_browser_profile_dir(username, profile_name)?;
+    let profile_dir = get_browser_profile_dir(username, profile_name, base_dir)?;
 
     if !profile_dir.exists() {
         return Err(StorageError::InvalidPath(format!(
@@ -382,8 +420,8 @@ pub fn delete_browser_profile(username: &str, profile_name: &str) -> Result<()> 
 }
 
 /// List all usernames
-pub fn list_users() -> Result<Vec<String>> {
-    let users_dir = get_users_dir()?;
+pub fn list_users(base_dir: Option<&Path>) -> Result<Vec<String>> {
+    let users_dir = get_users_dir(base_dir)?;
 
     if !users_dir.exists() {
         return Ok(Vec::new());
@@ -407,8 +445,8 @@ pub fn list_users() -> Result<Vec<String>> {
 }
 
 /// Check if a user exists
-pub fn user_exists(username: &str) -> Result<bool> {
-    let user_dir = get_user_dir(username)?;
+pub fn user_exists(username: &str, base_dir: Option<&Path>) -> Result<bool> {
+    let user_dir = get_user_dir(username, base_dir)?;
     Ok(user_dir.exists())
 }
 
@@ -417,15 +455,15 @@ pub fn user_exists(username: &str) -> Result<bool> {
 // ============================================================================
 
 /// Save salt to file
-pub fn save_salt(username: &str, salt: &[u8]) -> Result<()> {
-    let salt_path = get_salt_path(username)?;
+pub fn save_salt(username: &str, salt: &[u8], base_dir: Option<&Path>) -> Result<()> {
+    let salt_path = get_salt_path(username, base_dir)?;
     fs::write(salt_path, salt)?;
     Ok(())
 }
 
 /// Load salt from file
-pub fn load_salt(username: &str) -> Result<Vec<u8>> {
-    let salt_path = get_salt_path(username)?;
+pub fn load_salt(username: &str, base_dir: Option<&Path>) -> Result<Vec<u8>> {
+    let salt_path = get_salt_path(username, base_dir)?;
 
     if !salt_path.exists() {
         return Err(StorageError::UserNotFound(format!(
@@ -438,8 +476,13 @@ pub fn load_salt(username: &str) -> Result<Vec<u8>> {
 }
 
 /// Save user configuration (encrypted)
-pub fn save_user_config(username: &str, config: &UserConfig, key: &EncryptionKey) -> Result<()> {
-    let config_path = get_user_config_path(username)?;
+pub fn save_user_config(
+    username: &str,
+    config: &UserConfig,
+    key: &EncryptionKey,
+    base_dir: Option<&Path>,
+) -> Result<()> {
+    let config_path = get_user_config_path(username, base_dir)?;
 
     // Serialize to JSON
     let json = serde_json::to_string_pretty(config)?;
@@ -456,8 +499,12 @@ pub fn save_user_config(username: &str, config: &UserConfig, key: &EncryptionKey
 }
 
 /// Load user configuration (encrypted)
-pub fn load_user_config(username: &str, key: &EncryptionKey) -> Result<UserConfig> {
-    let config_path = get_user_config_path(username)?;
+pub fn load_user_config(
+    username: &str,
+    key: &EncryptionKey,
+    base_dir: Option<&Path>,
+) -> Result<UserConfig> {
+    let config_path = get_user_config_path(username, base_dir)?;
 
     if !config_path.exists() {
         return Err(StorageError::UserNotFound(format!(
@@ -481,8 +528,13 @@ pub fn load_user_config(username: &str, key: &EncryptionKey) -> Result<UserConfi
 }
 
 /// Save user profile markdown (encrypted)
-pub fn save_user_profile(username: &str, content: &str, key: &EncryptionKey) -> Result<()> {
-    let profile_path = get_user_profile_path(username)?;
+pub fn save_user_profile(
+    username: &str,
+    content: &str,
+    key: &EncryptionKey,
+    base_dir: Option<&Path>,
+) -> Result<()> {
+    let profile_path = get_user_profile_path(username, base_dir)?;
 
     // Encrypt
     let encrypted = encrypt_file(content.as_bytes(), key)?;
@@ -496,8 +548,12 @@ pub fn save_user_profile(username: &str, content: &str, key: &EncryptionKey) -> 
 }
 
 /// Load user profile markdown (encrypted)
-pub fn load_user_profile(username: &str, key: &EncryptionKey) -> Result<String> {
-    let profile_path = get_user_profile_path(username)?;
+pub fn load_user_profile(
+    username: &str,
+    key: &EncryptionKey,
+    base_dir: Option<&Path>,
+) -> Result<String> {
+    let profile_path = get_user_profile_path(username, base_dir)?;
 
     if !profile_path.exists() {
         // Return default template if file doesn't exist
@@ -549,9 +605,10 @@ pub fn save_command(
     command_name: &str,
     content: &str,
     key: &EncryptionKey,
+    base_dir: Option<&Path>,
 ) -> Result<()> {
     validate_command_name(command_name)?;
-    let command_path = get_command_path(username, command_name)?;
+    let command_path = get_command_path(username, command_name, base_dir)?;
 
     // Encrypt
     let encrypted = encrypt_file(content.as_bytes(), key)?;
@@ -565,9 +622,14 @@ pub fn save_command(
 }
 
 /// Load command markdown (encrypted)
-pub fn load_command(username: &str, command_name: &str, key: &EncryptionKey) -> Result<String> {
+pub fn load_command(
+    username: &str,
+    command_name: &str,
+    key: &EncryptionKey,
+    base_dir: Option<&Path>,
+) -> Result<String> {
     validate_command_name(command_name)?;
-    let command_path = get_command_path(username, command_name)?;
+    let command_path = get_command_path(username, command_name, base_dir)?;
 
     if !command_path.exists() {
         return Err(StorageError::InvalidPath(format!(
@@ -592,8 +654,8 @@ pub fn load_command(username: &str, command_name: &str, key: &EncryptionKey) -> 
 }
 
 /// List all command names for a user
-pub fn list_commands(username: &str) -> Result<Vec<String>> {
-    let commands_dir = get_commands_dir(username)?;
+pub fn list_commands(username: &str, base_dir: Option<&Path>) -> Result<Vec<String>> {
+    let commands_dir = get_commands_dir(username, base_dir)?;
 
     if !commands_dir.exists() {
         return Ok(Vec::new());
@@ -617,9 +679,9 @@ pub fn list_commands(username: &str) -> Result<Vec<String>> {
 }
 
 /// Delete a command
-pub fn delete_command(username: &str, command_name: &str) -> Result<()> {
+pub fn delete_command(username: &str, command_name: &str, base_dir: Option<&Path>) -> Result<()> {
     validate_command_name(command_name)?;
-    let command_path = get_command_path(username, command_name)?;
+    let command_path = get_command_path(username, command_name, base_dir)?;
 
     if !command_path.exists() {
         return Err(StorageError::InvalidPath(format!(
@@ -640,8 +702,8 @@ pub fn delete_command(username: &str, command_name: &str) -> Result<()> {
 // ============================================================================
 
 /// Create an ephemeral browser profile with UUID
-pub fn create_ephemeral_profile() -> Result<PathBuf> {
-    let tmp_dir = get_tmp_dir()?;
+pub fn create_ephemeral_profile(base_dir: Option<&Path>) -> Result<PathBuf> {
+    let tmp_dir = get_tmp_dir(base_dir)?;
     let profile_id = uuid::Uuid::new_v4();
     let profile_dir = tmp_dir.join(format!("ephemeral-{}", profile_id));
 
@@ -653,13 +715,13 @@ pub fn create_ephemeral_profile() -> Result<PathBuf> {
 }
 
 /// Delete an ephemeral profile directory
-pub fn delete_ephemeral_profile(profile_path: &Path) -> Result<()> {
+pub fn delete_ephemeral_profile(profile_path: &Path, base_dir: Option<&Path>) -> Result<()> {
     if !profile_path.exists() {
         return Ok(()); // Already deleted
     }
 
     // Safety check: only delete from tmp directory
-    let tmp_dir = get_tmp_dir()?;
+    let tmp_dir = get_tmp_dir(base_dir)?;
     if !profile_path.starts_with(&tmp_dir) {
         return Err(StorageError::InvalidPath(
             "Can only delete ephemeral profiles from tmp directory".into(),
@@ -677,8 +739,8 @@ pub fn delete_ephemeral_profile(profile_path: &Path) -> Result<()> {
 ///
 /// Removes all ephemeral profile directories from tmp directory.
 /// Should be called on app startup to clean up profiles from crashed sessions.
-pub fn cleanup_ephemeral_profiles() -> Result<usize> {
-    let tmp_dir = get_tmp_dir()?;
+pub fn cleanup_ephemeral_profiles(base_dir: Option<&Path>) -> Result<usize> {
+    let tmp_dir = get_tmp_dir(base_dir)?;
 
     if !tmp_dir.exists() {
         return Ok(0);
@@ -747,25 +809,25 @@ mod tests {
 
     #[test]
     fn test_get_robert_dir() {
-        let robert_dir = get_robert_dir().unwrap();
+        let robert_dir = get_robert_dir(None).unwrap();
         assert!(robert_dir.ends_with(".robert"));
     }
 
     #[test]
     fn test_get_user_dir() {
-        let user_dir = get_user_dir("alice").unwrap();
+        let user_dir = get_user_dir("alice", None).unwrap();
         assert!(user_dir.ends_with("users/alice"));
     }
 
     #[test]
     fn test_get_browser_profile_dir() {
-        let profile_dir = get_browser_profile_dir("alice", "shopping").unwrap();
+        let profile_dir = get_browser_profile_dir("alice", "shopping", None).unwrap();
         assert!(profile_dir.ends_with("browser-profiles/shopping"));
     }
 
     #[test]
     fn test_get_command_path() {
-        let command_path = get_command_path("alice", "clothing-search").unwrap();
+        let command_path = get_command_path("alice", "clothing-search", None).unwrap();
         assert!(command_path.ends_with("commands/clothing-search.md"));
     }
 
