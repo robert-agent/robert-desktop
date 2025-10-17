@@ -1,9 +1,17 @@
 # TODO
 
 ## In Progress
-- [ ] Phase 2: Browser Profile Management (v1.6) - Not started
+- [ ] Refactor storage layer to use dependency injection for base directory (removes HOME env var dependency)
+  - [ ] Update storage.rs path functions to accept optional base_dir parameter
+  - [ ] Update auth.rs AuthService methods to accept base_dir parameter
+  - [ ] Update manager.rs UserManager methods to accept base_dir parameter
+  - [ ] Update all tests to pass temp_dir instead of modifying HOME env var
+  - [ ] Remove serial_test dependency from Cargo.toml
+  - [ ] Verify tests pass with --test-threads=8
 
 ## Planned
+
+- [ ] Phase 2: Browser Profile Management (v1.6) - Not started
 
 ### Phase 1: User Management (v1.5) - ✅ 100% COMPLETE (Backend + Frontend)
 **Backend (✅ COMPLETE - All 31 tests passing, cargo xlint passing):**
