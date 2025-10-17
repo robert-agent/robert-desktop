@@ -4,6 +4,7 @@ mod claude;
 mod commands;
 pub mod developer_mode;
 mod events;
+mod profiles;
 mod state;
 
 use state::AppState;
@@ -56,6 +57,15 @@ pub fn run() {
             commands::get_agent_config,
             commands::update_agent_config,
             commands::submit_action_feedback,
+            // Profile management commands
+            commands::create_user,
+            commands::login_user,
+            commands::logout_user,
+            commands::get_current_user,
+            commands::list_users,
+            commands::get_user_profile,
+            commands::update_user_profile,
+            commands::has_users,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

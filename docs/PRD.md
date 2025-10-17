@@ -516,6 +516,361 @@ Open Settings → Adjust Preferences → Save → Settings Applied
 Create Script → Add Documentation → Export → Share File → Teammate Imports → Runs Successfully
 ```
 
+## User Profiles and Multi-User Support
+
+### Overview
+
+Robert supports **multiple user profiles** on a shared computer, with each user having their own isolated workspace, browser profiles, commands, and preferences. This architecture ensures privacy and personalization for family computers or shared workstations.
+
+### Key Concepts
+
+#### User Profile
+A **user** represents an individual person using Robert. Each user has:
+- **Authentication**: Password-protected with encrypted file storage
+- **Personal workspace**: Isolated directory at `~/.robert/users/{username}/`
+- **Browser profiles**: One or more Chromium browser sessions with saved state
+- **Commands**: Custom automation scripts created and refined over time
+- **Preferences**: AI agent context via `user-profile.md`
+
+#### Browser Profile
+A **browser profile** is a Chromium user data directory containing cookies, history, extensions, and other browser state. Each user can have:
+- **Ephemeral profile** (default): Clean, temporary browser with no state (deleted after session)
+- **Named profiles**: Persistent browsers like "writing", "product-search", "shopping"
+- **One default profile**: User's preferred persistent profile for general use
+
+#### Command
+A **command** is a reusable automation workflow defined in a Markdown file. Commands:
+- Belong to a specific user (cannot be shared)
+- Specify which browser profile to use (or use ephemeral by default)
+- Define parameters (form inputs) for user customization
+- Include generative UI specifications for control panels
+- Evolve over time through AI-assisted refinement
+
+### Architecture
+
+#### File Structure
+
+```
+~/.robert/
+├── users/
+│   ├── alice/
+│   │   ├── user.json                    # App config, metadata, file paths
+│   │   ├── user-profile.md              # AI context: preferences, persona, goals
+│   │   ├── browser-profiles/
+│   │   │   ├── default/                 # Default persistent profile
+│   │   │   ├── writing/                 # Named profile for writing tasks
+│   │   │   └── product-search/          # Named profile for shopping
+│   │   └── commands/
+│   │       ├── clothing-search.md       # Custom command
+│   │       └── research-topic.md
+│   └── bob/
+│       ├── user.json
+│       ├── user-profile.md
+│       ├── browser-profiles/
+│       │   └── default/
+│       └── commands/
+│           └── check-email.md
+└── app-config.json                      # Global app settings
+```
+
+#### User Data Files
+
+**`user.json`** - Configuration and metadata:
+```json
+{
+  "username": "alice",
+  "created_at": "2025-10-17T10:00:00Z",
+  "browser_profiles": {
+    "default": "~/.robert/users/alice/browser-profiles/default",
+    "writing": "~/.robert/users/alice/browser-profiles/writing",
+    "product-search": "~/.robert/users/alice/browser-profiles/product-search"
+  },
+  "preferences": {
+    "theme": "dark",
+    "default_timeout_ms": 5000,
+    "inference_mode": "local"
+  }
+}
+```
+
+**`user-profile.md`** - AI agent context (included with all prompts):
+```markdown
+# User Profile: Alice
+
+## Preferences
+- Prefers detailed explanations over concise ones
+- Values privacy and data minimization
+- Tech-savvy, comfortable with technical terminology
+
+## Goals
+- Automate repetitive research tasks
+- Streamline online shopping workflows
+- Track competitor product launches
+
+## Language Style
+- Professional and direct
+- No emojis or casual language
+- Prefers bullet points over paragraphs
+```
+
+**`command-[name].md`** - Command definition:
+```markdown
+---
+command_name: clothing-search
+description: Search for clothing items across multiple retailers
+browser_profile: product-search
+created_at: 2025-10-17T10:00:00Z
+version: 1.2.0
+---
+
+# Clothing Search Command
+
+## Parameters
+- outfit_type: text (required) - "What outfit are you looking for?"
+- size: dropdown (required) - ["XS", "S", "M", "L", "XL", "XXL"]
+- budget_max: number (optional) - Maximum price in USD
+- color_preference: text (optional)
+
+## Rules
+- Never shop on amazon.com
+- Prioritize retailers with free returns
+- Filter out fast fashion brands
+
+## Checklist
+- [ ] Search at least 3 different retailers
+- [ ] Capture product images and prices
+- [ ] Extract shipping information
+- [ ] Save results to markdown file
+- [ ] Present top 5 options to user
+
+## Generative UI
+```json
+{
+  "layout": "vertical",
+  "components": [
+    {"type": "text_input", "name": "outfit_type", "label": "Outfit Type", "placeholder": "e.g., winter jacket, cocktail dress"},
+    {"type": "dropdown", "name": "size", "label": "Size", "options": ["XS", "S", "M", "L", "XL", "XXL"]},
+    {"type": "slider", "name": "budget_max", "label": "Max Budget", "min": 0, "max": 500, "step": 10},
+    {"type": "color_picker", "name": "color_preference", "label": "Preferred Color (optional)"}
+  ]
+}
+```
+
+## CDP Script Template
+(AI generates this dynamically based on parameters)
+```
+````
+
+### User Workflows
+
+#### First Launch (No Users Exist)
+1. App detects no users at `~/.robert/users/`
+2. Auto-creates default user profile
+3. Shows simple username/password setup screen
+4. Encrypts user directory with derived key from password
+5. Creates ephemeral browser profile for first session
+
+#### Subsequent Launches (Users Exist)
+1. App shows profile selector dropdown
+2. User selects profile and enters password
+3. Decrypts user directory
+4. Loads user preferences and available commands
+5. Opens last-used browser profile (or ephemeral if none selected)
+
+#### Creating a New User Profile
+1. User clicks "Add Profile" button
+2. Self-service form: username + password
+3. App creates directory structure at `~/.robert/users/{username}/`
+4. Initializes default files: `user.json`, `user-profile.md`
+5. Encrypts directory with password-derived key
+
+#### Creating a Browser Profile
+1. User navigates to Settings > Browser Profiles
+2. Clicks "New Browser Profile"
+3. Enters profile name (e.g., "shopping", "work")
+4. App creates Chromium user data directory at `~/.robert/users/{user}/browser-profiles/{name}/`
+5. Profile available for command execution
+
+#### Creating a Command
+1. User opens chat interface
+2. Describes desired automation in natural language
+3. AI agent generates command markdown with:
+   - Parameter definitions
+   - Suggested generative UI layout
+   - Initial CDP script template
+4. User reviews and approves
+5. Command saved to `~/.robert/users/{user}/commands/{name}.md`
+
+#### Running a Command
+1. User clicks command dropdown in chat interface
+2. Selects command (e.g., "clothing-search")
+3. Generative UI form renders with parameters
+4. User fills in form (outfit type, size, budget)
+5. App checks if specified browser profile exists:
+   - If exists: Launch browser with that profile
+   - If missing: Alert user and suggest "Refine Command"
+   - If not specified: Use ephemeral profile (default behavior)
+6. AI generates CDP script from template + parameters
+7. Browser automation executes visibly
+8. Results captured and presented to user
+9. User provides feedback (👍/👎)
+
+#### Refining a Command
+1. Command execution fails or produces unexpected results
+2. User clicks "Refine Command" button
+3. AI analyzes failure context:
+   - Error messages
+   - User corrections
+   - Missing prerequisites (e.g., browser profile doesn't exist)
+4. AI suggests improvements to command markdown
+5. User reviews and approves changes
+6. Updated command saved (version incremented)
+
+### Session Management
+
+#### Session Definition
+A **session** is the lifetime of a browser profile from launch to close. Multiple commands can run within a single session.
+
+**Example:**
+```
+User launches browser with "product-search" profile
+  → Runs "clothing-search" command (searches for jacket)
+  → Runs "compare-prices" command (compares jacket prices)
+  → Runs "clothing-search" again (searches for shoes)
+  → Closes browser
+Session ends, browser state saved to profile
+```
+
+#### Multiple Sessions
+- A user can have **multiple browser profiles/sessions running simultaneously**
+- Each profile runs in a separate Chromium process
+- Example: "writing" profile open for documentation, "shopping" profile open for research
+- **Only one user can have active sessions at a time** (single-user lock)
+
+### Security and Privacy
+
+#### Password-Based Encryption
+- User files encrypted with key derived from password (PBKDF2 or Argon2)
+- Encryption applied to entire user directory: `~/.robert/users/{username}/`
+- Password required on login to decrypt and access user data
+
+#### Profile Isolation (UI-Level)
+- UI only shows browser profiles belonging to active user
+- Commands dropdown filtered to current user's commands
+- Other users' directories not visible in UI
+- **Note**: File system permissions NOT enforced (relies on UI restrictions and encryption)
+
+#### Default User Auto-Creation
+- Single-user scenario: App auto-creates default profile on first launch
+- Prompts for password to secure even single-user setups
+- Eliminates friction for majority use case (one person, one computer)
+
+#### Browser Profile Privacy
+- Browser profiles isolated per user
+- Chromium user data directories separate from system browser
+- Prevents cross-contamination of cookies, history, and cached data
+- Ephemeral profiles leave no trace after session ends
+
+### Command System Details
+
+#### Command Parameters
+Commands define parameters that users fill in before execution:
+
+**Parameter Types:**
+- `text_input`: Open-ended text (long form)
+- `short_text`: Single-line text input
+- `dropdown`: Select from predefined options
+- `radio`: Single choice from small set (2-4 options)
+- `checkbox`: Boolean on/off
+- `slider`: Numeric range selection
+- `color_picker`: Color selection
+- `date_picker`: Date selection
+
+#### Generative UI
+The AI agent generates UI layouts saved in command markdown. Users interact with dynamic forms that:
+- Render alongside chat interface (not replacing it)
+- Provide visual controls for parameter input
+- Allow real-time refinement via chat (e.g., "change budget to $200")
+- Support advanced mode (expert users can edit markdown directly)
+
+**Example Generated UI:**
+```json
+{
+  "layout": "two_column",
+  "left_panel": [
+    {"type": "text_input", "name": "search_query", "label": "What are you looking for?"},
+    {"type": "slider", "name": "max_price", "label": "Budget", "min": 0, "max": 1000}
+  ],
+  "right_panel": [
+    {"type": "dropdown", "name": "category", "label": "Category", "options": ["Electronics", "Clothing", "Home"]},
+    {"type": "checkbox", "name": "free_shipping", "label": "Free shipping only"}
+  ]
+}
+```
+
+#### Command Refinement Feedback Loop
+1. **Thumbs Up (👍)**: Command works as expected, no changes needed
+2. **Thumbs Down (👎)**: Triggers refinement workflow:
+   - AI analyzes what went wrong
+   - Suggests specific improvements to command markdown
+   - User approves/rejects suggestions
+   - Updated command saved with version increment
+
+#### Command Versioning
+Commands track version history:
+```markdown
+---
+version: 1.2.0
+changelog:
+  - 1.0.0: Initial creation
+  - 1.1.0: Added color preference parameter
+  - 1.2.0: Fixed timeout issue with slow-loading product pages
+---
+```
+
+### Implementation Requirements
+
+#### Functional Requirements
+- **FR-PROFILE-1**: Support multiple user profiles with password authentication
+- **FR-PROFILE-2**: Encrypt user directories with password-derived keys
+- **FR-PROFILE-3**: Auto-create default user on first launch (single-user scenario)
+- **FR-PROFILE-4**: Profile selector dropdown for multi-user computers
+- **FR-PROFILE-5**: Isolate browser profiles per user (UI-level restrictions)
+- **FR-PROFILE-6**: Support ephemeral (clean) browser profiles as default behavior
+- **FR-PROFILE-7**: Allow users to create named persistent browser profiles
+- **FR-PROFILE-8**: Store browser profile data in `~/.robert/users/{user}/browser-profiles/`
+- **FR-PROFILE-9**: Commands belong to specific users (no sharing)
+- **FR-PROFILE-10**: Command dropdown filtered by active user
+- **FR-PROFILE-11**: Generate dynamic UI forms from command parameter definitions
+- **FR-PROFILE-12**: Render generative UI alongside chat interface
+- **FR-PROFILE-13**: Allow multiple browser sessions per user simultaneously
+- **FR-PROFILE-14**: Enforce single active user at a time (user lock)
+- **FR-PROFILE-15**: Include `user-profile.md` as context in all AI prompts
+- **FR-PROFILE-16**: Support command refinement via thumbs up/down feedback
+- **FR-PROFILE-17**: Version commands and track changelog
+
+#### Non-Functional Requirements
+- **NFR-PROFILE-1**: Password encryption using industry-standard KDF (Argon2 or PBKDF2)
+- **NFR-PROFILE-2**: User directory encryption/decryption < 500ms
+- **NFR-PROFILE-3**: Profile switching < 2 seconds
+- **NFR-PROFILE-4**: Support 10+ browser profiles per user
+- **NFR-PROFILE-5**: Graceful handling of missing browser profiles
+- **NFR-PROFILE-6**: Command markdown validation with clear error messages
+
+### Future Enhancements
+
+#### Phase 2 (v2.0)
+- Command templates (shareable boilerplates, not full commands)
+- Export/import commands (sanitized for privacy)
+- Family admin controls (parent manages child profiles)
+
+#### Phase 3 (v3.0)
+- Team workspaces (shared commands for organizations)
+- Command marketplace (curated community templates)
+- Cloud sync for user profiles (encrypted, opt-in)
+
+---
+
 ## Chat-Driven AI Workflow System
 
 ### Overview
