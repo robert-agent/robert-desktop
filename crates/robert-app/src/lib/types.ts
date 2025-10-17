@@ -99,7 +99,7 @@ export interface ExecutionReport {
 }
 
 // Agent workflow types
-export type WorkflowType = 'CdpAutomation' | 'ConfigUpdate';
+export type WorkflowType = 'cdp_automation' | 'config_update';
 
 export interface ChatMessageRequest {
   message: string;

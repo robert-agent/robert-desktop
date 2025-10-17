@@ -82,12 +82,21 @@ pub async fn navigate_to_url(
     url: String,
 ) -> Result<NavigationResult, String> {
     // Ensure browser is launched
-    let driver_lock = state.driver.lock().await;
+    let mut driver_lock = state.driver.lock().await;
 
     if driver_lock.is_none() {
         let msg = "Browser not launched. Please launch browser first.";
         emit_error(&app, msg, None).ok();
         return Err(msg.to_string());
+    }
+
+    // Check if browser is still alive
+    let driver = driver_lock.as_ref().unwrap();
+    if !driver.is_alive().await {
+        log::warn!("Browser connection is dead, clearing state");
+        emit_error(&app, "Browser connection lost. Please launch browser again.", Some("The browser may have been closed manually or crashed.".to_string())).ok();
+        *driver_lock = None;
+        return Err("Browser connection lost. Please launch browser again.".to_string());
     }
 
     let driver = driver_lock.as_ref().unwrap();
