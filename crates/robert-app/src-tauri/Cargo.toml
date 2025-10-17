@@ -47,13 +47,13 @@ aes-gcm = "0.10"
 rand = "0.8"
 zeroize = { version = "1.6", features = ["derive"] }
 
-# User Profiles - Markdown and Data Parsing
-pulldown-cmark = "0.9"
-serde_yaml = "0.9"
-
 # User Profiles - Utilities
 uuid = { version = "1.0", features = ["v4", "serde"] }
-directories = "5.0"
+
+# Note: These dependencies will be needed for Phase 2 (Browser Profiles) and Phase 3 (Command System)
+# pulldown-cmark = "0.9"  # Markdown parsing for command files
+# serde_yaml = "0.9"      # YAML frontmatter parsing
+# directories = "5.0"     # Cross-platform directory paths
 
 [dev-dependencies]
 tempfile = "3.8"

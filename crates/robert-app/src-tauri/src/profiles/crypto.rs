@@ -222,10 +222,7 @@ pub fn derive_key(password: &str, salt: Option<&[u8]>) -> Result<(EncryptionKey,
     }
 
     // Convert SaltString to bytes for storage
-    let salt_bytes = salt_string
-        .as_str()
-        .as_bytes()
-        .to_vec();
+    let salt_bytes = salt_string.as_str().as_bytes().to_vec();
 
     Ok((EncryptionKey::from_bytes(key_bytes), salt_bytes))
 }
@@ -381,14 +378,12 @@ pub fn decrypt_file(encrypted: &[u8], key: &EncryptionKey) -> Result<Vec<u8>> {
     let ciphertext = &encrypted[NONCE_LENGTH..];
 
     // Decrypt and verify auth tag
-    let plaintext = cipher
-        .decrypt(nonce, ciphertext)
-        .map_err(|e| {
-            CryptoError::DecryptionFailed(format!(
-                "Decryption failed (wrong password or corrupted data): {}",
-                e
-            ))
-        })?;
+    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
+        CryptoError::DecryptionFailed(format!(
+            "Decryption failed (wrong password or corrupted data): {}",
+            e
+        ))
+    })?;
 
     Ok(plaintext)
 }
@@ -519,7 +514,10 @@ mod tests {
 
         let result = decrypt_file(&truncated, &key);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), CryptoError::InvalidCiphertext(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            CryptoError::InvalidCiphertext(_)
+        ));
     }
 
     #[test]

@@ -63,6 +63,7 @@ pub fn run() {
             commands::logout_user,
             commands::get_current_user,
             commands::list_users,
+            commands::get_user_profile,
             commands::update_user_profile,
             commands::has_users,
         ])

@@ -139,7 +139,9 @@ impl AuthService {
 
                 // Update last login timestamp
                 let mut updated_config = config.clone();
-                if let Err(e) = UserManager::update_last_login(username, &mut updated_config, &encryption_key) {
+                if let Err(e) =
+                    UserManager::update_last_login(username, &mut updated_config, &encryption_key)
+                {
                     log::warn!("⚠️  Failed to update last login timestamp: {}", e);
                     // Don't fail login for this, use original config
                 } else {

@@ -9,7 +9,7 @@
 use crate::profiles::{
     auth::{AuthError, AuthService},
     manager::UserManager,
-    storage::save_user_profile,
+    storage::{load_user_profile, save_user_profile},
     types::UserConfig,
 };
 use crate::state::AppState;
@@ -167,6 +167,33 @@ pub async fn list_users() -> Result<ProfileResult<Vec<String>>, String> {
             log::error!("❌ Failed to list users: {}", e);
             Ok(ProfileResult::error(e.to_string()))
         }
+    }
+}
+
+/// Get the current user's profile markdown content
+///
+/// # Returns
+/// Profile markdown content or error if not logged in
+#[tauri::command]
+pub async fn get_user_profile(state: State<'_, AppState>) -> Result<ProfileResult<String>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+
+        match load_user_profile(&session.username, &encryption_key) {
+            Ok(content) => {
+                log::info!("✅ Profile loaded for user: {}", session.username);
+                Ok(ProfileResult::success(content))
+            }
+            Err(e) => {
+                log::warn!("⚠️  Profile not found or failed to load: {}", e);
+                // Return empty content if profile doesn't exist yet
+                Ok(ProfileResult::success(String::new()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
     }
 }
 

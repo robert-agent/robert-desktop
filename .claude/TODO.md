@@ -1,7 +1,12 @@
 # TODO
 
 ## In Progress
-- [ ] Phase 1: User Management (v1.5) - Frontend UI implementation
+- [ ] Phase 1 Frontend Task 1: Create TypeScript types and user state store
+- [ ] Phase 1 Frontend Task 2: Create login screen UI component
+- [ ] Phase 1 Frontend Task 3: Create user creation form UI component
+- [ ] Phase 1 Frontend Task 4: Create profile switcher UI component
+- [ ] Phase 1 Frontend Task 5: Create user profile editor UI component
+- [ ] Phase 1 Frontend Task 6: Integrate user authentication into App.svelte
 
 ## Planned
 

@@ -511,9 +511,8 @@ pub fn load_user_profile(username: &str, key: &EncryptionKey) -> Result<String> 
     let decrypted = decrypt_file(&encrypted, key)?;
 
     // Convert to string
-    let content = String::from_utf8(decrypted).map_err(|e| {
-        StorageError::InvalidPath(format!("Invalid UTF-8 in user profile: {}", e))
-    })?;
+    let content = String::from_utf8(decrypted)
+        .map_err(|e| StorageError::InvalidPath(format!("Invalid UTF-8 in user profile: {}", e)))?;
 
     log::debug!("Loaded user profile for '{}'", username);
 
@@ -584,9 +583,8 @@ pub fn load_command(username: &str, command_name: &str, key: &EncryptionKey) -> 
     let decrypted = decrypt_file(&encrypted, key)?;
 
     // Convert to string
-    let content = String::from_utf8(decrypted).map_err(|e| {
-        StorageError::InvalidPath(format!("Invalid UTF-8 in command file: {}", e))
-    })?;
+    let content = String::from_utf8(decrypted)
+        .map_err(|e| StorageError::InvalidPath(format!("Invalid UTF-8 in command file: {}", e)))?;
 
     log::debug!("Loaded command '{}' for user '{}'", command_name, username);
 
@@ -632,11 +630,7 @@ pub fn delete_command(username: &str, command_name: &str) -> Result<()> {
 
     fs::remove_file(command_path)?;
 
-    log::info!(
-        "Deleted command '{}' for user '{}'",
-        command_name,
-        username
-    );
+    log::info!("Deleted command '{}' for user '{}'", command_name, username);
 
     Ok(())
 }
