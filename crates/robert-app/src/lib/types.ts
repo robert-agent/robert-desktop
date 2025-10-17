@@ -124,3 +124,59 @@ export interface WorkflowResult {
   clarification?: ClarificationQuestion[];
   understanding?: string;
 }
+
+// User Profile Management Types
+// These types match the Rust backend ProfileResult<T> and UserConfig types
+
+/**
+ * Generic result type for profile operations
+ * Matches Rust's ProfileResult<T> serialization
+ */
+export interface ProfileResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * User configuration and metadata
+ * Stored encrypted in ~/.robert/users/{username}/user.json.enc
+ */
+export interface UserConfig {
+  username: string;
+  created_at: string; // ISO 8601 timestamp
+  last_login: string; // ISO 8601 timestamp
+  browser_profiles: Record<string, string>; // profile name -> path
+  default_browser_profile?: string;
+  preferences: UserPreferences;
+  stats: UserStats;
+}
+
+/**
+ * User preferences for UI and behavior
+ */
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  default_timeout_ms: number;
+  inference_mode: 'local' | 'cloud';
+  language: string; // ISO 639-1 code (e.g., "en")
+}
+
+/**
+ * User usage statistics
+ */
+export interface UserStats {
+  total_commands_run: number;
+  total_sessions: number;
+  commands_created: number;
+}
+
+/**
+ * Password validation result with strength indicator
+ */
+export interface PasswordValidation {
+  valid: boolean;
+  strength: 'weak' | 'medium' | 'strong';
+  errors: string[];
+  suggestions: string[];
+}
