@@ -70,6 +70,7 @@ impl UserManager {
     /// # Parameters
     /// - `username`: Unique username (alphanumeric, underscore, dash)
     /// - `password`: User password (will be hashed with Argon2id)
+    /// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
     ///
     /// # Returns
     /// - `EncryptionKey`: Derived encryption key (store in app state)
@@ -79,7 +80,11 @@ impl UserManager {
     /// - Returns error if user already exists
     /// - Returns error if username is invalid
     /// - Returns error if password is too weak
-    pub fn create_user(username: &str, password: &str) -> Result<(EncryptionKey, UserConfig)> {
+    pub fn create_user(
+        username: &str,
+        password: &str,
+        base_dir: Option<&std::path::Path>,
+    ) -> Result<(EncryptionKey, UserConfig)> {
         // Validate username
         Self::validate_username(username)?;
 
@@ -87,18 +92,18 @@ impl UserManager {
         Self::validate_password(password)?;
 
         // Check if user already exists
-        if user_exists(username)? {
+        if user_exists(username, base_dir)? {
             return Err(ManagerError::UserExists(username.to_string()));
         }
 
         // Create user directory structure
-        create_user_directory(username)?;
+        create_user_directory(username, base_dir)?;
 
         // Derive encryption key from password
         let (key, salt) = derive_key(password, None)?;
 
         // Save salt
-        save_salt(username, &salt)?;
+        save_salt(username, &salt, base_dir)?;
 
         // Create default user config
         let config = UserConfig {
@@ -112,7 +117,7 @@ impl UserManager {
         };
 
         // Save encrypted user config
-        save_user_config(username, &config, &key)?;
+        save_user_config(username, &config, &key, base_dir)?;
 
         // Create default user profile markdown
         let profile_content = format!(
@@ -130,7 +135,7 @@ impl UserManager {
             username
         );
 
-        save_user_profile(username, &profile_content, &key)?;
+        save_user_profile(username, &profile_content, &key, base_dir)?;
 
         log::info!("Created user: {}", username);
 
@@ -138,8 +143,8 @@ impl UserManager {
     }
 
     /// List all usernames
-    pub fn list_users() -> Result<Vec<String>> {
-        Ok(storage_list_users()?)
+    pub fn list_users(base_dir: Option<&std::path::Path>) -> Result<Vec<String>> {
+        Ok(storage_list_users(base_dir)?)
     }
 
     /// Load user configuration with password
@@ -147,6 +152,7 @@ impl UserManager {
     /// # Parameters
     /// - `username`: Username to load
     /// - `password`: User's password
+    /// - `base_dir`: Optional base directory for testing. If None, uses the user's home directory.
     ///
     /// # Returns
     /// - `EncryptionKey`: Derived encryption key (store in app state)
@@ -155,15 +161,19 @@ impl UserManager {
     /// # Errors
     /// - Returns error if user not found
     /// - Returns error if password is incorrect
-    pub fn load_user(username: &str, password: &str) -> Result<(EncryptionKey, UserConfig)> {
+    pub fn load_user(
+        username: &str,
+        password: &str,
+        base_dir: Option<&std::path::Path>,
+    ) -> Result<(EncryptionKey, UserConfig)> {
         // Load salt
-        let salt = load_salt(username)?;
+        let salt = load_salt(username, base_dir)?;
 
         // Derive key from password
         let (key, _) = derive_key(password, Some(&salt))?;
 
         // Try to load and decrypt user config
-        let config = load_user_config(username, &key).map_err(|e| {
+        let config = load_user_config(username, &key, base_dir).map_err(|e| {
             log::warn!("Failed to decrypt user config for '{}': {}", username, e);
             ManagerError::CryptoError(crate::profiles::crypto::CryptoError::DecryptionFailed(
                 "Incorrect password or corrupted data".to_string(),
@@ -180,9 +190,10 @@ impl UserManager {
         username: &str,
         config: &mut UserConfig,
         key: &EncryptionKey,
+        base_dir: Option<&std::path::Path>,
     ) -> Result<()> {
         config.last_login = Utc::now();
-        save_user_config(username, config, key)?;
+        save_user_config(username, config, key, base_dir)?;
         Ok(())
     }
 
