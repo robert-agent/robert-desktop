@@ -2,13 +2,19 @@
 description: Create or update a pull request with automated checks and fixes
 ---
 
-Create or update a pull request from the current working branch, including automated CI/CD failure resolution.
+Create or update a pull request from the current working branch, with optional automated CI/CD failure resolution.
+
+**Two workflow modes:**
+1. **Push mode**: Push new commits → create/update PR → exit (don't wait for CI)
+2. **Check mode**: No new commits → check CI status → optionally fix failures with engineer agent
 
 🚨 CRITICAL CONSTRAINTS - THESE MUST BE FOLLOWED:
 - NEVER force push to main/master branches
 - Maximum 200 words for PR description in bullet points
+- When pushing new commits: Do NOT wait for CI checks - exit immediately after push
+- When checking existing PR: Use engineer agent to fix code-related failures (not manual fixes)
 - Only resolve CI/CD failures that are code-related (not infrastructure/credentials)
-- Ask for user confirmation before pushing fixes for CI failures
+- Ask for user confirmation before using engineer agent to fix failures
 - **PR title format**: Use `[tag] lowercase description` format
   - Tags in brackets: `[feat]`, `[fix]`, `[chore]`, `[docs]`, `[refactor]`, etc.
   - First word after bracket is lowercase
@@ -22,23 +28,32 @@ WORKFLOW:
 - If not authenticated, inform user to run `gh auth login` and wait for them to authenticate
 - Only proceed after authentication is confirmed
 
-## 1. Push local commits and create/update PR
+## 1. Check for unpushed commits and determine workflow path
 - Run `git status` to check current branch and uncommitted changes
 - If there are uncommitted changes, stop and ask user if they want to commit first
 - Check for unpushed commits: `git log origin/$(git branch --show-current)..HEAD --oneline 2>/dev/null || echo "No tracking branch yet"`
-- If there are unpushed commits OR no tracking branch:
-  - Push to origin: `git push -u origin HEAD`
-- If no unpushed commits and tracking branch exists:
-  - Branch is already pushed, proceed to PR check
+- Store result in a variable to determine path:
+  - **PATH A (Has unpushed commits)**: If there are unpushed commits OR no tracking branch → Continue to step 2
+  - **PATH B (No unpushed commits)**: If no unpushed commits and tracking branch exists → Skip to step 3 (check CI status)
+
+## 2. Push commits and update PR (PATH A only - when there are new commits)
+- Push to origin: `git push -u origin HEAD`
 - Check if PR exists: `gh pr view --json number,url,title 2>&1`
 - If PR exists (JSON output):
   - Parse the JSON to get PR number
+  - Generate PR description (see description format below)
   - Update PR with: `gh pr edit <number> --title "<title>" --body "$(cat <<'EOF'\n<description>\nEOF\n)"`
 - If PR doesn't exist (error message):
+  - Generate PR description (see description format below)
   - Create PR with: `gh pr create --title "<title>" --body "$(cat <<'EOF'\n<description>\nEOF\n)"`
 - IMPORTANT: Always use heredoc syntax (shown above) for multiline PR descriptions to preserve formatting
+- After pushing new commits: **STOP HERE** - Do NOT wait for CI checks to complete
+- Report to user:
+  - PR URL
+  - "New commits pushed. CI checks will run automatically. Check status later with `gh pr checks`"
 
-## 2. Generate PR description (max 200 words, bullet points)
+### PR Description Format (used in step 2)
+When generating PR description (max 200 words, bullet points):
 - First, detect the base branch (usually `main` or `master`): `git remote show origin | grep "HEAD branch" | cut -d' ' -f5`
 - Analyze commit history: `git log <base-branch>..HEAD --oneline`
 - For comprehensive understanding, also review:
@@ -63,53 +78,84 @@ WORKFLOW:
   ```
 - IMPORTANT: The description should accurately reflect what was actually achieved, not just paraphrase commit messages
 
-## 3. Check GitHub Actions status
+## 3. Check GitHub Actions status (PATH B only - when no new commits to push)
+**Only execute this step if you reached here from PATH B (no unpushed commits)**
+
 - First check current status: `gh pr checks`
 - Analyze the output:
-  - If checks show "pending" or are missing: Wait 10 seconds and check again with `sleep 10 && gh pr checks`
+  - If checks show "pending": Report status and STOP - let checks complete naturally
   - If all checks are passing: Report success and STOP
   - If any checks are failing: Continue to step 4
-  - If checks haven't started yet: Wait up to 30 seconds total (check every 10s) for workflows to start
-- NOTE: For PRs that were previously pushed, checks may already be complete
+- NOTE: This step only runs when checking status of an already-pushed PR
 
-## 4. Resolve CI/CD failures
-For each failing check:
-- Get workflow run details: `gh run view <run-id> --log-failed`
-- Analyze the error logs to identify:
-  - Linting errors (use existing /lint command)
-  - Test failures (examine test output)
-  - Build errors (analyze compilation errors)
-  - Type errors (check TypeScript/Rust type issues)
-- If errors are code-related:
-  - Present findings to user with specific file/line references
-  - Ask: "I found these issues in the CI logs. Should I attempt to fix them?"
-  - If approved, fix the issues
-  - Run local validation (lint/test/build as appropriate)
-  - Commit fixes: `git add -u && git commit -m "[fix] resolve CI failures"`
-  - Push: `git push`
-  - Wait 10 seconds and re-check: `gh pr checks`
-- If errors are infrastructure-related (credentials, permissions, timeouts):
-  - Report to user and explain manual intervention is needed
+## 4. Resolve CI/CD failures using engineer agent
+When CI checks are failing:
+
+- Identify failing checks from `gh pr checks` output
+- Get workflow run details for each failure: `gh run view <run-id> --log-failed`
+- Analyze errors to determine if they are code-related:
+  - **Code-related**: Linting errors, test failures, build errors, type errors
+  - **Infrastructure-related**: Credentials, permissions, timeouts, rate limits
+
+### For code-related failures:
+- Present findings to user with specific file/line references
+- Ask: "I found CI failures. Should I use the engineer agent to fix them?"
+- If approved:
+  - Use the Task tool with `subagent_type="engineer"` and provide:
+    - Complete error logs from failed checks
+    - List of failing tests/checks
+    - Request to analyze, fix, test locally, and commit the fixes
+  - Example prompt for engineer agent:
+    ```
+    The following CI checks are failing on PR #X:
+
+    [Include error logs from gh run view]
+
+    Please:
+    1. Analyze the failures
+    2. Fix the issues
+    3. Run local validation (cargo test, cargo clippy, bun lint, etc.)
+    4. Commit fixes with message: [fix] resolve CI failures
+
+    Do not push - I will handle that after review.
+    ```
+  - After engineer agent completes, push the fixes: `git push`
+  - Report that fixes were pushed and new CI run will start automatically
+
+### For infrastructure-related failures:
+- Report to user with details
+- Explain that manual intervention is needed (cannot be fixed with code changes)
 
 ## 5. Final report
-Provide a clear summary with:
-- PR URL (from the gh command output)
+Provide a clear summary based on which path was taken:
+
+### PATH A (New commits pushed):
+- PR URL
 - PR title
-- Overall status (✅ All passing / ⚠️ Some failures / ❌ Failed)
+- Confirmation that commits were pushed
+- Message: "CI checks will run automatically. Run `/pullrequest` again to check status after CI completes."
+
+### PATH B (Checking existing PR status):
+- PR URL
+- PR title
+- Overall status (✅ All passing / ⏳ Pending / ❌ Failed)
 - List of all checks with their status and timing:
-  - Format: `- ✅ Check Name (duration)`
+  - Format: `- ✅ Check Name (duration)` or `- ❌ Check Name` or `- ⏳ Check Name`
   - Use ✅ for pass, ❌ for fail, ⏳ for pending
-- If any failures remain:
-  - List unresolved issues requiring manual intervention
-  - Provide specific guidance on what the user needs to do
-- Confirmation that PR is ready for review (if all checks pass)
+- If all checks pass: "PR is ready for review ✅"
+- If checks are pending: "Checks still running, wait for completion"
+- If failures exist and were fixed: "Fixes pushed, new CI run will start automatically"
+- If failures exist but not fixed: List issues requiring manual intervention
 
 ## Tips for success
 - **PR title format**: Always use `[tag] lowercase description` - never capitalize the first word after the bracket
   - Common tags: `[feat]` for features, `[fix]` for bug fixes, `[chore]` for maintenance, `[docs]` for documentation, `[refactor]` for code restructuring
+- **Two workflow paths**: The command automatically detects if you're pushing new commits or checking an existing PR
+  - New commits → Push and exit (don't wait for CI)
+  - No new commits → Check CI status and optionally fix failures
 - **Authentication**: Always check `gh auth status` first to avoid mid-workflow failures
 - **Heredoc syntax**: Use heredoc for PR descriptions to preserve formatting: `--body "$(cat <<'EOF'\n...\nEOF\n)"`
 - **Branch detection**: Auto-detect base branch instead of assuming `main`
-- **Already pushed branches**: Handle gracefully when branch is already pushed (check for unpushed commits first)
-- **Check timing**: Don't assume checks need 10 seconds - they might already be complete
+- **Engineer agent**: Use the engineer agent (not manual fixes) to resolve CI failures - it can analyze, fix, and test locally
+- **Don't wait for CI**: When pushing new commits, exit immediately - CI runs asynchronously
 - **Comprehensive analysis**: Review actual code changes, not just commit messages, for accurate PR descriptions
