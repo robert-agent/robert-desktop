@@ -65,7 +65,7 @@ pub async fn create_user(
 ) -> Result<ProfileResult<UserConfig>, String> {
     log::info!("Creating user: {}", username);
 
-    match AuthService::create_and_login(&username, &password) {
+    match AuthService::create_and_login(&username, &password, None) {
         Ok(session) => {
             // Store session in app state
             let mut user_session = state.user_session.lock().await;
@@ -97,7 +97,7 @@ pub async fn login_user(
 ) -> Result<ProfileResult<UserConfig>, String> {
     log::info!("Login attempt for user: {}", username);
 
-    match AuthService::login(&username, &password) {
+    match AuthService::login(&username, &password, None) {
         Ok(session) => {
             // Store session in app state
             let mut user_session = state.user_session.lock().await;
@@ -158,7 +158,7 @@ pub async fn get_current_user(
 /// Returns list of usernames
 #[tauri::command]
 pub async fn list_users() -> Result<ProfileResult<Vec<String>>, String> {
-    match UserManager::list_users() {
+    match UserManager::list_users(None) {
         Ok(users) => {
             log::info!("📋 Listed {} users", users.len());
             Ok(ProfileResult::success(users))
@@ -181,7 +181,7 @@ pub async fn get_user_profile(state: State<'_, AppState>) -> Result<ProfileResul
     if let Some(session) = user_session.as_ref() {
         let encryption_key = session.get_encryption_key();
 
-        match load_user_profile(&session.username, &encryption_key) {
+        match load_user_profile(&session.username, &encryption_key, None) {
             Ok(content) => {
                 log::info!("✅ Profile loaded for user: {}", session.username);
                 Ok(ProfileResult::success(content))
@@ -214,7 +214,7 @@ pub async fn update_user_profile(
     if let Some(session) = user_session.as_ref() {
         let encryption_key = session.get_encryption_key();
 
-        match save_user_profile(&session.username, &content, &encryption_key) {
+        match save_user_profile(&session.username, &content, &encryption_key, None) {
             Ok(_) => {
                 log::info!("✅ Profile updated for user: {}", session.username);
                 Ok(ProfileResult::success(()))
@@ -234,7 +234,7 @@ pub async fn update_user_profile(
 /// Useful for determining if this is first launch
 #[tauri::command]
 pub async fn has_users() -> Result<ProfileResult<bool>, String> {
-    match UserManager::list_users() {
+    match UserManager::list_users(None) {
         Ok(users) => Ok(ProfileResult::success(!users.is_empty())),
         Err(e) => {
             log::error!("❌ Failed to check users: {}", e);

@@ -50,14 +50,20 @@
 
 ---
 
-## Project: User Profiles & Command System
+## In Progress
+- [ ] Refactor storage layer to use dependency injection for base directory (removes HOME env var dependency)
+  - [ ] Update storage.rs path functions to accept optional base_dir parameter
+  - [ ] Update auth.rs AuthService methods to accept base_dir parameter
+  - [ ] Update manager.rs UserManager methods to accept base_dir parameter
+  - [ ] Update all tests to pass temp_dir instead of modifying HOME env var
+  - [ ] Remove serial_test dependency from Cargo.toml
+  - [ ] Verify tests pass with --test-threads=8
 
-### In Progress
+## Planned
+
 - [ ] Phase 2: Browser Profile Management (v1.6) - Not started
 
-### Planned
-
-#### Phase 1: User Management (v1.5) - ✅ 100% COMPLETE (Backend + Frontend)
+### Phase 1: User Management (v1.5) - ✅ 100% COMPLETE (Backend + Frontend)
 **Backend (✅ COMPLETE - All 31 tests passing, cargo xlint passing):**
 - [x] Add crypto dependencies (argon2, aes-gcm, rand, zeroize, uuid, directories, tempfile)
 - [x] Implement crypto module (Argon2id key derivation, AES-256-GCM encryption)
@@ -137,7 +143,7 @@
 - [ ] Write unit tests for feedback and versioning
 - [ ] Write integration tests for refinement workflow
 
-### Completed
+## Completed
 
 #### Documentation & Planning
 - [x] Read all profiles documentation (PROFILES.md, PROFILES_QUESTIONS.md, USER_PROFILES_PRIVACY.md, PRD.md)
@@ -202,7 +208,7 @@
 - [x] Verify all 31 tests passing
 - [x] Verify cargo xlint passing with no errors
 
-### Triage
+## Triage
 - [ ] Determine if PBKDF2 fallback is needed or Argon2id only
 - [ ] Decide on password strength requirements (min length, complexity)
 - [ ] Clarify performance benchmarks for key derivation
@@ -210,7 +216,7 @@
 - [ ] Decide on hard limit for concurrent browser sessions
 - [ ] Clarify markdown error handling strategy (auto-fix vs strict)
 
-### Won't Fix
+## Won't Fix
 - [ ] Password recovery mechanism (explicitly not supported for security)
 - [ ] Command sharing between users in v1 (deferred to v2.0)
 - [ ] Import existing Chrome profiles (complexity + security concerns)
