@@ -1,4 +1,4 @@
-import { check } from '@tauri-apps/plugin-updater';
+import { check, type DownloadEvent } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 
 export interface UpdateCheckResult {
@@ -83,7 +83,7 @@ export async function downloadAndInstallUpdate(onProgress?: UpdaterCallback): Pr
     let totalBytes = 0;
     let downloadedBytes = 0;
 
-    await update.downloadAndInstall((event) => {
+    await update.downloadAndInstall((event: DownloadEvent) => {
       switch (event.event) {
         case 'Started':
           totalBytes = event.data.contentLength || 0;
