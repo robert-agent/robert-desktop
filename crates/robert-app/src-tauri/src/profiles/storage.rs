@@ -1,3 +1,6 @@
+// Allow dead code for Phase 1 - many functions will be used in later phases
+#![allow(dead_code)]
+
 /// Filesystem operations for user profiles
 ///
 /// This module handles all file I/O operations for the user profiles system,
@@ -26,7 +29,6 @@
 /// └── .tmp/
 ///     └── ephemeral-{uuid}/    # Temporary browser profiles
 /// ```
-
 use crate::profiles::{
     crypto::{decrypt_file, encrypt_file, EncryptionKey},
     types::UserConfig,
@@ -72,6 +74,7 @@ const DEFAULT_BROWSER_PROFILE: &str = "default";
 // ============================================================================
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum StorageError {
     /// I/O error during filesystem operations
     #[error("I/O error: {0}")]
@@ -718,7 +721,6 @@ pub fn cleanup_ephemeral_profiles() -> Result<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::profiles::crypto::derive_key;
 
     #[test]
     fn test_validate_username() {

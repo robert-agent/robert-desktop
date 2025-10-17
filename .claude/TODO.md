@@ -1,26 +1,31 @@
 # TODO
 
 ## In Progress
-- [ ] Phase 1: User Management (v1.5) - Set up crypto module and basic user infrastructure
+- [ ] Phase 1: User Management (v1.5) - Complete authentication and frontend integration
 
 ## Planned
 
-### Phase 1: User Management (v1.5) - 2 weeks
-- [ ] Add crypto dependencies (argon2, aes-gcm, rand, zeroize, uuid, directories)
-- [ ] Implement crypto module (Argon2id key derivation, AES-256-GCM encryption)
-- [ ] Implement user manager (CRUD operations, directory structure)
-- [ ] Implement authentication service (login, logout, password validation)
-- [ ] Add Tauri commands for user operations
-- [ ] Implement app state management with active user
-- [ ] Create login screen UI (profile selector, password input)
-- [ ] Create user creation form UI (username, password, strength indicator)
-- [ ] Create user state store (Svelte)
+### Phase 1: User Management (v1.5) - 2 weeks - BACKEND COMPLETE
+Backend Foundation (✅ COMPLETE):
+- [x] Add crypto dependencies (argon2, aes-gcm, rand, zeroize, uuid, directories)
+- [x] Implement crypto module (Argon2id key derivation, AES-256-GCM encryption)
+- [x] Implement storage module (filesystem operations, encrypted file I/O)
+- [x] Implement user manager (CRUD operations, directory structure)
+- [x] Write unit tests for crypto (14 tests, all passing)
+- [x] Write unit tests for storage (8 tests, all passing)
+- [x] Write unit tests for manager (4 tests, all passing)
+- [x] Fix failing test in crypto module (salt length assertion)
+
+Remaining Phase 1 Tasks:
+- [ ] Implement authentication service (auth.rs - login, logout, session management)
+- [ ] Add Tauri commands for user operations (create_user, login_user, logout_user, list_users, switch_user)
+- [ ] Implement app state management with active user and encryption key
+- [ ] Create login screen UI (profile selector dropdown, password input)
+- [ ] Create user creation form UI (username, password with strength indicator)
+- [ ] Create user state store in Svelte (reactive state management)
 - [ ] Implement profile switching UI
-- [ ] Create user profile editor UI (markdown editor)
-- [ ] Write unit tests for crypto (>90% coverage target)
-- [ ] Write unit tests for user management
-- [ ] Write integration tests for auth flows
-- [ ] Migration script for existing users
+- [ ] Create user profile editor UI (markdown editor for user-profile.md)
+- [ ] Write integration tests for auth flows (create → login → logout → switch)
 
 ### Phase 2: Browser Profile Management (v1.6) - 2 weeks
 - [ ] Define BrowserProfile enum (Ephemeral, Named)
@@ -76,12 +81,24 @@
 - [ ] Write integration tests for refinement workflow
 
 ## Completed
-- [x] Read implementation plan document
-- [x] Read technical specification (PROFILES.md)
-- [x] Read design decisions (PROFILES_QUESTIONS.md)
-- [x] Read privacy requirements (USER_PROFILES_PRIVACY.md)
-- [x] Read PRD profiles section
+
+### Documentation & Planning
+- [x] Read all profiles documentation (PROFILES.md, PROFILES_QUESTIONS.md, USER_PROFILES_PRIVACY.md, PRD.md)
+- [x] Create comprehensive implementation plan (.claude/profiles-implementation-plan.md)
 - [x] Review existing project structure
+
+### Phase 1: User Management - Backend Implementation (✅ COMPLETE)
+- [x] Add all required dependencies to Cargo.toml (argon2, aes-gcm, rand, zeroize, uuid, directories, pulldown-cmark, serde_yaml)
+- [x] Create profiles module structure (mod.rs, types.rs, crypto.rs, storage.rs, manager.rs)
+- [x] Implement types module with all data structures (UserConfig, BrowserProfile, Command types, GenerativeUI, ExecutionContext)
+- [x] Implement crypto module with Argon2id password hashing and AES-256-GCM encryption
+- [x] Implement storage module with filesystem operations and encrypted file I/O
+- [x] Implement user manager module with CRUD operations and validation
+- [x] Write and pass all unit tests for crypto module (14 tests, 100% passing)
+- [x] Write and pass all unit tests for storage module (8 tests, 100% passing)
+- [x] Write and pass all unit tests for manager module (4 tests, 100% passing)
+- [x] Fix failing test in crypto module (salt base64 length assertion)
+- [x] Verify compilation succeeds with all new code (26 total tests passing)
 
 ## Triage
 - [ ] Determine if PBKDF2 fallback is needed or Argon2id only

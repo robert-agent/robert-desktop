@@ -1,8 +1,10 @@
+// Allow dead code for Phase 1 - types will be used in later phases
+#![allow(dead_code)]
+
 /// Data structures for user profiles system
 ///
 /// This module defines all the core types used throughout the profiles system,
 /// including user configuration, browser profiles, commands, and UI components.
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

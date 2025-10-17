@@ -17,7 +17,6 @@
 /// ✓ Protects against rainbow tables (random salts)
 /// ✗ Does NOT protect against memory dumps while key is in RAM
 /// ✗ Does NOT protect against malware with root access
-
 use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes256Gcm, Nonce,
@@ -51,6 +50,7 @@ const ARGON2_PARALLELISM: u32 = 4;
 const KEY_LENGTH: usize = 32;
 
 /// Salt length in bytes (16 bytes = 128 bits)
+#[allow(dead_code)]
 const SALT_LENGTH: usize = 16;
 
 /// Nonce length for AES-GCM in bytes (12 bytes = 96 bits)
@@ -116,11 +116,13 @@ impl EncryptionKey {
     }
 
     /// Get the key length in bytes
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.key.len()
     }
 
     /// Check if key is empty
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.key.is_empty()
     }
@@ -245,6 +247,7 @@ pub fn derive_key(password: &str, salt: Option<&[u8]>) -> Result<(EncryptionKey,
 /// # Security Notes
 /// - This function is constant-time to prevent timing attacks
 /// - Argon2id's built-in comparison is timing-attack resistant
+#[allow(dead_code)]
 pub fn verify_password(password: &str, salt: &[u8], expected_hash: &[u8]) -> Result<bool> {
     let (derived_key, _) = derive_key(password, Some(salt))?;
 
@@ -257,6 +260,7 @@ pub fn verify_password(password: &str, salt: &[u8], expected_hash: &[u8]) -> Res
 /// This ensures that password verification takes the same amount of time
 /// regardless of where the first differing byte is, preventing attackers
 /// from using timing information to guess passwords.
+#[allow(dead_code)]
 fn constant_time_compare(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
@@ -402,7 +406,10 @@ mod tests {
         let (key, salt) = derive_key("test_password", None).unwrap();
 
         assert_eq!(key.len(), KEY_LENGTH);
-        assert_eq!(salt.len(), SALT_LENGTH);
+        // Salt is base64-encoded, so it's 22 characters for a 16-byte (128-bit) salt
+        assert!(!salt.is_empty());
+        // Base64 encoding increases size by ~33%, so 16 bytes -> ~22 bytes
+        assert_eq!(salt.len(), 22);
     }
 
     #[test]
