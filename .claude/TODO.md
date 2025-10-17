@@ -3,39 +3,40 @@
 ## Project: Robert Server (Remote Execution)
 
 ### In Progress
-- [ ] Create robert-server project structure and Cargo.toml configuration
+- [ ] Create pull request for server branch
 
 ### Planned
-- [ ] Phase 1: Foundation - Define core data models (RobertRequest, ClaudeEvent, etc.)
-- [ ] Phase 1: Foundation - Write tests for request parsing/validation
-- [ ] Phase 1: Foundation - Implement configuration loading
-- [ ] Phase 1: Foundation - Write tests for config validation
-- [ ] Phase 1: Foundation - Implement basic health endpoint
-- [ ] Phase 1: Foundation - Write integration test for health endpoint
-- [ ] Phase 2: Auth & Middleware - Write tests for token authentication
-- [ ] Phase 2: Auth & Middleware - Implement auth middleware
-- [ ] Phase 2: Auth & Middleware - Write tests for rate limiting
-- [ ] Phase 2: Auth & Middleware - Implement rate limiting middleware
-- [ ] Phase 2: Auth & Middleware - Integration tests for auth flow
-- [ ] Phase 3: Claude CLI Integration - Write tests for executor interface
-- [ ] Phase 3: Claude CLI Integration - Implement claude-cli process spawning (real only, no mocks)
-- [ ] Phase 3: Claude CLI Integration - Implement stdout/stderr streaming
-- [ ] Phase 3: Claude CLI Integration - Add timeout and cleanup logic
-- [ ] Phase 3: Claude CLI Integration - Test with real claude-cli commands
-- [ ] Phase 4: Execute Endpoint - Write tests for execute endpoint
-- [ ] Phase 4: Execute Endpoint - Implement execute endpoint with SSE streaming
-- [ ] Phase 4: Execute Endpoint - Write tests for session management
-- [ ] Phase 4: Execute Endpoint - Implement session tracking and cancellation
-- [ ] Phase 4: Execute Endpoint - Integration tests for full execute flow
 - [ ] Phase 5: Production Readiness - Add TLS support
 - [ ] Phase 5: Production Readiness - Add metrics endpoint
 - [ ] Phase 5: Production Readiness - Performance benchmarks
 - [ ] Phase 5: Production Readiness - Error handling polish
-- [ ] Phase 5: Production Readiness - Documentation and README
 
 ### Completed
 - [x] Read specification document
 - [x] Set up TODO tracking
+- [x] Create robert-server project structure and Cargo.toml configuration
+- [x] Phase 1: Foundation - Define core data models (RobertRequest, ClaudeEvent, etc.)
+- [x] Phase 1: Foundation - Write tests for request parsing/validation
+- [x] Phase 1: Foundation - Implement configuration loading
+- [x] Phase 1: Foundation - Write tests for config validation
+- [x] Phase 1: Foundation - Implement basic health endpoint
+- [x] Phase 1: Foundation - Write integration test for health endpoint
+- [x] Phase 2: Auth & Middleware - Write tests for token authentication
+- [x] Phase 2: Auth & Middleware - Implement auth middleware
+- [x] Phase 2: Auth & Middleware - Write tests for rate limiting
+- [x] Phase 2: Auth & Middleware - Implement rate limiting middleware
+- [x] Phase 2: Auth & Middleware - Integration tests for auth flow
+- [x] Phase 3: Claude CLI Integration - Write tests for executor interface
+- [x] Phase 3: Claude CLI Integration - Implement claude-cli process spawning (real only, no mocks)
+- [x] Phase 3: Claude CLI Integration - Implement stdout/stderr streaming
+- [x] Phase 3: Claude CLI Integration - Add timeout and cleanup logic
+- [x] Phase 3: Claude CLI Integration - Test with real claude-cli commands
+- [x] Phase 4: Execute Endpoint - Write tests for execute endpoint
+- [x] Phase 4: Execute Endpoint - Implement execute endpoint with SSE streaming
+- [x] Phase 4: Execute Endpoint - Write tests for session management
+- [x] Phase 4: Execute Endpoint - Implement session tracking and cancellation
+- [x] Phase 4: Execute Endpoint - Integration tests for full execute flow
+- [x] Phase 5: Production Readiness - Documentation and README
 
 ### Triage
 - [ ] Docker Compose setup for local testing (optional for now)
