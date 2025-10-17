@@ -1,0 +1,41 @@
+# Robert Server Development Configuration
+# Use this configuration for local development and testing
+
+[server]
+host = "127.0.0.1"
+port = 8443
+dev_mode = true
+enable_tls = false  # Use HTTP for localhost testing
+
+[auth]
+# Single static token for development
+dev_token = "dev-token-12345"
+# Disable auth for local testing (optional)
+require_auth = false
+rate_limit_per_minute = 100
+
+[claude]
+# Path to claude-cli binary
+binary_path = "claude"
+# Use mock responses instead of real claude-cli
+mock_mode = false
+# Default timeout for claude-cli execution
+default_timeout_seconds = 300
+# Maximum concurrent sessions
+max_concurrent_sessions = 20
+
+[limits]
+# Maximum request size in megabytes
+max_request_size_mb = 50
+# Maximum number of screenshots per request
+max_screenshot_count = 10
+# Maximum prompt length in characters
+max_prompt_length = 50000
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "debug"
+# Use pretty-printed logs for development
+pretty_print = true
+# Sanitize sensitive data from logs
+sanitize_sensitive_data = true
