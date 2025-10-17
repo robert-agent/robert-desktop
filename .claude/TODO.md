@@ -1,5 +1,55 @@
 # TODO
 
+## Project: Robert Server (Remote Execution)
+
+### In Progress
+- [ ] Create pull request for server branch
+
+### Planned
+- [ ] Phase 5: Production Readiness - Add TLS support
+- [ ] Phase 5: Production Readiness - Add metrics endpoint
+- [ ] Phase 5: Production Readiness - Performance benchmarks
+- [ ] Phase 5: Production Readiness - Error handling polish
+
+### Completed
+- [x] Read specification document
+- [x] Set up TODO tracking
+- [x] Create robert-server project structure and Cargo.toml configuration
+- [x] Phase 1: Foundation - Define core data models (RobertRequest, ClaudeEvent, etc.)
+- [x] Phase 1: Foundation - Write tests for request parsing/validation
+- [x] Phase 1: Foundation - Implement configuration loading
+- [x] Phase 1: Foundation - Write tests for config validation
+- [x] Phase 1: Foundation - Implement basic health endpoint
+- [x] Phase 1: Foundation - Write integration test for health endpoint
+- [x] Phase 2: Auth & Middleware - Write tests for token authentication
+- [x] Phase 2: Auth & Middleware - Implement auth middleware
+- [x] Phase 2: Auth & Middleware - Write tests for rate limiting
+- [x] Phase 2: Auth & Middleware - Implement rate limiting middleware
+- [x] Phase 2: Auth & Middleware - Integration tests for auth flow
+- [x] Phase 3: Claude CLI Integration - Write tests for executor interface
+- [x] Phase 3: Claude CLI Integration - Implement claude-cli process spawning (real only, no mocks)
+- [x] Phase 3: Claude CLI Integration - Implement stdout/stderr streaming
+- [x] Phase 3: Claude CLI Integration - Add timeout and cleanup logic
+- [x] Phase 3: Claude CLI Integration - Test with real claude-cli commands
+- [x] Phase 4: Execute Endpoint - Write tests for execute endpoint
+- [x] Phase 4: Execute Endpoint - Implement execute endpoint with SSE streaming
+- [x] Phase 4: Execute Endpoint - Write tests for session management
+- [x] Phase 4: Execute Endpoint - Implement session tracking and cancellation
+- [x] Phase 4: Execute Endpoint - Integration tests for full execute flow
+- [x] Phase 5: Production Readiness - Documentation and README
+
+### Triage
+- [ ] Docker Compose setup for local testing (optional for now)
+- [ ] VS Code launch configuration (optional for now)
+- [ ] Enterprise features (Phase 4 - future scope)
+
+### Won't Fix
+- [ ] OAuth2/mTLS advanced authentication (out of scope for MVP)
+- [ ] Multi-tenancy support (future feature)
+- [ ] HA deployment patterns (deployment concern, not implementation)
+
+---
+
 ## In Progress
 - [ ] Refactor storage layer to use dependency injection for base directory (removes HOME env var dependency)
   - [ ] Update storage.rs path functions to accept optional base_dir parameter
@@ -40,7 +90,7 @@
 - [x] Add get_user_profile Tauri command for loading profile markdown
 - [x] All code quality checks passing (cargo xlint, bun lint, bun check)
 
-### Phase 2: Browser Profile Management (v1.6) - 2 weeks
+#### Phase 2: Browser Profile Management (v1.6) - 2 weeks
 - [ ] Define BrowserProfile enum (Ephemeral, Named)
 - [ ] Implement ephemeral profile lifecycle (create, cleanup)
 - [ ] Implement named profile management (CRUD)
@@ -53,7 +103,7 @@
 - [ ] Write unit tests for profile management
 - [ ] Write integration tests for session lifecycle
 
-### Phase 3: Command System (v1.7) - 3 weeks
+#### Phase 3: Command System (v1.7) - 3 weeks
 - [ ] Define command schema (CommandFrontmatter, CommandParameter, etc.)
 - [ ] Implement markdown parser (YAML frontmatter, sections)
 - [ ] Implement command manager (save, load, list, delete)
@@ -69,7 +119,7 @@
 - [ ] Write unit tests for parser and schema
 - [ ] Write integration tests for command workflows
 
-### Phase 4: Generative UI (v1.8) - 2 weeks
+#### Phase 4: Generative UI (v1.8) - 2 weeks
 - [ ] Define UI component schema (all 8 types)
 - [ ] Implement JSON schema validation
 - [ ] Add Tauri commands for generative UI validation
@@ -81,7 +131,7 @@
 - [ ] Write unit tests for components and layouts
 - [ ] Write integration tests for form rendering
 
-### Phase 5: Command Refinement (v1.9) - 2 weeks
+#### Phase 5: Command Refinement (v1.9) - 2 weeks
 - [ ] Implement feedback capture (CommandFeedback struct)
 - [ ] Implement refinement workflow (AI integration)
 - [ ] Implement version control (history, rollback)
@@ -95,12 +145,12 @@
 
 ## Completed
 
-### Documentation & Planning
+#### Documentation & Planning
 - [x] Read all profiles documentation (PROFILES.md, PROFILES_QUESTIONS.md, USER_PROFILES_PRIVACY.md, PRD.md)
 - [x] Create comprehensive implementation plan (.claude/profiles-implementation-plan.md ~25,000 words)
 - [x] Review existing project structure
 
-### Phase 1: User Management - Backend Implementation (✅ 100% COMPLETE)
+#### Phase 1: User Management - Backend Implementation (✅ 100% COMPLETE)
 
 **Core Modules:**
 - [x] Create profiles module structure (mod.rs, types.rs, crypto.rs, storage.rs, manager.rs, auth.rs)

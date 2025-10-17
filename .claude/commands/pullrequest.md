@@ -28,15 +28,45 @@ WORKFLOW:
 - If not authenticated, inform user to run `gh auth login` and wait for them to authenticate
 - Only proceed after authentication is confirmed
 
-## 1. Check for unpushed commits and determine workflow path
+## 1. Merge from main branch
+**IMPORTANT: Always attempt to merge from main before creating/updating PR to ensure branch is up to date**
+
+- Detect the base branch: `git remote show origin | grep "HEAD branch" | cut -d' ' -f5`
+- Fetch latest changes: `git fetch origin`
+- Attempt merge from base branch: `git merge origin/<base-branch> --no-commit --no-ff`
+- Analyze merge result:
+  - **If merge succeeds with no conflicts**:
+    - Complete the merge: `git commit -m "Merge <base-branch> into <current-branch>"`
+    - Continue to step 2
+  - **If merge conflicts occur**:
+    - Examine commit history to understand changes:
+      - View commit graph: `git log --oneline --graph --all --decorate -20`
+      - View commits in current branch not in base: `git log <base-branch>..<current-branch> --oneline`
+      - View commits in base not in current branch: `git log <current-branch>..<base-branch> --oneline`
+      - View conflicting files: `git status` and `git diff <base-branch>...<current-branch> --name-status`
+    - For each conflicting file:
+      - Read the conflicted file to see merge conflict markers
+      - Understand the context: Both branches may have legitimate, separate concerns on the same file
+      - Resolution strategy:
+        - If changes address different features/concerns: Merge both changes together
+        - If changes conflict logically: Analyze commit messages and code intent to determine correct resolution
+        - Preserve all functionality unless there's a clear conflict requiring a choice
+    - After resolving all conflicts:
+      - Mark resolved: `git add <resolved-files>`
+      - Complete merge: `git commit -m "Merge <base-branch> into <current-branch>\n\nResolved conflicts in: <list-files>\n\n[Brief explanation of resolution strategy]"`
+    - Continue to step 2
+  - **If already up to date**:
+    - No merge needed, continue to step 2
+
+## 2. Check for unpushed commits and determine workflow path
 - Run `git status` to check current branch and uncommitted changes
 - If there are uncommitted changes, stop and ask user if they want to commit first
 - Check for unpushed commits: `git log origin/$(git branch --show-current)..HEAD --oneline 2>/dev/null || echo "No tracking branch yet"`
 - Store result in a variable to determine path:
-  - **PATH A (Has unpushed commits)**: If there are unpushed commits OR no tracking branch → Continue to step 2
-  - **PATH B (No unpushed commits)**: If no unpushed commits and tracking branch exists → Skip to step 3 (check CI status)
+  - **PATH A (Has unpushed commits)**: If there are unpushed commits OR no tracking branch → Continue to step 3
+  - **PATH B (No unpushed commits)**: If no unpushed commits and tracking branch exists → Skip to step 4 (check CI status)
 
-## 2. Push commits and update PR (PATH A only - when there are new commits)
+## 3. Push commits and update PR (PATH A only - when there are new commits)
 - Push to origin: `git push -u origin HEAD`
 - Check if PR exists: `gh pr view --json number,url,title 2>&1`
 - If PR exists (JSON output):
@@ -52,7 +82,7 @@ WORKFLOW:
   - PR URL
   - "New commits pushed. CI checks will run automatically. Check status later with `gh pr checks`"
 
-### PR Description Format (used in step 2)
+### PR Description Format (used in step 3)
 When generating PR description (max 200 words, bullet points):
 - First, detect the base branch (usually `main` or `master`): `git remote show origin | grep "HEAD branch" | cut -d' ' -f5`
 - Analyze commit history: `git log <base-branch>..HEAD --oneline`
@@ -78,17 +108,17 @@ When generating PR description (max 200 words, bullet points):
   ```
 - IMPORTANT: The description should accurately reflect what was actually achieved, not just paraphrase commit messages
 
-## 3. Check GitHub Actions status (PATH B only - when no new commits to push)
+## 4. Check GitHub Actions status (PATH B only - when no new commits to push)
 **Only execute this step if you reached here from PATH B (no unpushed commits)**
 
 - First check current status: `gh pr checks`
 - Analyze the output:
   - If checks show "pending": Report status and STOP - let checks complete naturally
   - If all checks are passing: Report success and STOP
-  - If any checks are failing: Continue to step 4
+  - If any checks are failing: Continue to step 5
 - NOTE: This step only runs when checking status of an already-pushed PR
 
-## 4. Resolve CI/CD failures using engineer agent
+## 5. Resolve CI/CD failures using engineer agent
 When CI checks are failing:
 
 - Identify failing checks from `gh pr checks` output
@@ -126,7 +156,7 @@ When CI checks are failing:
 - Report to user with details
 - Explain that manual intervention is needed (cannot be fixed with code changes)
 
-## 5. Final report
+## 6. Final report
 Provide a clear summary based on which path was taken:
 
 ### PATH A (New commits pushed):
