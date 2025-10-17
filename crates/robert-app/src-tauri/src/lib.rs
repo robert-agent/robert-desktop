@@ -38,6 +38,7 @@ pub fn run() {
             commands::run_diagnostics,
             commands::validate_cdp_script,
             commands::validate_cdp_script_file,
+            commands::execute_cdp_script,
             // Developer mode commands
             commands::get_system_paths,
             commands::start_dev_test_server,

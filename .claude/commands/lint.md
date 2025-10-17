@@ -1,3 +1,7 @@
+---
+description: Run all code quality checks and fix lint/format issues
+---
+
 Make sure all our code quality checks pass
 1. format all code with `cargo fmt`
 2. use `cargo xlint` to check lint errors (do not use another lint command)
@@ -7,3 +11,8 @@ Make sure all our code quality checks pass
 6. ensure there are no extra dependencies with `cargo machete`
 7. ensure `cargo xlint` is still clean
 8. commit the cleanup, don't add claude as a co-author
+9. in the directory ./crates/robert-app, ensure that all typescript and svelte lints pass
+- `bun format:fix`
+- `bun format`
+- `bun lint`
+- `bun check`

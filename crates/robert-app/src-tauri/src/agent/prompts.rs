@@ -22,7 +22,155 @@ impl PromptTemplate {
         Self { prompt_type }
     }
 
-    /// Build CDP generation prompt
+    /// Get the common CDP command reference text
+    fn cdp_commands_reference() -> &'static str {
+        r#"
+IMPORTANT INSTRUCTIONS:
+- You are running in HEADLESS/NON-INTERACTIVE mode
+- You MUST respond with a valid CDP JSON script
+- DO NOT ask clarifying questions
+- DO NOT request additional information
+- Your response will be executed automatically without human review
+
+Use the CDP command reference below:
+
+AVAILABLE CDP COMMANDS:
+
+1. Page.navigate - Navigate to URL
+   {"method": "Page.navigate", "params": {"url": "https://example.com"}}
+
+2. Page.captureScreenshot - Take screenshot
+   {"method": "Page.captureScreenshot", "params": {"format": "png", "captureBeyondViewport": true}, "save_as": "screenshot.png"}
+
+3. Runtime.evaluate - Execute JavaScript
+   {"method": "Runtime.evaluate", "params": {"expression": "document.title", "returnByValue": true}, "save_as": "result.json"}
+
+4. Input.insertText - Type text
+   {"method": "Input.insertText", "params": {"text": "Hello World"}}
+
+5. Input.dispatchMouseEvent - Mouse actions
+   {"method": "Input.dispatchMouseEvent", "params": {"type": "mousePressed", "x": 100, "y": 200, "button": "left", "clickCount": 1}}
+
+6. Input.dispatchKeyEvent - Keyboard actions
+   {"method": "Input.dispatchKeyEvent", "params": {"type": "keyDown", "key": "Enter"}}
+
+OUTPUT FORMAT (JSON only, no markdown, no explanations, no questions):
+
+{
+  "name": "descriptive-name",
+  "description": "What this script does",
+  "cdp_commands": [
+    {
+      "method": "Page.navigate",
+      "params": {"url": "..."},
+      "description": "Navigate to page"
+    },
+    {
+      "method": "Runtime.evaluate",
+      "params": {"expression": "...", "returnByValue": true},
+      "save_as": "optional-output.json",
+      "description": "Perform action"
+    }
+  ]
+}
+
+Generate the CDP script now. Output ONLY valid JSON. Do not include any text before or after the JSON."#
+    }
+
+    /// Build planning prompt (first phase - determine if clarification is needed)
+    pub fn build_planning_prompt(
+        &self,
+        user_request: &str,
+        current_url: Option<&str>,
+        page_title: Option<&str>,
+        agent_instructions: &str,
+    ) -> String {
+        let context = if let (Some(url), Some(title)) = (current_url, page_title) {
+            format!("\nCURRENT PAGE:\n- URL: {}\n- Title: {}\n", url, title)
+        } else {
+            String::new()
+        };
+
+        format!(
+            r#"{agent_instructions}
+
+{context}
+USER REQUEST: {user_request}
+
+TASK: Analyze if you can generate a CDP automation script for this request, or if you need clarification.
+
+RESPONSE FORMATS:
+
+If the request is CLEAR and you can proceed, respond with:
+{{
+  "response_type": "ready",
+  "understanding": "Brief description of what you'll do",
+  "next_step": "generate_script"
+}}
+
+If the request is AMBIGUOUS or you need clarification, respond with:
+{{
+  "response_type": "clarification_needed",
+  "questions": [
+    {{
+      "question": "What specific action should I perform?",
+      "options": ["option1", "option2", "option3"],
+      "context": "Optional explanation of why this matters"
+    }}
+  ],
+  "understanding": "What I understand so far"
+}}
+
+GUIDELINES:
+- Only ask for clarification if the request is genuinely ambiguous
+- Keep questions concise and actionable
+- Provide multiple choice options when possible
+- Aim to proceed without clarification when reasonable assumptions can be made
+
+Respond with ONLY valid JSON in one of the above formats."#,
+            agent_instructions = agent_instructions,
+            context = context,
+            user_request = user_request
+        )
+    }
+
+    /// Build CDP generation prompt with clarification answers
+    #[allow(dead_code)]
+    pub fn build_cdp_prompt_with_clarification(
+        &self,
+        user_request: &str,
+        clarification_answers: &str,
+        current_url: Option<&str>,
+        page_title: Option<&str>,
+        agent_instructions: &str,
+    ) -> String {
+        let context = if let (Some(url), Some(title)) = (current_url, page_title) {
+            format!("\nCURRENT PAGE:\n- URL: {}\n- Title: {}\n", url, title)
+        } else {
+            String::new()
+        };
+
+        format!(
+            r#"{agent_instructions}
+
+{context}
+USER REQUEST: {user_request}
+
+CLARIFICATION PROVIDED:
+{clarification_answers}
+
+Generate a JSON CDP script that accomplishes this task based on the original request and the clarification provided.
+
+{cdp_reference}"#,
+            agent_instructions = agent_instructions,
+            context = context,
+            user_request = user_request,
+            clarification_answers = clarification_answers,
+            cdp_reference = Self::cdp_commands_reference()
+        )
+    }
+
+    /// Build CDP generation prompt (second phase - after clarification or if ready)
     pub fn build_cdp_prompt(
         &self,
         user_request: &str,
@@ -44,52 +192,11 @@ USER REQUEST: {user_request}
 
 Generate a JSON CDP script that accomplishes this task.
 
-Use the CDP command reference below:
-
-AVAILABLE CDP COMMANDS:
-
-1. Page.navigate - Navigate to URL
-   {{"method": "Page.navigate", "params": {{"url": "https://example.com"}}}}
-
-2. Page.captureScreenshot - Take screenshot
-   {{"method": "Page.captureScreenshot", "params": {{"format": "png", "captureBeyondViewport": true}}, "save_as": "screenshot.png"}}
-
-3. Runtime.evaluate - Execute JavaScript
-   {{"method": "Runtime.evaluate", "params": {{"expression": "document.title", "returnByValue": true}}, "save_as": "result.json"}}
-
-4. Input.insertText - Type text
-   {{"method": "Input.insertText", "params": {{"text": "Hello World"}}}}
-
-5. Input.dispatchMouseEvent - Mouse actions
-   {{"method": "Input.dispatchMouseEvent", "params": {{"type": "mousePressed", "x": 100, "y": 200, "button": "left", "clickCount": 1}}}}
-
-6. Input.dispatchKeyEvent - Keyboard actions
-   {{"method": "Input.dispatchKeyEvent", "params": {{"type": "keyDown", "key": "Enter"}}}}
-
-OUTPUT FORMAT (JSON only, no markdown):
-
-{{
-  "name": "descriptive-name",
-  "description": "What this script does",
-  "cdp_commands": [
-    {{
-      "method": "Page.navigate",
-      "params": {{"url": "..."}},
-      "description": "Navigate to page"
-    }},
-    {{
-      "method": "Runtime.evaluate",
-      "params": {{"expression": "...", "returnByValue": true}},
-      "save_as": "optional-output.json",
-      "description": "Perform action"
-    }}
-  ]
-}}
-
-Generate the CDP script now. Output ONLY valid JSON."#,
+{cdp_reference}"#,
             agent_instructions = agent_instructions,
             context = context,
-            user_request = user_request
+            user_request = user_request,
+            cdp_reference = Self::cdp_commands_reference()
         )
     }
 

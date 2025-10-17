@@ -1,17 +1,22 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { setupEventListeners, cleanupEventListeners } from './lib/events';
-  import UrlInput from './components/UrlInput.svelte';
+  import ChatInterface from './components/ChatInterface.svelte';
   import DebugView from './components/DebugView.svelte';
   import DeveloperMode from './components/DeveloperMode.svelte';
   import UpdateModal from './components/UpdateModal.svelte';
 
-  let showDeveloperMode = false;
+  type ViewType = 'chat' | 'debug' | 'developer';
+  let currentView: ViewType = 'chat';
   let updateModalRef: UpdateModal;
+  let menuOpen = false;
 
   onMount(async () => {
     // Setup event listeners for debug events
     await setupEventListeners();
+
+    // Position window (right 1/3 of screen)
+    await positionWindow();
   });
 
   onDestroy(() => {
@@ -19,48 +24,191 @@
     cleanupEventListeners();
   });
 
-  function toggleDeveloperMode() {
-    showDeveloperMode = !showDeveloperMode;
+  async function positionWindow() {
+    try {
+      const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+      const { currentMonitor } = await import('@tauri-apps/api/window');
+      const { LogicalSize, LogicalPosition } = await import('@tauri-apps/api/dpi');
+
+      // Wait a bit for window to be ready
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      const appWindow = getCurrentWebviewWindow();
+      const monitor = await currentMonitor();
+      if (!monitor) {
+        console.warn('Could not get current monitor');
+        return;
+      }
+
+      // Get monitor position and size
+      const monitorX = monitor.position.x;
+      const monitorY = monitor.position.y;
+      const screenWidth = monitor.size.width;
+      const screenHeight = monitor.size.height;
+
+      console.log(`Monitor: ${screenWidth}x${screenHeight} at (${monitorX}, ${monitorY})`);
+
+      // App window: right 1/4 of screen, full vertical height
+      // Use minimum of 400px to ensure it's usable on smaller screens
+      const appWidth = Math.max(400, Math.floor(screenWidth / 4));
+
+      // Calculate position relative to monitor position
+      const appX = monitorX + screenWidth - appWidth;
+      const appY = monitorY;
+
+      console.log(`Positioning window: ${appWidth}x${screenHeight} at (${appX}, ${appY})`);
+
+      // Set size first, then position
+      await appWindow.setSize(new LogicalSize(appWidth, screenHeight));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await appWindow.setPosition(new LogicalPosition(appX, appY));
+
+      console.log('Window positioned successfully');
+    } catch (error) {
+      console.error('Failed to position window:', error);
+    }
   }
 
   function handleCheckForUpdates() {
     if (updateModalRef) {
       updateModalRef.checkNow();
     }
+    menuOpen = false;
+  }
+
+  function toggleMenu() {
+    menuOpen = !menuOpen;
+  }
+
+  function handleViewChange(view: ViewType) {
+    currentView = view;
+    menuOpen = false;
+  }
+
+  // Close menu when clicking outside
+  function handleClickOutside(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (menuOpen && !target.closest('.menu-container')) {
+      menuOpen = false;
+    }
   }
 </script>
 
+<svelte:window on:click={handleClickOutside} />
+
 <div class="app-container">
-  <header>
-    <div class="header-content">
-      <div class="title-section">
-        <h1>🤖 Robert</h1>
-        <p>Browser Automation for Everyone</p>
-      </div>
-      <div class="header-buttons">
-        <button class="update-btn" on:click={handleCheckForUpdates} title="Check for updates">
-          🔄
+  <div class="menu-container">
+    <button class="cog-button" on:click={toggleMenu} title="Menu">
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M10 6C8.9 6 8 6.9 8 8C8 9.1 8.9 10 10 10C11.1 10 12 9.1 12 8C12 6.9 11.1 6 10 6ZM10 2C8.9 2 8 2.9 8 4C8 5.1 8.9 6 10 6C11.1 6 12 5.1 12 4C12 2.9 11.1 2 10 2ZM10 10C8.9 10 8 10.9 8 12C8 13.1 8.9 14 10 14C11.1 14 12 13.1 12 12C12 10.9 11.1 10 10 10Z"
+          fill="currentColor"
+        />
+      </svg>
+    </button>
+
+    {#if menuOpen}
+      <div class="dropdown-menu">
+        <div class="menu-header">
+          <span class="menu-title">Robert</span>
+        </div>
+        <button
+          class="menu-item"
+          class:active={currentView === 'chat'}
+          on:click={() => handleViewChange('chat')}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M14 2H2C1.45 2 1 2.45 1 3V11C1 11.55 1.45 12 2 12H4V15L8 12H14C14.55 12 15 11.55 15 11V3C15 2.45 14.55 2 14 2Z"
+              stroke="currentColor"
+              stroke-width="1.5"
+              fill="none"
+            />
+          </svg>
+          <span>Chat</span>
         </button>
-        <button class="dev-mode-toggle" on:click={toggleDeveloperMode}>
-          {showDeveloperMode ? '✖' : '🛠️'} Developer Mode
+        <button
+          class="menu-item"
+          class:active={currentView === 'debug'}
+          on:click={() => handleViewChange('debug')}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M3 2H13V14H3V2Z" stroke="currentColor" stroke-width="1.5" fill="none" />
+            <line x1="5" y1="5" x2="11" y2="5" stroke="currentColor" stroke-width="1.5" />
+            <line x1="5" y1="8" x2="11" y2="8" stroke="currentColor" stroke-width="1.5" />
+            <line x1="5" y1="11" x2="9" y2="11" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+          <span>Debug Log</span>
+        </button>
+        <button
+          class="menu-item"
+          class:active={currentView === 'developer'}
+          on:click={() => handleViewChange('developer')}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M5 4L2 8L5 12M11 4L14 8L11 12M9 2L7 14"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span>Developer</span>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" on:click={handleCheckForUpdates}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C9.5 2 10.84 2.58 11.84 3.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path d="M11 2V4H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <span>Check for Updates</span>
         </button>
       </div>
-    </div>
-  </header>
+    {/if}
+  </div>
 
   <main>
-    {#if showDeveloperMode}
-      <div class="developer-section">
-        <DeveloperMode />
-      </div>
-    {:else}
-      <div class="url-section">
-        <UrlInput />
-      </div>
-
-      <div class="debug-section">
-        <DebugView />
-      </div>
+    {#if currentView === 'chat'}
+      <ChatInterface />
+    {:else if currentView === 'debug'}
+      <DebugView />
+    {:else if currentView === 'developer'}
+      <DeveloperMode />
     {/if}
   </main>
 
@@ -75,6 +223,7 @@
     font-family:
       -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: #ffffff;
+    overflow: hidden;
   }
 
   .app-container {
@@ -82,102 +231,130 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
   }
 
-  header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  .menu-container {
+    position: absolute;
+    top: 1.875rem;
+    right: 1.5rem;
+    z-index: 1000;
   }
 
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .title-section {
-    flex: 1;
-  }
-
-  header h1 {
-    margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-  }
-
-  header p {
-    margin: 0.25rem 0 0 0;
-    font-size: 0.9rem;
-    opacity: 0.9;
-  }
-
-  .header-buttons {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  .update-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+  .cog-button {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #4b5563;
     padding: 0.5rem;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 1.25rem;
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
-  .update-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+  .cog-button:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
   }
 
-  .dev-mode-toggle {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
+  .cog-button:active {
+    background: #f3f4f6;
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow:
+      0 10px 25px rgba(0, 0, 0, 0.1),
+      0 4px 10px rgba(0, 0, 0, 0.05);
+    min-width: 220px;
+    overflow: hidden;
+    animation: slideDown 0.15s ease;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .menu-header {
+    padding: 0.875rem 1rem;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .menu-title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #111827;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 0.25rem 0;
+  }
+
+  .menu-item {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    background: white;
+    border: none;
+    color: #374151;
+    font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.2s;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-align: left;
   }
 
-  .dev-mode-toggle:hover {
-    background: rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.5);
+  .menu-item svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+
+  .menu-item:hover {
+    background: #f3f4f6;
+    color: #111827;
+  }
+
+  .menu-item:hover svg {
+    opacity: 1;
+  }
+
+  .menu-item.active {
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+
+  .menu-item.active svg {
+    opacity: 1;
   }
 
   main {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .url-section {
-    flex-shrink: 0;
-  }
-
-  .debug-section {
-    flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
-
-  .developer-section {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: #f5f5f5;
   }
 </style>
