@@ -56,10 +56,7 @@ async fn test_capture_basic_step_frame() -> anyhow::Result<()> {
     let options = CaptureOptions {
         screenshot_dir: screenshot_dir.clone(),
         dom_dir: Some(dom_dir.clone()),
-        screenshot_format: ScreenshotFormat::Png,
-        save_html: true,
-        compute_hashes: true,
-        extract_interactive_elements: false,
+        ..Default::default()
     };
 
     let action = Some(ActionInfo {

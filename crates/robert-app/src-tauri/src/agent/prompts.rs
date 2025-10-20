@@ -32,6 +32,16 @@ IMPORTANT INSTRUCTIONS:
 - DO NOT request additional information
 - Your response will be executed automatically without human review
 
+VISUALDOM FORMAT:
+When step frames are captured during automation, they include a VisualDom format we created.
+VisualDom combines CDP DOMSnapshot with base64-encoded images to give you precise understanding
+of page structure without OCR. It includes:
+- Complete DOM tree with bounding boxes for every element
+- All visible text content (no OCR needed)
+- Computed CSS styles (position, size, visibility, colors, fonts)
+- Embedded images as base64 data URIs
+- Paint order and visual stacking hierarchy
+
 Use the CDP command reference below:
 
 AVAILABLE CDP COMMANDS:
