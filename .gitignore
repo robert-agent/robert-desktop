@@ -17,8 +17,7 @@
 
 # Rust
 target/
-# Cargo.lock is committed for binary crates (applications)
-# Only library crates should ignore Cargo.lock
+**/Cargo.lock
 **/*.rs.bk
 *.pdb
 
