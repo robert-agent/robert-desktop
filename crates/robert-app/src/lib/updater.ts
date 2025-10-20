@@ -28,9 +28,10 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
     const update = await check();
 
     if (!update) {
-      const errorMsg = '[Updater] Failed to check for updates - update service returned null';
-      console.error(errorMsg);
-      throw new Error(errorMsg);
+      // Just log to console, don't show error to user
+      console.warn('[Updater] Failed to check for updates - update service returned null');
+      console.warn('[Updater] This may be due to network issues or missing endpoint');
+      return null;
     }
 
     if (!update.available) {
@@ -55,9 +56,11 @@ export async function checkForUpdates(): Promise<UpdateCheckResult | null> {
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error('[Updater] Error checking for updates:', errorMsg);
-    console.error('[Updater] Full error:', error);
-    throw new Error(`Failed to check for updates: ${errorMsg}`);
+    // Just log to console, don't show error to user
+    console.warn('[Updater] Error checking for updates:', errorMsg);
+    console.warn('[Updater] Full error:', error);
+    console.warn('[Updater] This may be due to network issues or missing endpoint');
+    return null;
   }
 }
 
