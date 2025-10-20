@@ -122,6 +122,26 @@ Examples:
     ]
   },
 
+  // VisualDom State (Optional - Structured DOM with Layout and Images)
+  // VisualDom is a custom format we created that combines CDP DOMSnapshot
+  // with base64-encoded images to give AI agents a precise understanding
+  // of page structure without expensive OCR
+  "visual_dom": {
+    "path": "string (relative path to VisualDom JSON file, e.g., frame_0000.visualdom.json)",
+    "size_bytes": number,
+    "node_count": number,
+    "hash": "string (SHA-256)",
+
+    // Note: The VisualDom file contains:
+    // - Complete DOM tree with computed styles
+    // - Layout information (bounding boxes, positions)
+    // - All visible text content (no OCR needed)
+    // - Embedded images as base64 data URIs
+    // - Paint order and stacking contexts
+    // This format allows AI agents to understand page structure, design,
+    // and content without expensive OCR on screenshots
+  },
+
   // User/Agent Action
   "action": {
     "type": "navigate | click | type | select | hover | scroll | wait | keystroke",
