@@ -1,11 +1,16 @@
 <script lang="ts">
   import { debugLogs, clearDebugLogs } from '$lib/stores';
-  import { afterUpdate } from 'svelte';
+  import { getLogs, clearLogs, getLogSize, type LogEntry } from '$lib/logger';
+  import { afterUpdate, onMount } from 'svelte';
   import type { DebugLogEntry } from '$lib/types';
   import SystemStatus from './SystemStatus.svelte';
 
   let logContainer: HTMLDivElement;
   let autoScroll = true;
+  let persistedLogs: LogEntry[] = [];
+  let showPersisted = true;
+  let logSize = 0;
+  let loading = false;
 
   afterUpdate(() => {
     if (autoScroll && logContainer) {
@@ -90,13 +95,64 @@
     }
   }
 
-  function handleClear() {
+  async function loadPersistedLogs() {
+    try {
+      loading = true;
+      persistedLogs = await getLogs();
+      logSize = await getLogSize();
+    } catch (error) {
+      console.error('[DebugView] Failed to load persisted logs:', error);
+      persistedLogs = [];
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function handleClear() {
     clearDebugLogs();
+
+    if (showPersisted) {
+      try {
+        await clearLogs();
+        await loadPersistedLogs();
+      } catch (error) {
+        console.error('[DebugView] Failed to clear persisted logs:', error);
+      }
+    }
   }
 
   function toggleAutoScroll() {
     autoScroll = !autoScroll;
   }
+
+  function togglePersisted() {
+    showPersisted = !showPersisted;
+    if (showPersisted) {
+      loadPersistedLogs();
+    }
+  }
+
+  function formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+  }
+
+  onMount(() => {
+    // Load persisted logs on mount
+    loadPersistedLogs();
+
+    // Refresh logs every 5 seconds
+    const interval = setInterval(() => {
+      if (showPersisted) {
+        loadPersistedLogs();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  });
 </script>
 
 <div class="debug-view">
@@ -109,6 +165,10 @@
     <h3>Debug Log</h3>
     <div class="controls">
       <label>
+        <input type="checkbox" bind:checked={showPersisted} on:change={togglePersisted} />
+        Persisted ({formatBytes(logSize)})
+      </label>
+      <label>
         <input type="checkbox" bind:checked={autoScroll} on:change={toggleAutoScroll} />
         Auto-scroll
       </label>
@@ -117,7 +177,30 @@
   </div>
 
   <div class="log-container" bind:this={logContainer}>
-    {#if $debugLogs.length === 0}
+    {#if loading}
+      <div class="empty-state">Loading logs...</div>
+    {:else if showPersisted}
+      {#if persistedLogs.length === 0}
+        <div class="empty-state">No persisted logs yet. Logs will appear after login.</div>
+      {:else}
+        {#each persistedLogs as log}
+          <div class="log-entry {log.level.toLowerCase()}">
+            <span class="timestamp"
+              >{new Date(log.timestamp).toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                fractionalSecondDigits: 3,
+              })}</span
+            >
+            <span class="source-badge">{log.source}</span>
+            <span class="icon">{getIcon(log.level.toLowerCase())}</span>
+            <span class="message">{log.message}</span>
+          </div>
+        {/each}
+      {/if}
+    {:else if $debugLogs.length === 0}
       <div class="empty-state">
         No debug events yet. Launch browser and navigate to see activity.
       </div>
@@ -274,5 +357,20 @@
 
   .log-entry.error .message {
     color: #ff8080;
+  }
+
+  .source-badge {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 3px;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+
+  .source-badge {
+    background: #3a3a3a;
+    color: #a0a0a0;
   }
 </style>
