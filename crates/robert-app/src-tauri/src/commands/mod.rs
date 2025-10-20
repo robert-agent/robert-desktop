@@ -1,9 +1,11 @@
 mod agent;
 mod developer_mode;
+mod logging;
 mod profiles;
 
 pub use agent::*;
 pub use developer_mode::*;
+pub use logging::*;
 pub use profiles::*;
 
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};

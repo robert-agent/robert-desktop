@@ -4714,6 +4714,7 @@ dependencies = [
  "dirs 5.0.1",
  "env_logger",
  "log",
+ "once_cell",
  "rand 0.8.5",
  "reqwest 0.12.4",
  "robert-webdriver",
