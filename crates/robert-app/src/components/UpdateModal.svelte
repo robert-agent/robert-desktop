@@ -23,20 +23,36 @@
 
     try {
       updateInfo = await checkForUpdates();
+
+      // If no update info (endpoint error or network issue), silently fail
+      if (!updateInfo) {
+        console.log('[UpdateModal] No update info available, silently continuing');
+        checking = false;
+
+        // Close modal if auto-check failed
+        if (autoCheck && visible) {
+          visible = false;
+        }
+        return;
+      }
+
       if (updateInfo && !updateInfo.available) {
-        // No update available - show message briefly if manual check
+        // No update available - only show message if manual check
         if (!autoCheck) {
-          error = null; // Clear any errors
+          // For manual checks, show the "up to date" message
+          error = null;
+        } else {
+          // For auto-checks, don't show anything
+          visible = false;
         }
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      error = errorMessage;
-      console.error('[UpdateModal] Error checking for updates:', err);
+      // Silently log errors, don't show to user
+      console.warn('[UpdateModal] Error checking for updates:', err);
 
-      // For auto-check, show the modal with error so user is aware
-      if (autoCheck && !visible) {
-        visible = true;
+      // Close modal on error
+      if (visible) {
+        visible = false;
       }
     } finally {
       checking = false;
@@ -82,9 +98,12 @@
       await new Promise((resolve) => setTimeout(resolve, 3000));
       await handleCheckForUpdates();
 
-      // Show modal if update is available
+      // Automatically download and install if update is available
       if (updateInfo?.available) {
-        visible = true;
+        console.log('[UpdateModal] Update available, automatically downloading and installing...');
+        visible = true; // Show modal to display download progress
+        await handleDownloadAndInstall();
+        // App will relaunch after successful update
       }
     }
   });
@@ -174,12 +193,14 @@
 
       <div class="modal-footer">
         {#if !checking && !downloading}
-          {#if updateInfo?.available}
+          {#if updateInfo?.available && !autoCheck}
+            <!-- For manual checks, give user the option to update or postpone -->
             <button class="btn btn-secondary" on:click={handleLater}>Later</button>
             <button class="btn btn-primary" on:click={handleDownloadAndInstall}>
               Update Now
             </button>
-          {:else}
+          {:else if !updateInfo?.available}
+            <!-- Only show close button when no update is available -->
             <button class="btn btn-primary" on:click={handleClose}>Close</button>
           {/if}
         {/if}
