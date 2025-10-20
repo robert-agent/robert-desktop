@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { setupEventListeners, cleanupEventListeners } from './lib/events';
+  import { initializeConsoleLogger } from './lib/logger';
   import ChatInterface from './components/ChatInterface.svelte';
   import DebugView from './components/DebugView.svelte';
   import DeveloperMode from './components/DeveloperMode.svelte';
@@ -32,6 +33,9 @@
   });
 
   onMount(async () => {
+    // Initialize console logger (intercepts console.log, etc.)
+    initializeConsoleLogger();
+
     // Initialize user store (check for users, restore session)
     await initializeUserStore();
 
