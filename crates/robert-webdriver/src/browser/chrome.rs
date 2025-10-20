@@ -455,6 +455,123 @@ impl ChromeDriver {
         Ok(())
     }
 
+    /// Capture a VisualDom snapshot with layout, style, and image information
+    ///
+    /// VisualDom is a custom format we created that combines Chrome DevTools Protocol's
+    /// DOMSnapshot.captureSnapshot with embedded base64 images. This provides a structured
+    /// representation of the DOM including computed styles, layout bounds, text content,
+    /// and images that AI agents can analyze without expensive OCR.
+    ///
+    /// # Arguments
+    /// * `computed_styles` - Specific CSS properties to capture (empty = all styles)
+    /// * `include_dom_rects` - Whether to include offsetRects, scrollRects, clientRects
+    /// * `include_paint_order` - Whether to include paint order information
+    /// * `include_images` - Whether to include image data as base64
+    ///
+    /// # Returns
+    /// JSON response containing:
+    /// - documents: Array of document snapshots with DOM tree, layout, and text
+    /// - strings: String table (all strings indexed for efficiency)
+    /// - images: (if include_images=true) Array of {src, data, width, height} for all images
+    pub async fn capture_visual_dom(
+        &self,
+        computed_styles: &[String],
+        include_dom_rects: bool,
+        include_paint_order: bool,
+        include_images: bool,
+    ) -> Result<serde_json::Value> {
+        let page = self.get_active_page().await?;
+
+        // Execute CDP DOMSnapshot.captureSnapshot command
+        let result = page
+            .execute(chromiumoxide::cdp::browser_protocol::dom_snapshot::CaptureSnapshotParams {
+                computed_styles: computed_styles.to_vec(),
+                include_dom_rects: Some(include_dom_rects),
+                include_paint_order: Some(include_paint_order),
+                include_blended_background_colors: Some(false),
+                include_text_color_opacities: Some(false),
+            })
+            .await
+            .map_err(|e| BrowserError::Other(format!("Failed to capture DOM snapshot: {}", e)))?;
+
+        // Extract the inner result and serialize to JSON
+        let mut snapshot = serde_json::to_value(result.result)
+            .map_err(|e| BrowserError::Other(format!("Failed to serialize snapshot: {}", e)))?;
+
+        // If images requested, extract and embed them as base64
+        if include_images {
+            let images = self.extract_images_as_base64().await?;
+            if let Some(obj) = snapshot.as_object_mut() {
+                obj.insert("images".to_string(), images);
+            }
+        }
+
+        Ok(snapshot)
+    }
+
+    /// Extract all images from the page and convert to base64
+    ///
+    /// Returns an array of objects with {src, data, width, height, alt}
+    async fn extract_images_as_base64(&self) -> Result<serde_json::Value> {
+        let js_code = r#"
+            (async () => {
+                const images = Array.from(document.querySelectorAll('img'));
+                const results = [];
+
+                for (const img of images) {
+                    try {
+                        // Skip invisible images
+                        const rect = img.getBoundingClientRect();
+                        if (rect.width === 0 || rect.height === 0) continue;
+
+                        // Create a canvas to convert image to base64
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth || img.width;
+                        canvas.height = img.naturalHeight || img.height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        // Convert to base64 (will be data URI format)
+                        const dataUrl = canvas.toDataURL('image/png');
+
+                        results.push({
+                            src: img.src || img.currentSrc,
+                            data: dataUrl,
+                            width: canvas.width,
+                            height: canvas.height,
+                            alt: img.alt || '',
+                            x: rect.x,
+                            y: rect.y,
+                            displayWidth: rect.width,
+                            displayHeight: rect.height,
+                        });
+                    } catch (e) {
+                        // Skip images that can't be converted (CORS, etc.)
+                        // But still record their metadata
+                        const rect = img.getBoundingClientRect();
+                        results.push({
+                            src: img.src || img.currentSrc,
+                            data: null,
+                            width: img.naturalWidth || img.width,
+                            height: img.naturalHeight || img.height,
+                            alt: img.alt || '',
+                            x: rect.x,
+                            y: rect.y,
+                            displayWidth: rect.width,
+                            displayHeight: rect.height,
+                            error: 'CORS or load error',
+                        });
+                    }
+                }
+
+                return results;
+            })()
+        "#;
+
+        self.execute_script(js_code).await
+    }
+
     /// Execute arbitrary JavaScript in the page context
     pub async fn execute_script(&self, script: &str) -> Result<serde_json::Value> {
         let page = self.get_active_page().await?;
