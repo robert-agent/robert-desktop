@@ -98,7 +98,36 @@ jobs:
 
           MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
           MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
-          WINDOWS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | (contains("x64") and endswith(".msi")) or endswith("-setup.exe")) | .browser_download_url' | head -1)
+          WINDOWS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | (contains("x64") and endswith(".msi")) or endswith("-setup.exe")) | .browser_download_url')
+
+          # Validate that each platform has at most one URL
+          validate_single_url() {
+            local url_var="$1"
+            local platform_name="$2"
+            local line_count=$(echo "$url_var" | grep -c '^' || echo 0)
+
+            if [ "$line_count" -gt 1 ]; then
+              echo "❌ ERROR: Multiple URLs found for $platform_name:"
+              echo "$url_var" | sed 's/^/  - /'
+              echo ""
+              echo "This usually happens when multiple releases have similar asset names."
+              echo "Please ensure only one matching asset exists in the release."
+              return 1
+            fi
+            return 0
+          }
+
+          if [ -n "$MACOS_AARCH64_URL" ]; then
+            validate_single_url "$MACOS_AARCH64_URL" "macOS aarch64" || exit 1
+          fi
+
+          if [ -n "$MACOS_X64_URL" ]; then
+            validate_single_url "$MACOS_X64_URL" "macOS x64" || exit 1
+          fi
+
+          if [ -n "$WINDOWS_X64_URL" ]; then
+            validate_single_url "$WINDOWS_X64_URL" "Windows x64" || exit 1
+          fi
 
           # Read signatures
           MACOS_AARCH64_SIG=$(cat /tmp/signatures/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")
@@ -147,7 +176,8 @@ jobs:
         run: |
           REPO="${{ steps.set_repo.outputs.full_repo }}"
           TAG_NAME="${{ steps.update_manifest.outputs.tag_name }}"
-          BRANCH_NAME="update-manifest-$TAG_NAME"
+          COMMIT_HASH=$(git rev-parse --short=4 HEAD)
+          BRANCH_NAME="update-manifest-$TAG_NAME-$COMMIT_HASH"
 
           # Configure git
           git config user.name "github-actions[bot]"
