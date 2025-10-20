@@ -19,7 +19,7 @@
 /// ✗ Does NOT protect against malware with root access
 use aes_gcm::{
     aead::{Aead, KeyInit},
-    Aes256Gcm, Nonce,
+    Aes256Gcm,
 };
 use argon2::{
     password_hash::{PasswordHasher, SaltString},
@@ -316,11 +316,10 @@ pub fn encrypt_file(plaintext: &[u8], key: &EncryptionKey) -> Result<Vec<u8>> {
     // Generate random nonce (must be unique for each encryption)
     let mut nonce_bytes = [0u8; NONCE_LENGTH];
     OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
 
     // Encrypt plaintext (includes auth tag in output)
     let ciphertext = cipher
-        .encrypt(nonce, plaintext)
+        .encrypt(&nonce_bytes.into(), plaintext)
         .map_err(|e| CryptoError::EncryptionFailed(format!("Encryption failed: {}", e)))?;
 
     // Construct output: nonce || ciphertext || tag
@@ -374,16 +373,20 @@ pub fn decrypt_file(encrypted: &[u8], key: &EncryptionKey) -> Result<Vec<u8>> {
         .map_err(|e| CryptoError::DecryptionFailed(format!("Invalid key: {}", e)))?;
 
     // Extract nonce and ciphertext
-    let nonce = Nonce::from_slice(&encrypted[..NONCE_LENGTH]);
+    let nonce_bytes: [u8; NONCE_LENGTH] = encrypted[..NONCE_LENGTH]
+        .try_into()
+        .map_err(|_| CryptoError::InvalidCiphertext("Invalid nonce length".to_string()))?;
     let ciphertext = &encrypted[NONCE_LENGTH..];
 
     // Decrypt and verify auth tag
-    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| {
-        CryptoError::DecryptionFailed(format!(
-            "Decryption failed (wrong password or corrupted data): {}",
-            e
-        ))
-    })?;
+    let plaintext = cipher
+        .decrypt(&nonce_bytes.into(), ciphertext)
+        .map_err(|e| {
+            CryptoError::DecryptionFailed(format!(
+                "Decryption failed (wrong password or corrupted data): {}",
+                e
+            ))
+        })?;
 
     Ok(plaintext)
 }
