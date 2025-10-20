@@ -316,7 +316,7 @@ pub fn encrypt_file(plaintext: &[u8], key: &EncryptionKey) -> Result<Vec<u8>> {
     // Generate random nonce (must be unique for each encryption)
     let mut nonce_bytes = [0u8; NONCE_LENGTH];
     OsRng.fill_bytes(&mut nonce_bytes);
-    let nonce = Nonce::from_slice(&nonce_bytes);
+    let nonce = &nonce_bytes.into();
 
     // Encrypt plaintext (includes auth tag in output)
     let ciphertext = cipher
@@ -374,7 +374,7 @@ pub fn decrypt_file(encrypted: &[u8], key: &EncryptionKey) -> Result<Vec<u8>> {
         .map_err(|e| CryptoError::DecryptionFailed(format!("Invalid key: {}", e)))?;
 
     // Extract nonce and ciphertext
-    let nonce = Nonce::from_slice(&encrypted[..NONCE_LENGTH]);
+    let nonce = &encrypted[..NONCE_LENGTH].into();
     let ciphertext = &encrypted[NONCE_LENGTH..];
 
     // Decrypt and verify auth tag
