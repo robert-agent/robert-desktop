@@ -185,33 +185,33 @@
       {:else}
         {#each persistedLogs as log}
           <div class="log-entry {log.level.toLowerCase()}">
-            <span class="timestamp">{new Date(log.timestamp).toLocaleTimeString('en-US', {
+            <span class="timestamp"
+              >{new Date(log.timestamp).toLocaleTimeString('en-US', {
                 hour12: false,
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
                 fractionalSecondDigits: 3,
-              })}</span>
+              })}</span
+            >
             <span class="source-badge">{log.source}</span>
             <span class="icon">{getIcon(log.level.toLowerCase())}</span>
             <span class="message">{log.message}</span>
           </div>
         {/each}
       {/if}
+    {:else if $debugLogs.length === 0}
+      <div class="empty-state">
+        No debug events yet. Launch browser and navigate to see activity.
+      </div>
     {:else}
-      {#if $debugLogs.length === 0}
-        <div class="empty-state">
-          No debug events yet. Launch browser and navigate to see activity.
+      {#each $debugLogs as log (log.id)}
+        <div class="log-entry {log.level}">
+          <span class="timestamp">{formatTime(log.timestamp)}</span>
+          <span class="icon">{getIcon(log.level)}</span>
+          <span class="message">{getEventMessage(log)}</span>
         </div>
-      {:else}
-        {#each $debugLogs as log (log.id)}
-          <div class="log-entry {log.level}">
-            <span class="timestamp">{formatTime(log.timestamp)}</span>
-            <span class="icon">{getIcon(log.level)}</span>
-            <span class="message">{getEventMessage(log)}</span>
-          </div>
-        {/each}
-      {/if}
+      {/each}
     {/if}
   </div>
 </div>
