@@ -1,0 +1,266 @@
+name: Nightly Canary Release
+
+on:
+  schedule:
+    # Run every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+permissions:
+  contents: write
+
+jobs:
+  check-for-changes:
+    name: Check for changes since last canary
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.check.outputs.has_changes }}
+      last_canary_tag: ${{ steps.check.outputs.last_canary_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes
+        id: check
+        run: |
+          # Get the latest canary tag
+          LAST_CANARY_TAG=$(git tag -l "*-canary.*" --sort=-version:refname | head -1)
+          
+          if [ -z "$LAST_CANARY_TAG" ]; then
+            echo "No previous canary tag found, will create release"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "last_canary_tag=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "last_canary_tag=$LAST_CANARY_TAG" >> $GITHUB_OUTPUT
+          
+          # Check if there are commits since the last canary tag
+          COMMITS_SINCE=$(git rev-list ${LAST_CANARY_TAG}..HEAD --count)
+          
+          if [ "$COMMITS_SINCE" -gt 0 ]; then
+            echo "Found $COMMITS_SINCE commits since $LAST_CANARY_TAG"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "No changes since $LAST_CANARY_TAG"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  trigger-canary-release:
+    name: Trigger canary release
+    needs: check-for-changes
+    if: needs.check-for-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger release workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('Triggering canary release workflow...');
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: 'main',
+              inputs: {
+                release_type: 'canary'
+              }
+            });
+            console.log('✅ Release workflow triggered');
+
+  wait-for-release:
+    name: Wait for release to complete
+    needs: trigger-canary-release
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.wait.outputs.release_tag }}
+    steps:
+      - name: Wait for release workflow
+        id: wait
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const maxWaitTime = 30 * 60 * 1000; // 30 minutes
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+
+            console.log('Waiting for release workflow to complete...');
+
+            while (Date.now() - startTime < maxWaitTime) {
+              // Get recent workflow runs
+              const { data: runs } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release.yml',
+                per_page: 5
+              });
+
+              // Find the most recent canary release run
+              const canaryRun = runs.workflow_runs.find(run => 
+                run.event === 'workflow_dispatch' &&
+                run.created_at > new Date(startTime).toISOString()
+              );
+
+              if (canaryRun) {
+                console.log(`Found workflow run: ${canaryRun.id}, status: ${canaryRun.status}, conclusion: ${canaryRun.conclusion}`);
+                
+                if (canaryRun.status === 'completed') {
+                  if (canaryRun.conclusion === 'success') {
+                    console.log('✅ Release workflow completed successfully');
+                    
+                    // Get the latest canary tag
+                    const { data: tags } = await github.rest.repos.listTags({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      per_page: 10
+                    });
+                    
+                    const canaryTag = tags.find(tag => tag.name.includes('-canary.'));
+                    if (canaryTag) {
+                      core.setOutput('release_tag', canaryTag.name);
+                      console.log(`Release tag: ${canaryTag.name}`);
+                    }
+                    return;
+                  } else {
+                    throw new Error(`Release workflow failed with conclusion: ${canaryRun.conclusion}`);
+                  }
+                }
+              }
+
+              // Wait before checking again
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+
+            throw new Error('Timeout waiting for release workflow to complete');
+
+  trigger-update-manifest:
+    name: Trigger update manifest
+    needs: wait-for-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger update-manifest workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('Triggering update-manifest workflow...');
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'update-manifest.yml',
+              ref: 'main',
+              inputs: {
+                release_type: 'canary'
+              }
+            });
+            console.log('✅ Update-manifest workflow triggered');
+
+  wait-and-merge-pr:
+    name: Wait for manifest PR and auto-merge
+    needs: trigger-update-manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for PR and merge
+        uses: actions/github-script@v7
+        env:
+          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        with:
+          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          script: |
+            const maxWaitTime = 15 * 60 * 1000; // 15 minutes
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+
+            console.log('Waiting for manifest PR to be created...');
+
+            while (Date.now() - startTime < maxWaitTime) {
+              // List PRs in the canary releases repo
+              const { data: prs } = await github.rest.pulls.list({
+                owner: 'robert-agent',
+                repo: 'robert-releases-canary',
+                state: 'open',
+                sort: 'created',
+                direction: 'desc',
+                per_page: 5
+              });
+
+              // Find PR created by github-actions bot with "Update latest.json" in title
+              const manifestPr = prs.find(pr => 
+                pr.user.login === 'github-actions[bot]' &&
+                pr.title.includes('Update latest.json') &&
+                new Date(pr.created_at) > new Date(startTime)
+              );
+
+              if (manifestPr) {
+                console.log(`Found manifest PR #${manifestPr.number}: ${manifestPr.title}`);
+                
+                // Wait a bit for checks to start
+                await new Promise(resolve => setTimeout(resolve, 10000));
+                
+                // Check if PR has any required checks
+                const { data: checks } = await github.rest.checks.listForRef({
+                  owner: 'robert-agent',
+                  repo: 'robert-releases-canary',
+                  ref: manifestPr.head.sha
+                });
+
+                if (checks.total_count > 0) {
+                  // Wait for checks to complete
+                  console.log('Waiting for PR checks to complete...');
+                  let checksComplete = false;
+                  const checkStartTime = Date.now();
+                  
+                  while (!checksComplete && Date.now() - checkStartTime < 10 * 60 * 1000) {
+                    const { data: updatedChecks } = await github.rest.checks.listForRef({
+                      owner: 'robert-agent',
+                      repo: 'robert-releases-canary',
+                      ref: manifestPr.head.sha
+                    });
+                    
+                    const allComplete = updatedChecks.check_runs.every(
+                      check => check.status === 'completed'
+                    );
+                    const allSuccess = updatedChecks.check_runs.every(
+                      check => check.conclusion === 'success' || check.conclusion === 'neutral'
+                    );
+                    
+                    if (allComplete && allSuccess) {
+                      checksComplete = true;
+                      break;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                  }
+                }
+                
+                // Merge the PR
+                try {
+                  await github.rest.pulls.merge({
+                    owner: 'robert-agent',
+                    repo: 'robert-releases-canary',
+                    pull_number: manifestPr.number,
+                    merge_method: 'squash',
+                    commit_title: `${manifestPr.title}`,
+                    commit_message: 'Automatically merged by nightly workflow'
+                  });
+                  console.log(`✅ Merged PR #${manifestPr.number}`);
+                  return;
+                } catch (error) {
+                  console.error(`Failed to merge PR: ${error.message}`);
+                  throw error;
+                }
+              }
+
+              // Wait before checking again
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+
+            throw new Error('Timeout waiting for manifest PR to be created');
