@@ -4,6 +4,7 @@ mod claude;
 mod commands;
 pub mod developer_mode;
 mod events;
+mod logging;
 mod profiles;
 mod state;
 
@@ -11,10 +12,8 @@ use state::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize logger with debug level for robert crates
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-        .format_timestamp_millis()
-        .init();
+    // Initialize custom logger that writes to both console and encrypted log file
+    logging::logger::init_logger();
 
     log::info!("🚀 Robert App starting...");
 
@@ -66,6 +65,11 @@ pub fn run() {
             commands::get_user_profile,
             commands::update_user_profile,
             commands::has_users,
+            // Logging commands
+            commands::log_frontend_message,
+            commands::get_logs,
+            commands::clear_logs,
+            commands::get_log_size,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

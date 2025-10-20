@@ -67,6 +67,11 @@ pub async fn create_user(
 
     match AuthService::create_and_login(&username, &password, None) {
         Ok(session) => {
+            // Initialize encrypted logging for this user
+            if let Err(e) = crate::logging::init_for_user(&username, &password) {
+                log::warn!("⚠️  Failed to initialize logging: {}", e);
+            }
+
             // Store session in app state
             let mut user_session = state.user_session.lock().await;
             *user_session = Some(session.clone());
@@ -99,6 +104,11 @@ pub async fn login_user(
 
     match AuthService::login(&username, &password, None) {
         Ok(session) => {
+            // Initialize encrypted logging for this user
+            if let Err(e) = crate::logging::init_for_user(&username, &password) {
+                log::warn!("⚠️  Failed to initialize logging: {}", e);
+            }
+
             // Store session in app state
             let mut user_session = state.user_session.lock().await;
             *user_session = Some(session.clone());
@@ -130,6 +140,10 @@ pub async fn logout_user(state: State<'_, AppState>) -> Result<ProfileResult<()>
 
     if let Some(session) = user_session.take() {
         log::info!("🔓 User '{}' logged out", session.username);
+
+        // Cleanup logging
+        crate::logging::cleanup();
+
         Ok(ProfileResult::success(()))
     } else {
         log::warn!("⚠️  No active session to logout");
