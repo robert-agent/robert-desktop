@@ -1,8 +1,8 @@
-use crate::profiles::crypto::{decrypt_file, encrypt_file, derive_key};
-use crate::profiles::storage::{get_robert_dir, get_user_dir};
+use crate::profiles::crypto::{decrypt_file, derive_key, encrypt_file};
+use crate::profiles::storage::get_user_dir;
 use serde::{Deserialize, Serialize};
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
+use std::fs;
+use std::io;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -18,19 +18,16 @@ const LOG_FILE_NAME: &str = "debug.log";
 #[derive(Error, Debug)]
 pub enum LogError {
     #[error("I/O error: {0}")]
-    IoError(#[from] io::Error),
+    Io(#[from] io::Error),
 
     #[error("Crypto error: {0}")]
-    CryptoError(#[from] crate::profiles::crypto::CryptoError),
+    Crypto(#[from] crate::profiles::crypto::CryptoError),
 
     #[error("Storage error: {0}")]
-    StorageError(#[from] crate::profiles::storage::StorageError),
+    Storage(#[from] crate::profiles::storage::StorageError),
 
     #[error("JSON error: {0}")]
-    JsonError(#[from] serde_json::Error),
-
-    #[error("Not initialized")]
-    NotInitialized,
+    Json(#[from] serde_json::Error),
 }
 
 pub type Result<T> = std::result::Result<T, LogError>;
@@ -98,7 +95,7 @@ impl LogStorage {
         let salt = crate::profiles::storage::load_salt(username, None)?;
 
         // Derive encryption key from password
-        let encryption_key = derive_key(password, &salt)?;
+        let (encryption_key, _) = derive_key(password, Some(&salt))?;
 
         // Get log file path
         let user_dir = get_user_dir(username, None)?;

@@ -1,6 +1,5 @@
 use super::{get_storage, LogEntry, LogLevel};
-use log::{Level, Metadata, Record};
-use std::sync::Mutex;
+use log::{Metadata, Record};
 
 /// Custom logger that writes to both console and encrypted log file
 pub struct RobertLogger {
@@ -9,11 +8,10 @@ pub struct RobertLogger {
 
 impl RobertLogger {
     pub fn new() -> Self {
-        let console_logger = env_logger::Builder::from_env(
-            env_logger::Env::default().default_filter_or("debug"),
-        )
-        .format_timestamp_millis()
-        .build();
+        let console_logger =
+            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+                .format_timestamp_millis()
+                .build();
 
         Self { console_logger }
     }

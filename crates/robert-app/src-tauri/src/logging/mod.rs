@@ -1,3 +1,4 @@
+pub mod logger;
 /// Encrypted logging system for Robert
 ///
 /// This module provides encrypted log file storage that integrates with the user profile system.
@@ -8,12 +9,10 @@
 /// - Log rotation (max 10MB per file, keeps last 3 files)
 /// - Captures both Rust and frontend logs
 /// - Thread-safe logging
-
 mod storage;
-mod logger;
 
-pub use storage::{LogStorage, LogEntry, LogLevel};
-pub use logger::{init_logger, log_frontend_message};
+pub use logger::log_frontend_message;
+pub use storage::{LogEntry, LogLevel, LogStorage};
 
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
