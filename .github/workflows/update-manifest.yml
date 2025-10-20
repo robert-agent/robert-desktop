@@ -93,41 +93,31 @@ jobs:
           mkdir -p /tmp/signatures
           gh release download "$TAG_NAME" --repo "$REPO" --pattern "*.sig" --dir /tmp/signatures 2>/dev/null || true
 
-          # Get asset URLs
-          ASSETS_JSON=$(echo "$RELEASE_JSON" | jq '.assets')
+          # Get asset URLs - sort by created_at descending to get most recent first
+          ASSETS_JSON=$(echo "$RELEASE_JSON" | jq '.assets | sort_by(.created_at) | reverse')
 
-          MACOS_AARCH64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("aarch64") and endswith(".app.tar.gz")) | .browser_download_url')
-          MACOS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | contains("x64") and endswith(".app.tar.gz")) | .browser_download_url')
-          WINDOWS_X64_URL=$(echo "$ASSETS_JSON" | jq -r '.[] | select(.name | (contains("x64") and endswith(".msi")) or endswith("-setup.exe")) | .browser_download_url')
-
-          # Validate that each platform has at most one URL
-          validate_single_url() {
-            local url_var="$1"
+          # Function to get the most recent asset URL for a platform
+          get_latest_asset_url() {
+            local filter="$1"
             local platform_name="$2"
-            local line_count=$(echo "$url_var" | grep -c '^' || echo 0)
 
-            if [ "$line_count" -gt 1 ]; then
-              echo "❌ ERROR: Multiple URLs found for $platform_name:"
-              echo "$url_var" | sed 's/^/  - /'
-              echo ""
-              echo "This usually happens when multiple releases have similar asset names."
-              echo "Please ensure only one matching asset exists in the release."
-              return 1
+            # Get all matching URLs with their created_at timestamps
+            local matches=$(echo "$ASSETS_JSON" | jq -r ".[] | select($filter) | .browser_download_url")
+            local match_count=$(echo "$matches" | grep -c '^' 2>/dev/null || echo 0)
+
+            if [ "$match_count" -gt 1 ]; then
+              echo "⚠️  Multiple assets found for $platform_name, selecting most recent:" >&2
+              echo "$matches" | sed 's/^/  - /' >&2
+              echo "  Selected: $(echo "$matches" | head -1)" >&2
             fi
-            return 0
+
+            # Return the first (most recent) match
+            echo "$matches" | head -1
           }
 
-          if [ -n "$MACOS_AARCH64_URL" ]; then
-            validate_single_url "$MACOS_AARCH64_URL" "macOS aarch64" || exit 1
-          fi
-
-          if [ -n "$MACOS_X64_URL" ]; then
-            validate_single_url "$MACOS_X64_URL" "macOS x64" || exit 1
-          fi
-
-          if [ -n "$WINDOWS_X64_URL" ]; then
-            validate_single_url "$WINDOWS_X64_URL" "Windows x64" || exit 1
-          fi
+          MACOS_AARCH64_URL=$(get_latest_asset_url '.name | contains("aarch64") and endswith(".app.tar.gz")' "macOS aarch64")
+          MACOS_X64_URL=$(get_latest_asset_url '.name | contains("x64") and endswith(".app.tar.gz")' "macOS x64")
+          WINDOWS_X64_URL=$(get_latest_asset_url '.name | (contains("x64") and endswith(".msi")) or endswith("-setup.exe")' "Windows x64")
 
           # Read signatures
           MACOS_AARCH64_SIG=$(cat /tmp/signatures/*aarch64*.app.tar.gz.sig 2>/dev/null || echo "")

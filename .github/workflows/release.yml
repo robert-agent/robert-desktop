@@ -85,7 +85,9 @@ jobs:
         run: |
           VERSION="${{ steps.get_version.outputs.version }}"
           if [ "${{ env.IS_CANARY }}" = "true" ]; then
-            echo "tag=${VERSION}-canary" >> $GITHUB_OUTPUT
+            # Use timestamp to ensure each canary build has a unique, incrementing version
+            TIMESTAMP=$(date -u +%Y%m%d%H%M%S)
+            echo "tag=${VERSION}-canary.${TIMESTAMP}" >> $GITHUB_OUTPUT
           else
             echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           fi
