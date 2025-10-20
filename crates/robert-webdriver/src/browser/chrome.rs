@@ -484,13 +484,15 @@ impl ChromeDriver {
 
         // Execute CDP DOMSnapshot.captureSnapshot command
         let result = page
-            .execute(chromiumoxide::cdp::browser_protocol::dom_snapshot::CaptureSnapshotParams {
-                computed_styles: computed_styles.to_vec(),
-                include_dom_rects: Some(include_dom_rects),
-                include_paint_order: Some(include_paint_order),
-                include_blended_background_colors: Some(false),
-                include_text_color_opacities: Some(false),
-            })
+            .execute(
+                chromiumoxide::cdp::browser_protocol::dom_snapshot::CaptureSnapshotParams {
+                    computed_styles: computed_styles.to_vec(),
+                    include_dom_rects: Some(include_dom_rects),
+                    include_paint_order: Some(include_paint_order),
+                    include_blended_background_colors: Some(false),
+                    include_text_color_opacities: Some(false),
+                },
+            )
             .await
             .map_err(|e| BrowserError::Other(format!("Failed to capture DOM snapshot: {}", e)))?;
 

@@ -704,25 +704,33 @@ pub async fn capture_step_frame(
         // Save to file if directory specified
         if let Some(visual_dom_dir) = &options.visual_dom_dir {
             // Ensure VisualDom directory exists
-            tokio::fs::create_dir_all(visual_dom_dir).await.map_err(|e| {
-                BrowserError::Other(format!("Failed to create VisualDom directory: {}", e))
-            })?;
+            tokio::fs::create_dir_all(visual_dom_dir)
+                .await
+                .map_err(|e| {
+                    BrowserError::Other(format!("Failed to create VisualDom directory: {}", e))
+                })?;
 
             let visual_dom_filename = format!("frame_{:04}.visualdom.json", frame_id);
             let visual_dom_file_path = visual_dom_dir.join(&visual_dom_filename);
 
             // Save VisualDom to file
-            let visual_dom_json = serde_json::to_string_pretty(&visual_dom_data)
-                .map_err(|e| BrowserError::Other(format!("Failed to serialize VisualDom: {}", e)))?;
+            let visual_dom_json = serde_json::to_string_pretty(&visual_dom_data).map_err(|e| {
+                BrowserError::Other(format!("Failed to serialize VisualDom: {}", e))
+            })?;
 
             tokio::fs::write(&visual_dom_file_path, &visual_dom_json)
                 .await
-                .map_err(|e| BrowserError::Other(format!("Failed to write VisualDom file: {}", e)))?;
+                .map_err(|e| {
+                    BrowserError::Other(format!("Failed to write VisualDom file: {}", e))
+                })?;
 
             // Get file size
-            let visual_dom_metadata = tokio::fs::metadata(&visual_dom_file_path)
-                .await
-                .map_err(|e| BrowserError::Other(format!("Failed to read VisualDom metadata: {}", e)))?;
+            let visual_dom_metadata =
+                tokio::fs::metadata(&visual_dom_file_path)
+                    .await
+                    .map_err(|e| {
+                        BrowserError::Other(format!("Failed to read VisualDom metadata: {}", e))
+                    })?;
             let visual_dom_size = visual_dom_metadata.len() as usize;
 
             // Compute hash if requested
@@ -768,7 +776,11 @@ pub async fn capture_step_frame(
     log::info!("   Screenshot: {} KB", screenshot_size / 1024);
     log::info!("   DOM: {} KB", html_content.len() / 1024);
     if let Some(ref vd) = visual_dom_info {
-        log::info!("   VisualDom: {} KB ({} nodes)", vd.size_bytes / 1024, vd.node_count);
+        log::info!(
+            "   VisualDom: {} KB ({} nodes)",
+            vd.size_bytes / 1024,
+            vd.node_count
+        );
     }
     log::info!("   URL: {}", url);
 
