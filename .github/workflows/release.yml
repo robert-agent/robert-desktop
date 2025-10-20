@@ -106,6 +106,46 @@ jobs:
     outputs:
       release_id: ${{ steps.create_release.outputs.id }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous release tag for this channel
+          if [ "${{ env.IS_CANARY }}" = "true" ]; then
+            PREV_TAG=$(git tag -l "*-canary.*" --sort=-version:refname | head -2 | tail -1)
+          else
+            PREV_TAG=$(git tag -l "[0-9]*.[0-9]*.[0-9]*" --sort=-version:refname | grep -v "canary" | head -2 | tail -1)
+          fi
+
+          if [ -z "$PREV_TAG" ]; then
+            # No previous tag, get all commits
+            COMMITS=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            # Get commits since previous tag
+            COMMITS=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..HEAD)
+          fi
+
+          # Extract PR numbers and create links
+          CHANGELOG=""
+          while IFS= read -r line; do
+            # Check if line contains PR number pattern (#123)
+            if [[ $line =~ \(#([0-9]+)\) ]]; then
+              PR_NUM="${BASH_REMATCH[1]}"
+              # Add PR link to the commit line
+              line="${line% \(*\)} ([#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM}))"
+            fi
+            CHANGELOG="${CHANGELOG}${line}"$'\n'
+          done <<< "$COMMITS"
+
+          # Write changelog to output, preserving newlines
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Create or get release
         id: create_release
         uses: actions/github-script@v7
@@ -115,6 +155,7 @@ jobs:
           VERSION_WITH_HASH: ${{ needs.prepare-release.outputs.version_with_hash }}
           COMMIT_HASH: ${{ needs.prepare-release.outputs.commit_hash }}
           IS_CANARY: ${{ env.IS_CANARY }}
+          CHANGELOG: ${{ steps.changelog.outputs.changelog }}
         with:
           github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
           result-encoding: string
@@ -136,6 +177,8 @@ jobs:
               if (error.status === 404) {
                 // Release doesn't exist, create it
                 const releaseType = process.env.IS_CANARY === 'true' ? 'Canary' : 'Production';
+                const changelog = process.env.CHANGELOG || 'No changes';
+
                 const releaseBody = [
                   `## Robert Browser Automation - Release ${tag}`,
                   '',
@@ -149,7 +192,7 @@ jobs:
                   '3. Launch Robert from Applications',
                   '',
                   '### Changes',
-                  '<!-- Add release notes here -->'
+                  changelog
                 ].join('\n');
 
                 const { data: release } = await github.rest.repos.createRelease({
