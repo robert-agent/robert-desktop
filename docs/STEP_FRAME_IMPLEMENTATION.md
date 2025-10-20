@@ -28,19 +28,21 @@ pub async fn capture_step_frame(
 1. **Fail Fast**: Immediately attempts to access the current browser page and fails with a clear error if the connection is invalid
 2. **Take Screenshot**: Captures screenshot and saves to the specified directory with automatic naming (`frame_0000.png`)
 3. **Save DOM**: Optionally saves the HTML DOM to a separate directory (`frame_0000.html`)
-4. **Compute Hashes**: Optionally computes SHA-256 hashes for deduplication
-5. **Extract Elements**: Optionally extracts interactive elements from the page (expensive operation)
-6. **Build Frame**: Constructs a complete `StepFrame` object with all captured data
+4. **Extract Elements**: Optionally extracts interactive elements from the page (expensive operation)
+5. **Capture VisualDom** (optional): Captures structured DOM snapshot with layout, styles, and embedded images (`frame_0000.visualdom.json`)
+6. **Compute Hashes**: Optionally computes SHA-256 hashes for deduplication
+7. **Build Frame**: Constructs a complete `StepFrame` object with all captured data
 
 ### Key Features
 
 ✅ **Fail-Fast Design**: Function fails immediately with clear error message if browser connection is invalid
 ✅ **Automatic File Naming**: Uses sequential frame IDs with zero-padding (`frame_0000.png`)
 ✅ **Multiple Formats**: Supports PNG and JPEG screenshot formats
-✅ **Hash Computation**: SHA-256 hashes for both screenshots and HTML for deduplication
+✅ **VisualDom Capture**: Optional structured DOM snapshot with layout, computed styles, and base64 images
+✅ **Hash Computation**: SHA-256 hashes for screenshots, HTML, and VisualDom for deduplication
 ✅ **Interactive Elements**: Optional extraction of buttons, links, inputs, etc.
 ✅ **Flexible Configuration**: Extensive options for customizing capture behavior
-✅ **JSON Serialization**: Full serdeJSON support for all structures
+✅ **JSON Serialization**: Full serde JSON support for all structures
 
 ## Data Structures
 
@@ -55,6 +57,7 @@ pub struct StepFrame {
     pub elapsed_ms: u64,
     pub screenshot: ScreenshotInfo,
     pub dom: DomInfo,
+    pub visual_dom: Option<VisualDomInfo>,   // Structured DOM snapshot
     pub action: Option<ActionInfo>,
     pub transcript: Option<TranscriptInfo>,
 }
@@ -84,16 +87,52 @@ pub struct DomInfo {
 }
 ```
 
+### VisualDomInfo
+
+```rust
+pub struct VisualDomInfo {
+    pub path: String,                   // Path to VisualDom JSON file
+    pub size_bytes: usize,
+    pub node_count: usize,              // Number of DOM nodes
+    pub hash: Option<String>,           // SHA-256
+}
+```
+
+**VisualDom is a custom format we created** that combines Chrome DevTools Protocol's
+DOMSnapshot.captureSnapshot with embedded base64 images. The VisualDom JSON file contains:
+
+- **Complete DOM tree**: Flattened structure including iframes and shadow DOM
+- **Layout information**: Bounding boxes, positions, dimensions
+- **Computed styles**: Configurable set of CSS properties
+- **Text content**: All visible text from layout objects (no OCR needed)
+- **Embedded images**: Base64-encoded images with positions and dimensions
+- **Paint order**: Visual stacking and rendering order
+
+This format allows AI agents to understand page structure, layout, and content without requiring expensive OCR on screenshots.
+
 ### CaptureOptions
 
 ```rust
 pub struct CaptureOptions {
     pub screenshot_dir: PathBuf,
     pub dom_dir: Option<PathBuf>,
+    pub visual_dom_dir: Option<PathBuf>,
     pub screenshot_format: ScreenshotFormat,
     pub save_html: bool,
+    pub capture_visual_dom: bool,
+    pub visual_dom_computed_styles: Vec<String>,
+    pub visual_dom_include_dom_rects: bool,
+    pub visual_dom_include_paint_order: bool,
+    pub visual_dom_include_images: bool,
     pub compute_hashes: bool,
     pub extract_interactive_elements: bool,
+}
+
+impl CaptureOptions {
+    // Helper methods for computed styles presets:
+    pub fn balanced_computed_styles() -> Vec<String>
+    pub fn minimal_computed_styles() -> Vec<String>
+    pub fn all_computed_styles() -> Vec<String>
 }
 ```
 
@@ -204,6 +243,59 @@ if let Some(elements) = frame.dom.interactive_elements {
         println!("  - <{}> {}", element.tag, element.text);
     }
 }
+```
+
+### With VisualDom (Structured DOM Snapshot)
+
+**VisualDom is a custom format we created** that combines CDP DOMSnapshot with base64 images.
+
+```rust
+use robert_webdriver::step_frame::CaptureOptions;
+
+let options = CaptureOptions {
+    screenshot_dir: PathBuf::from("./screenshots"),
+    dom_dir: Some(PathBuf::from("./dom")),
+    visual_dom_dir: Some(PathBuf::from("./visualdom")),
+    capture_visual_dom: true,  // Enable VisualDom capture
+    visual_dom_include_images: true,  // Include base64 images
+    visual_dom_include_dom_rects: true,  // Include bounding boxes
+    visual_dom_include_paint_order: true,  // Include visual stacking
+    visual_dom_computed_styles: CaptureOptions::balanced_computed_styles(),
+    ..Default::default()
+};
+
+let frame = capture_step_frame(&driver, 0, 0, &options, None, None).await?;
+
+if let Some(visual_dom) = frame.visual_dom {
+    println!("VisualDom captured:");
+    println!("  - File: {}", visual_dom.path);
+    println!("  - Size: {} KB", visual_dom.size_bytes / 1024);
+    println!("  - Nodes: {}", visual_dom.node_count);
+
+    // The VisualDom JSON file contains:
+    // - Complete DOM tree with layout information
+    // - Computed styles (position, size, visibility, fonts, colors)
+    // - Bounding boxes for all elements
+    // - All visible text content (no OCR needed!)
+    // - Embedded images as base64 with positions
+    // - Paint order and visual stacking
+}
+```
+
+**VisualDom Computed Styles Presets:**
+
+```rust
+// Balanced: Good for most use cases
+let balanced = CaptureOptions::balanced_computed_styles();
+// Includes: display, position, size, visibility, fonts, colors, spacing, backgrounds
+
+// Minimal: Just positioning and visibility
+let minimal = CaptureOptions::minimal_computed_styles();
+// Includes: display, position, visibility
+
+// All: Capture all computed styles (large file size)
+let all = CaptureOptions::all_computed_styles();
+// Empty vec = capture all CSS properties
 ```
 
 ### Error Handling (Fail-Fast)
