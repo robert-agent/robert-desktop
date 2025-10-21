@@ -30,28 +30,13 @@
 
 <div class="command-manager">
   {#if view.type === 'list'}
-    <CommandList
-      onCreate={showCreate}
-      onEdit={showEdit}
-      onExecute={showExecute}
-    />
+    <CommandList onCreate={showCreate} onEdit={showEdit} onExecute={showExecute} />
   {:else if view.type === 'create'}
-    <CommandEditor
-      commandName={null}
-      onSave={showList}
-      onCancel={showList}
-    />
+    <CommandEditor commandName={null} onSave={showList} onCancel={showList} />
   {:else if view.type === 'edit'}
-    <CommandEditor
-      commandName={view.name}
-      onSave={showList}
-      onCancel={showList}
-    />
+    <CommandEditor commandName={view.name} onSave={showList} onCancel={showList} />
   {:else if view.type === 'execute'}
-    <CommandExecutor
-      commandName={view.name}
-      onClose={showList}
-    />
+    <CommandExecutor commandName={view.name} onClose={showList} />
   {/if}
 </div>
 

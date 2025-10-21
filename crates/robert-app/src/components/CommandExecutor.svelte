@@ -139,7 +139,11 @@
               </label>
 
               {#if param.param_type === 'boolean'}
-                <select id={param.name} bind:value={parameterValues[param.name]} required={param.required}>
+                <select
+                  id={param.name}
+                  bind:value={parameterValues[param.name]}
+                  required={param.required}
+                >
                   <option value="">-- Select --</option>
                   <option value="true">True</option>
                   <option value="false">False</option>
@@ -185,7 +189,11 @@
         <div class="report-summary">
           <div class="summary-item">
             <span class="label">Status:</span>
-            <span class="value" class:success={executionReport.failed === 0} class:failure={executionReport.failed > 0}>
+            <span
+              class="value"
+              class:success={executionReport.failed === 0}
+              class:failure={executionReport.failed > 0}
+            >
               {executionReport.failed === 0 ? 'Success' : 'Failed'}
             </span>
           </div>
@@ -205,7 +213,11 @@
         <div class="report-details">
           <h4>Command Results:</h4>
           {#each executionReport.results as result}
-            <div class="result-item" class:success={result.status === 'success'} class:failed={result.status === 'failed'}>
+            <div
+              class="result-item"
+              class:success={result.status === 'success'}
+              class:failed={result.status === 'failed'}
+            >
               <div class="result-header">
                 <span class="step-num">Step {result.step}:</span>
                 <span class="method">{result.method}</span>
