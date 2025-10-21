@@ -1,25 +1,43 @@
 # In Progress
-_No tasks currently in progress_
+- [ ] Phase 2: Browser Profile Management Implementation
+  - Implementing ChromeDriver launcher with ephemeral profiles
+  - Creating basic session manager
+  - Adding Tauri commands for browser lifecycle
+  - Writing comprehensive tests
 
 # TODO
 
-### Next: Phase 2 - Browser profiles
+### Phase 2 - Browser Profiles (CURRENT)
 
 #### Backend Tasks
-- [ ] Implement ChromeDriver launcher with ephemeral profiles
+- [ ] Review existing profiles code in codebase
+- [ ] Implement Browser Profile Types module (profile.rs)
+  - BrowserProfile enum (Ephemeral vs Named)
+  - Profile path resolution
+  - Unit tests
+- [ ] Implement ChromeDriver launcher with ephemeral profiles (launcher.rs)
   - Launch Chrome with temporary user-data-dir
   - Track active browser session
   - Cleanup temp directory on session close
-- [ ] Create basic session manager
-  - Single active session (keep it simple)
+  - Unit tests for launcher
+- [ ] Create basic session manager (session.rs)
+  - Single active session (keep it simple for Phase 2)
   - `launch_session()` and `close_session()` methods
-- [ ] Add Tauri commands
+  - Session state tracking
+  - Unit tests for session lifecycle
+- [ ] Implement ephemeral cleanup (cleanup.rs)
+  - Cleanup temp directory on session close
+  - Orphaned profile cleanup on app start
+  - Unit tests for cleanup logic
+- [ ] Add Tauri commands (commands/browser.rs)
   - `launch_browser()` → SessionId
   - `close_browser(session_id)` → Result
   - `get_browser_status()` → session info
+  - Error handling and validation
 - [ ] Write integration tests
   - Test browser launch and cleanup
   - Verify ephemeral profile deletion
+  - Test session lifecycle end-to-end
 
 #### Frontend Tasks
 - [ ] Add "Launch Browser" button to main UI
