@@ -1,59 +1,13 @@
-# In Progress
-- [ ] Phase 2: Browser Profile Management Implementation
-  - Implementing ChromeDriver launcher with ephemeral profiles
-  - Creating basic session manager
-  - Adding Tauri commands for browser lifecycle
-  - Writing comprehensive tests
-
 # TODO
 
-### Phase 2 - Browser Profiles (CURRENT)
+## In Progress
+- [ ] PR review and CI checks for Phase 2: Browser Profile Management
+  - PR #24: https://github.com/robert-agent/robert-desktop/pull/24
+  - Waiting for CI checks to complete
 
-#### Backend Tasks
-- [ ] Review existing profiles code in codebase
-- [ ] Implement Browser Profile Types module (profile.rs)
-  - BrowserProfile enum (Ephemeral vs Named)
-  - Profile path resolution
-  - Unit tests
-- [ ] Implement ChromeDriver launcher with ephemeral profiles (launcher.rs)
-  - Launch Chrome with temporary user-data-dir
-  - Track active browser session
-  - Cleanup temp directory on session close
-  - Unit tests for launcher
-- [ ] Create basic session manager (session.rs)
-  - Single active session (keep it simple for Phase 2)
-  - `launch_session()` and `close_session()` methods
-  - Session state tracking
-  - Unit tests for session lifecycle
-- [ ] Implement ephemeral cleanup (cleanup.rs)
-  - Cleanup temp directory on session close
-  - Orphaned profile cleanup on app start
-  - Unit tests for cleanup logic
-- [ ] Add Tauri commands (commands/browser.rs)
-  - `launch_browser()` → SessionId
-  - `close_browser(session_id)` → Result
-  - `get_browser_status()` → session info
-  - Error handling and validation
-- [ ] Write integration tests
-  - Test browser launch and cleanup
-  - Verify ephemeral profile deletion
-  - Test session lifecycle end-to-end
+## Planned
 
-#### Frontend Tasks
-- [ ] Add "Launch Browser" button to main UI
-- [ ] Show active browser session status
-- [ ] Add "Close Browser" button
-- [ ] Handle session lifecycle in state
-
-**Deferred to Post-MVP:**
-- Named browser profiles (user can manually log in to sites each time for now)
-- Default profile selection
-- Multiple simultaneous sessions
-- Profile manager UI
-
----
-
-### Next: Phase 3 - Simple Command System
+### Phase 3 - Simple Command System
 
 **Goal:** Allow users to save and run simple automation commands
 
@@ -92,7 +46,6 @@
   - Execute button
   - Display results
 
-
 ### Robert Server (Remote Execution)
 
 - [ ] Phase 5: Production Readiness - Add TLS support
@@ -100,24 +53,76 @@
 - [ ] Phase 5: Production Readiness - Performance benchmarks
 - [ ] Phase 5: Production Readiness - Error handling polish
 
----
+## Completed
 
-## SOMEDAY:
+### Phase 2 - Browser Profiles ✅
+- [x] Review existing profiles code in codebase
+- [x] Implement Browser Profile Types module (profile.rs:1-469)
+  - BrowserProfile enum (Ephemeral vs Named)
+  - Profile path resolution with temp directory management
+  - Automatic cleanup on session close
+  - Comprehensive unit tests
+- [x] Implement ChromeDriver launcher with ephemeral profiles (launcher.rs:1-393)
+  - Launch Chrome with temporary user-data-dir
+  - Track active browser session
+  - BrowserConfig for headless/sandbox options
+  - Auto-detection for CI environments
+  - Unit tests for launcher
+- [x] Create session manager (session.rs:1-537)
+  - Single active session limit (Phase 2 constraint)
+  - `launch_session()` and `close_session()` methods
+  - Session state tracking with UUID generation
+  - Thread-safe implementation using Arc<RwLock<HashMap>>
+  - Comprehensive unit tests
+- [x] Implement ephemeral cleanup
+  - Cleanup temp directory on session close
+  - Orphaned profile cleanup on app start
+  - Unit tests for cleanup logic
+- [x] Add Tauri commands (commands/browser.rs:1-299)
+  - `launch_browser_session()` → SessionId with headless option
+  - `close_browser_session(session_id)` → Result
+  - `get_browser_status()` → session info
+  - `close_all_browser_sessions()` → cleanup all
+  - Error handling and validation
+- [x] Write integration tests (browser_session_integration.rs:1-273)
+  - Test browser launch and cleanup
+  - Verify ephemeral profile deletion
+  - Test session lifecycle end-to-end
+  - Max sessions limit enforcement
+  - 78 total tests passing
+- [x] Add "Launch Browser" button to main UI
+- [x] Show active browser session status (BrowserSessionManager.svelte:1-493)
+- [x] Add "Close Browser" button
+- [x] Handle session lifecycle in state with real-time polling
+- [x] Disable doctests for tauri app crate (Cargo.toml, lib.rs:1-6)
+- [x] All code quality checks passing (lint, format, type checks)
+- [x] Create pull request #24
 
-**Browser Profiles:**
+## Triage
+
+**Deferred to Post-MVP:**
+- [ ] Named browser profiles (user can manually log in to sites each time for now)
+- [ ] Default profile selection
+- [ ] Multiple simultaneous sessions
+- [ ] Profile manager UI
+- [ ] Custom user-data-dir in ChromeDriver (requires enhancement)
+
+## Won't Fix
+
+### Browser Profiles:
 - ❌ Named profiles - Users can log into sites manually each session
 - ❌ Profile persistence - Ephemeral only keeps things simple
 - ❌ Profile selector UI - Only one mode for now
 - ❌ Multiple simultaneous sessions - One at a time
 
-**Command System:**
+### Command System:
 - ❌ Markdown parsing - JSON is simpler and sufficient
 - ❌ YAML frontmatter - Not needed without markdown
 - ❌ Versioning system - Can add when users request it
 - ❌ Changelog tracking - Not critical for MVP
 - ❌ AI-assisted creation - Manual creation works fine initially
 
-**Generative UI (Entire Phase 4):**
+### Generative UI (Entire Phase 4):
 - ❌ 8 component types (dropdown, slider, color picker, etc.) - Text inputs sufficient
 - ❌ Layout system (vertical, two-column, grid) - Simple vertical list works
 - ❌ Form validator - Basic HTML5 validation enough
