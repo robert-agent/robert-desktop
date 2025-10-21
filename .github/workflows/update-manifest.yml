@@ -207,3 +207,126 @@ jobs:
           else
             echo "✅ Pull request already exists, updated with new commit"
           fi
+
+  auto-merge-pr:
+    name: Auto-merge manifest PR
+    needs: update-manifest
+    if: github.event.inputs.release_type == 'canary' || github.event.inputs.release_type == null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for PR and auto-merge
+        uses: actions/github-script@v7
+        env:
+          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          RELEASE_TYPE: ${{ github.event.inputs.release_type || 'canary' }}
+        with:
+          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          script: |
+            const maxWaitTime = 15 * 60 * 1000; // 15 minutes
+            const checkInterval = 30 * 1000; // 30 seconds
+            const startTime = Date.now();
+
+            // Determine repository based on release type
+            const releaseType = process.env.RELEASE_TYPE;
+            const repo = releaseType === 'production' ? 'robert-releases' : 'robert-releases-canary';
+            const owner = 'robert-agent';
+
+            console.log(`Waiting for manifest PR to be created in ${owner}/${repo}...`);
+
+            while (Date.now() - startTime < maxWaitTime) {
+              // List PRs in the releases repo
+              const { data: prs } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: 'open',
+                sort: 'created',
+                direction: 'desc',
+                per_page: 10
+              });
+
+              // Find PR created by github-actions bot with "Update latest.json" in title
+              // Look for PRs created recently (within last 5 minutes)
+              const recentTime = new Date(startTime - 5 * 60 * 1000);
+              const manifestPr = prs.find(pr =>
+                pr.user.login === 'github-actions[bot]' &&
+                pr.title.includes('Update latest.json') &&
+                new Date(pr.created_at) > recentTime
+              );
+
+              if (manifestPr) {
+                console.log(`Found manifest PR #${manifestPr.number}: ${manifestPr.title}`);
+
+                // Wait a bit for checks to start
+                await new Promise(resolve => setTimeout(resolve, 10000));
+
+                // Check if PR has any required checks
+                const { data: checks } = await github.rest.checks.listForRef({
+                  owner,
+                  repo,
+                  ref: manifestPr.head.sha
+                });
+
+                if (checks.total_count > 0) {
+                  // Wait for checks to complete
+                  console.log('Waiting for PR checks to complete...');
+                  let checksComplete = false;
+                  const checkStartTime = Date.now();
+
+                  while (!checksComplete && Date.now() - checkStartTime < 10 * 60 * 1000) {
+                    const { data: updatedChecks } = await github.rest.checks.listForRef({
+                      owner,
+                      repo,
+                      ref: manifestPr.head.sha
+                    });
+
+                    const allComplete = updatedChecks.check_runs.every(
+                      check => check.status === 'completed'
+                    );
+                    const allSuccess = updatedChecks.check_runs.every(
+                      check => check.conclusion === 'success' || check.conclusion === 'neutral'
+                    );
+
+                    if (allComplete && allSuccess) {
+                      checksComplete = true;
+                      break;
+                    }
+
+                    if (allComplete && !allSuccess) {
+                      console.log('❌ Some checks failed, not merging');
+                      throw new Error('PR checks failed');
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                  }
+
+                  if (!checksComplete) {
+                    throw new Error('Timeout waiting for PR checks to complete');
+                  }
+                } else {
+                  console.log('No checks required for this PR');
+                }
+
+                // Merge the PR
+                try {
+                  await github.rest.pulls.merge({
+                    owner,
+                    repo,
+                    pull_number: manifestPr.number,
+                    merge_method: 'squash',
+                    commit_title: `${manifestPr.title}`,
+                    commit_message: 'Automatically merged by update-manifest workflow'
+                  });
+                  console.log(`✅ Merged PR #${manifestPr.number}`);
+                  return;
+                } catch (error) {
+                  console.error(`Failed to merge PR: ${error.message}`);
+                  throw error;
+                }
+              }
+
+              // Wait before checking again
+              console.log('PR not found yet, waiting...');
+              await new Promise(resolve => setTimeout(resolve, checkInterval));
+            }
+
+            throw new Error('Timeout waiting for manifest PR to be created');
