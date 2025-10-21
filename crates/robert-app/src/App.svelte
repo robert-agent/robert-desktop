@@ -10,9 +10,10 @@
   import UserCreationForm from './components/UserCreationForm.svelte';
   import ProfileSwitcher from './components/ProfileSwitcher.svelte';
   import ProfileEditor from './components/ProfileEditor.svelte';
+  import CommandManager from './components/CommandManager.svelte';
   import { initializeUserStore, isLoggedIn, hasUsers, listUsers } from './lib/userStore';
 
-  type ViewType = 'chat' | 'debug' | 'developer' | 'profile-editor';
+  type ViewType = 'chat' | 'debug' | 'developer' | 'profile-editor' | 'commands';
   type AuthViewType = 'login' | 'create-user';
 
   let currentView: ViewType = 'chat';
@@ -297,6 +298,27 @@
             </svg>
             <span>Developer</span>
           </button>
+          <button
+            class="menu-item"
+            class:active={currentView === 'commands'}
+            on:click={() => handleViewChange('commands')}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M2 3H14V5H2V3ZM2 7H14V9H2V7ZM2 11H14V13H2V11Z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                fill="none"
+              />
+            </svg>
+            <span>Commands</span>
+          </button>
           <div class="menu-divider"></div>
           <button class="menu-item" on:click={handleCheckForUpdates}>
             <svg
@@ -334,6 +356,8 @@
         <DeveloperMode />
       {:else if currentView === 'profile-editor'}
         <ProfileEditor />
+      {:else if currentView === 'commands'}
+        <CommandManager />
       {/if}
     </main>
 

@@ -1,7 +1,9 @@
-# In Progress
+# TODO
+
+## In Progress
 _No tasks currently in progress_
 
-# TODO
+## Planned
 
 ### Next: Phase 2 - Browser profiles
 
@@ -35,46 +37,6 @@ _No tasks currently in progress_
 
 ---
 
-### Next: Phase 3 - Simple Command System
-
-**Goal:** Allow users to save and run simple automation commands
-
-#### Backend Tasks
-- [ ] Simplify command structure (JSON-based, skip markdown parser)
-  - `CommandConfig` struct with: name, description, script, parameters
-  - Store as encrypted JSON files (not markdown)
-- [ ] Implement basic command manager
-  - `save_command(name, config)`
-  - `load_command(name)`
-  - `list_commands()` → Vec<CommandInfo>
-  - `delete_command(name)`
-- [ ] Implement basic command executor
-  - Load command config
-  - Substitute parameter values into script
-  - Execute in browser session
-  - Return results
-- [ ] Add Tauri commands
-  - `save_command(name, config)`
-  - `list_commands()`
-  - `get_command(name)`
-  - `execute_command(name, params)`
-  - `delete_command(name)`
-
-#### Frontend Tasks
-- [ ] Create simple command list UI
-  - Display saved commands
-  - Edit/Delete buttons
-- [ ] Create basic command editor
-  - Name, description inputs
-  - Simple text area for script
-  - Parameter definitions (name, type, required)
-- [ ] Create command executor UI
-  - Select command from dropdown
-  - Simple form inputs for parameters (text only for MVP)
-  - Execute button
-  - Display results
-
-
 ### Robert Server (Remote Execution)
 
 - [ ] Phase 5: Production Readiness - Add TLS support
@@ -84,7 +46,56 @@ _No tasks currently in progress_
 
 ---
 
-## SOMEDAY:
+## Completed
+
+### Phase 3 - Simple Command System ✅
+
+#### Backend Tasks
+- [x] Simplify command structure (JSON-based, skip markdown parser)
+  - `CommandConfig` struct with: name, description, script, parameters
+  - Store as encrypted JSON files (not markdown)
+- [x] Implement basic command manager
+  - `save_command(name, config)`
+  - `load_command(name)`
+  - `list_commands()` → Vec<CommandInfo>
+  - `delete_command(name)`
+- [x] Implement basic command executor
+  - Load command config
+  - Substitute parameter values into script ({{param}} syntax)
+  - Execute in browser session
+  - Return results
+- [x] Add Tauri commands
+  - `save_command(name, config)`
+  - `list_commands()`
+  - `get_command(name)`
+  - `execute_command(name, params)`
+  - `delete_command(name)`
+
+#### Frontend Tasks
+- [x] Create simple command list UI (CommandList.svelte)
+  - Display saved commands
+  - Edit/Delete buttons
+- [x] Create basic command editor (CommandEditor.svelte)
+  - Name, description inputs
+  - Simple text area for script
+  - Parameter definitions (name, type, required, default)
+- [x] Create command executor UI (CommandExecutor.svelte)
+  - Select command from dropdown
+  - Simple form inputs for parameters (text, number, boolean)
+  - Execute button
+  - Display results
+- [x] Create command manager container (CommandManager.svelte)
+  - View routing between list, create, edit, and execute views
+- [x] Integrate CommandManager into main UI (App.svelte)
+  - Added "Commands" menu item
+  - Added commands view to main content area
+
+---
+
+## Triage
+_No tasks requiring triage_
+
+## Won't Fix
 
 **Browser Profiles:**
 - ❌ Named profiles - Users can log into sites manually each session
