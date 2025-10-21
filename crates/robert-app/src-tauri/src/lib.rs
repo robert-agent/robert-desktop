@@ -5,7 +5,7 @@ mod commands;
 pub mod developer_mode;
 mod events;
 mod logging;
-mod profiles;
+pub mod profiles;
 mod state;
 
 use state::AppState;
