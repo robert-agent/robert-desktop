@@ -5,15 +5,18 @@
 //! - User listing
 //! - Profile management
 //! - Session management
+//! - Command management (Phase 3)
 
 use crate::profiles::{
     auth::{AuthError, AuthService},
+    command_md::{CommandExecutor, CommandManager},
     manager::UserManager,
     storage::{load_user_profile, save_user_profile},
-    types::UserConfig,
+    types::{Command, CommandInfo, UserConfig},
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tauri::State;
 
 // ============================================================================
@@ -254,5 +257,210 @@ pub async fn has_users() -> Result<ProfileResult<bool>, String> {
             log::error!("❌ Failed to check users: {}", e);
             Ok(ProfileResult::error(e.to_string()))
         }
+    }
+}
+
+// ============================================================================
+// Command System Commands (Phase 3 - Markdown-based)
+// ============================================================================
+
+/// Save a command (markdown-based)
+///
+/// # Parameters
+/// - `command`: The Command structure to save
+///
+/// # Returns
+/// Success if saved, error message if failed
+#[tauri::command]
+pub async fn save_command(
+    state: State<'_, AppState>,
+    command: Command,
+) -> Result<ProfileResult<()>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.save_command(&command) {
+            Ok(_) => {
+                log::info!("Saved command '{}'", command.frontmatter.command_name);
+                Ok(ProfileResult::success(()))
+            }
+            Err(e) => {
+                log::error!("Failed to save command: {}", e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Get a command by name (markdown-based)
+///
+/// # Parameters
+/// - `name`: The command name to retrieve
+///
+/// # Returns
+/// Command structure if found, error message if not found
+#[tauri::command]
+pub async fn get_command(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<ProfileResult<Command>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.load_command(&name) {
+            Ok(command) => {
+                log::info!("Command '{}' loaded", name);
+                Ok(ProfileResult::success(command))
+            }
+            Err(e) => {
+                log::error!("Failed to load command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// List all saved commands
+///
+/// # Returns
+/// List of CommandInfo for all saved commands
+#[tauri::command]
+pub async fn list_commands(
+    state: State<'_, AppState>,
+) -> Result<ProfileResult<Vec<CommandInfo>>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.list_commands() {
+            Ok(commands) => {
+                log::info!("📋 Listed {} commands", commands.len());
+                Ok(ProfileResult::success(commands))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to list commands: {}", e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Delete a command by name
+///
+/// # Parameters
+/// - `name`: The command name to delete
+///
+/// # Returns
+/// Success if deleted, error message if failed
+#[tauri::command]
+pub async fn delete_command(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<ProfileResult<()>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.delete_command(&name) {
+            Ok(_) => {
+                log::info!("✅ Command '{}' deleted", name);
+                Ok(ProfileResult::success(()))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to delete command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Build execution prompt for a command (AI-driven)
+///
+/// # Parameters
+/// - `name`: The command name to execute
+/// - `params`: Map of parameter names to values
+///
+/// # Returns
+/// AI prompt string to send to LLM for CDP generation
+#[tauri::command]
+pub async fn build_command_prompt(
+    state: State<'_, AppState>,
+    name: String,
+    params: HashMap<String, String>,
+) -> Result<ProfileResult<String>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let executor = CommandExecutor::new(session.username.clone(), encryption_key.clone());
+
+        // Load user profile if exists
+        let user_profile = load_user_profile(&session.username, &encryption_key, None).ok();
+
+        match executor.build_execution_prompt(&name, params, user_profile) {
+            Ok(prompt) => {
+                log::info!("Built execution prompt for command '{}'", name);
+                Ok(ProfileResult::success(prompt))
+            }
+            Err(e) => {
+                log::error!("Failed to build prompt for command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Get static CDP script with parameter substitution (fallback)
+///
+/// # Parameters
+/// - `name`: The command name to execute
+/// - `params`: Map of parameter names to values
+///
+/// # Returns
+/// CDP script JSON with substituted parameters, ready for execution
+#[tauri::command]
+pub async fn get_static_cdp(
+    state: State<'_, AppState>,
+    name: String,
+    params: HashMap<String, String>,
+) -> Result<ProfileResult<String>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let executor = CommandExecutor::new(session.username.clone(), encryption_key);
+
+        match executor.get_static_cdp_script(&name, params) {
+            Ok(script) => {
+                log::info!("Retrieved static CDP for command '{}'", name);
+                Ok(ProfileResult::success(script))
+            }
+            Err(e) => {
+                log::error!("Failed to get static CDP for command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
     }
 }

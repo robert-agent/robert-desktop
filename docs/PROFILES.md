@@ -215,6 +215,16 @@ Human-readable document describing user preferences, goals, and communication st
 
 Command definition file specifying automation workflow, parameters, and UI.
 
+**What is a Command?**
+
+A command is a **markdown template** that describes an automation task for an AI agent. The markdown provides:
+- **Instructions** for the agent on what to do
+- **Parameters** that users can customize
+- **Rules and constraints** for execution
+- **Success criteria** to verify completion
+
+The markdown may optionally include a sample CDP JSON script, but this is **not required**. The agent can generate CDP commands dynamically based on the markdown description.
+
 **YAML Frontmatter:**
 ```yaml
 ---
@@ -232,8 +242,8 @@ version: string                   # Semantic version
 1. **Parameters**: Define user inputs
 2. **Rules**: Constraints and preferences
 3. **Checklist**: Success criteria
-4. **Generative UI**: UI layout specification (JSON)
-5. **CDP Script Template**: AI-generated automation (optional)
+4. **Generative UI**: UI layout specification (JSON, optional)
+5. **CDP Script Template**: Example CDP automation (optional - agent can generate dynamically)
 
 **Example:**
 ```markdown
@@ -310,9 +320,29 @@ changelog:
 }
 ```
 
-## CDP Script Template
-(AI generates CDP commands dynamically based on parameters and context)
+## CDP Script Template (Optional)
+
+This section is **optional**. The agent can generate CDP commands dynamically based on the markdown instructions above. However, you can include a sample CDP script as a starting point or reference.
+
+```json
+{
+  "name": "clothing-search",
+  "cdp_commands": [
+    {
+      "method": "Page.navigate",
+      "params": {"url": "https://retailer1.com"}
+    },
+    {
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "document.querySelector('input[name=search]').value = '{{outfit_type}}'"
+      }
+    }
+  ]
+}
 ```
+
+**Note**: The agent can work with or without this section. If omitted, the agent will generate CDP commands based on the Parameters, Rules, and Checklist sections.
 
 ### Generative UI Specification
 

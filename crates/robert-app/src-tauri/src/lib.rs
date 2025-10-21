@@ -73,6 +73,13 @@ pub fn run() {
             commands::browser::close_browser_session,
             commands::browser::get_browser_status,
             commands::browser::close_all_browser_sessions,
+            // Command system commands (Phase 3 - Markdown-based)
+            commands::save_command,
+            commands::get_command,
+            commands::list_commands,
+            commands::delete_command,
+            commands::build_command_prompt,
+            commands::get_static_cdp,
             // Logging commands
             commands::log_frontend_message,
             commands::get_logs,

@@ -180,3 +180,136 @@ export interface PasswordValidation {
   errors: string[];
   suggestions: string[];
 }
+
+// ============================================================================
+// Command System Types (Phase 3 - Markdown-based)
+// ============================================================================
+
+/**
+ * Parameter types for command inputs
+ * These match the Rust ParameterType enum
+ */
+export type ParameterType =
+  | { type: 'text_input' }
+  | { type: 'short_text'; max_length?: number }
+  | { type: 'dropdown'; options: string[] }
+  | { type: 'radio'; options: string[] }
+  | { type: 'checkbox' }
+  | { type: 'slider'; min: number; max: number; step: number; unit?: string }
+  | { type: 'color_picker' }
+  | { type: 'date_picker' };
+
+/**
+ * Command parameter definition
+ */
+export interface CommandParameter {
+  name: string; // Parameter name (snake_case)
+  param_type: ParameterType; // Parameter type and validation rules
+  label: string; // User-facing label
+  placeholder?: string; // Optional placeholder text
+  required: boolean; // Whether this parameter is required
+  default?: JsonValue; // Optional default value
+}
+
+/**
+ * Command frontmatter metadata
+ */
+export interface CommandFrontmatter {
+  command_name: string; // Unique identifier (kebab-case)
+  description: string; // Human-readable description
+  browser_profile?: string; // Optional browser profile
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+  version: string; // Semantic version (e.g., "1.0.0")
+  changelog: string[]; // Version history
+}
+
+/**
+ * Layout types for generative UI
+ */
+export type LayoutType = 'vertical' | 'two_column' | 'grid';
+
+/**
+ * UI component for generative UI
+ */
+export interface UIComponent {
+  component_type: string;
+  parameter_name: string;
+  label?: string;
+  // Additional properties for component configuration
+  options?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
+  unit?: string;
+  max_length?: number;
+  [key: string]: JsonValue | undefined;
+}
+
+/**
+ * Generative UI specification
+ */
+export interface GenerativeUI {
+  layout: LayoutType;
+  components: UIComponent[];
+}
+
+/**
+ * Complete command definition (markdown-based)
+ * Stored as encrypted .md files in ~/.robert/users/{username}/commands/
+ */
+export interface Command {
+  frontmatter: CommandFrontmatter; // Metadata
+  parameters: CommandParameter[]; // Command parameters
+  rules: string[]; // Rules and constraints
+  checklist: string[]; // Success criteria
+  generative_ui?: GenerativeUI; // Optional custom UI
+  cdp_script_template?: string; // Optional static CDP script
+}
+
+/**
+ * Command summary for list views
+ */
+export interface CommandInfo {
+  command_name: string; // Command identifier
+  description: string; // Description
+  browser_profile?: string; // Optional browser profile
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+  version: string; // Current version
+}
+
+// ============================================================================
+// Legacy Command Types (JSON-based - DEPRECATED)
+// ============================================================================
+
+/**
+ * @deprecated Use ParameterType instead
+ * Simple parameter type for command inputs
+ */
+export type SimpleParameterType = 'text' | 'number' | 'boolean';
+
+/**
+ * @deprecated Use CommandParameter instead
+ * Simple parameter definition for commands
+ */
+export interface SimpleParameter {
+  name: string; // Parameter name (used in script as {{name}})
+  param_type: SimpleParameterType;
+  label: string; // User-facing label
+  required: boolean;
+  default_value?: string;
+}
+
+/**
+ * @deprecated Use Command instead
+ * Command configuration (JSON-based)
+ */
+export interface CommandConfig {
+  name: string; // Unique command identifier (kebab-case)
+  description: string; // Human-readable description
+  script: string; // CDP script template with {{parameter}} placeholders
+  parameters: SimpleParameter[];
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}

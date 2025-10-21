@@ -539,11 +539,20 @@ A **browser profile** is a Chromium user data directory containing cookies, hist
 - **One default profile**: User's preferred persistent profile for general use
 
 #### Command
-A **command** is a reusable automation workflow defined in a Markdown file. Commands:
-- Belong to a specific user (cannot be shared)
+A **command** is a reusable automation workflow defined in a **Markdown template file**. The markdown describes what the AI agent should do, including:
+
+- **Natural language instructions** for the automation task
+- **Parameters** that users can customize (e.g., search query, budget limit)
+- **Rules and constraints** for execution (e.g., "never use Amazon")
+- **Success criteria** checklist (e.g., "capture at least 3 results")
+- **Optional CDP JSON** as a reference (agent can generate dynamically if not provided)
+
+Commands:
+- Belong to a specific user (cannot be shared between users)
 - Specify which browser profile to use (or use ephemeral by default)
 - Define parameters (form inputs) for user customization
-- Include generative UI specifications for control panels
+- May include generative UI specifications for control panels
+- May optionally include sample CDP scripts, but this is **not required**
 - Evolve over time through AI-assisted refinement
 
 ### Architecture
@@ -656,8 +665,21 @@ version: 1.2.0
 }
 ```
 
-## CDP Script Template
-(AI generates this dynamically based on parameters)
+## CDP Script Template (Optional)
+
+**This section is optional.** The AI agent can generate CDP commands dynamically based on the markdown instructions above (Parameters, Rules, Checklist). However, you may include a sample CDP script as a starting point:
+
+```json
+{
+  "name": "clothing-search",
+  "cdp_commands": [
+    {"method": "Page.navigate", "params": {"url": "https://retailer1.com"}},
+    {"method": "Runtime.evaluate", "params": {"expression": "..."}}
+  ]
+}
+```
+
+**Note**: If this section is omitted, the agent will generate CDP commands based on the natural language description in the markdown.
 ```
 ````
 
