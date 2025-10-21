@@ -65,12 +65,13 @@ pub fn run() {
             commands::get_user_profile,
             commands::update_user_profile,
             commands::has_users,
-            // Command system commands (Phase 3)
+            // Command system commands (Phase 3 - Markdown-based)
             commands::save_command,
             commands::get_command,
             commands::list_commands,
             commands::delete_command,
-            commands::execute_command,
+            commands::build_command_prompt,
+            commands::get_static_cdp,
             // Logging commands
             commands::log_frontend_message,
             commands::get_logs,

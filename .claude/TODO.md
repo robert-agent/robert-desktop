@@ -1,15 +1,22 @@
 # TODO
 
-## Current Focus: Command System Refactoring
+## Current Focus: Frontend Updates for Markdown Commands
 
-**Why?** Phase 3 was implemented with a misunderstanding of the specification. Commands were stored as JSON files with simple `{{param}}` substitution, but the correct approach is:
+**Status**: Backend refactoring COMPLETE. All tests passing (82/82).
 
-- **Commands are markdown template files** that describe tasks for an AI agent
-- The markdown includes instructions, parameters, rules, and success criteria
-- **CDP JSON is optional** - the agent can generate it dynamically from the markdown description
-- This enables natural language automation where users describe *what* to do, not *how*
+**What was done:**
+- Implemented markdown parsing with YAML frontmatter
+- Created new CommandManager for .md files
+- Built AI prompt generation system
+- Updated Tauri commands for markdown format
+- 100% test coverage on new code
 
-**Impact**: We need to refactor from JSON-based commands to markdown-template-based commands. Since this hasn't been deployed to production, we can do a clean rewrite without backward compatibility concerns.
+**What's needed:**
+- Update frontend command editor for markdown templates
+- Implement AI integration in frontend
+- Update command list and executor UI
+
+See `REFACTORING_SUMMARY.md` for complete details.
 
 ---
 
@@ -18,140 +25,68 @@ _No tasks currently in progress_
 
 ## Planned
 
-### Next: Refactor Command System - Markdown Templates
+### Next: Frontend Updates for Markdown Commands
 
-**Context**: The current implementation (Phase 3) uses JSON files with simple `{{param}}` substitution. The correct approach is to use **markdown template files** that describe tasks for an AI agent. The markdown provides instructions, parameters, rules, and success criteria. CDP JSON is optional - the agent can generate it dynamically.
+**Backend Status**: COMPLETE - All tests passing (82/82)
 
-#### Backend Refactoring Tasks
+#### Frontend Tasks (URGENT)
 
-**1. Update Command Data Models**
-- [ ] Refactor `CommandConfig` to parse markdown with YAML frontmatter
-  - Add dependencies: `pulldown-cmark` for markdown parsing
-  - Already have `serde_yaml` for frontmatter
-  - Parse markdown sections: Parameters, Rules, Checklist, Generative UI, CDP Script
-  - Make CDP Script section optional
-- [ ] Create markdown section parser
-  - Extract `## Parameters`, `## Rules`, `## Checklist` sections
-  - Parse optional `## CDP Script Template` section
-  - Parse optional `## Generative UI` JSON block
-- [ ] Update `CommandManager` to work with `.md` files
-  - Change file extension from `.json` to `.md`
-  - Update encryption to work with markdown content
-  - Remove JSON-based `CommandConfig` struct (clean break)
-
-**2. Implement AI Agent Integration**
-- [ ] Create agent prompt builder for command execution
-  - Include markdown template as context
-  - Include user parameters
-  - Include user-profile.md context
-  - Request CDP command generation
-- [ ] Implement CDP generation from markdown
-  - Send markdown + parameters to AI agent
-  - Parse CDP JSON response
-  - Validate CDP commands before execution
-- [ ] Add fallback to static CDP script
-  - If markdown includes CDP Script section, use it
-  - Support parameter substitution in static CDP
-  - Prefer dynamic generation over static when available
-
-**3. Update Command Storage**
-- [ ] Implement markdown template storage
-  - Save as `command-{name}.md` files
-  - Encrypt markdown content
-  - Preserve formatting and sections
-- [ ] Delete JSON-based command files
-  - Remove old `.json` command files
-  - Clean up test fixtures
-  - Update file references in code
-
-**4. Update Command Executor**
-- [ ] Refactor `CommandExecutor` for markdown templates
-  - Load markdown template
-  - Build AI prompt with parameters
-  - Generate or retrieve CDP commands
-  - Execute CDP commands
-  - Return execution results
-- [ ] Add validation for markdown structure
-  - Validate YAML frontmatter
-  - Check required sections present
-  - Validate parameter definitions
-- [ ] Handle optional CDP script section
-  - Check if CDP section exists
-  - Use static CDP if present, dynamic if absent
-  - Log which approach was used
-
-#### Frontend Refactoring Tasks
-
-**5. Update Command Editor UI**
-- [ ] Create markdown template editor
+**1. Update Command Editor UI**
+- [ ] Create markdown template editor component
   - Syntax highlighting for markdown
   - YAML frontmatter editor section
   - Preview pane for rendered markdown
-  - Template generator (help users create structure)
+  - Template generator helper
 - [ ] Add section editors
   - Parameters section editor (structured form)
   - Rules section editor (bullet list)
   - Checklist section editor (checkbox list)
   - CDP Script section (optional, collapsible)
-- [ ] Add AI assistance
-  - "Generate command from description" button
-  - AI suggests parameters, rules, checklist
-  - Option to include or omit CDP script
 
-**6. Update Command List UI**
-- [ ] Show markdown-based command info
-  - Display frontmatter metadata
+**2. Update Command List UI**
+- [ ] Show markdown-based command metadata
+  - Display frontmatter (version, description, etc.)
   - Show parameter count
-  - Show if CDP script is included or dynamic
-- [ ] Add command preview
-  - Render markdown in modal
+  - Show if CDP script is static or dynamic
+- [ ] Add command preview modal
+  - Render markdown
   - Show all sections
-  - Highlight what agent will see
 
-**7. Update Command Executor UI**
-- [ ] Keep existing parameter input forms
-  - Generate form from markdown parameters
-  - Support all parameter types
-- [ ] Add execution mode indicator
-  - Show "Dynamic CDP Generation" or "Static CDP Script"
-  - Display agent prompt being used
+**3. Implement AI Integration**
+- [ ] Add AI service communication
+  - Call `build_command_prompt()` to get prompt
+  - Send prompt to AI service (Claude, OpenAI, etc.)
+  - Parse CDP JSON from AI response
+  - Error handling for AI failures
+- [ ] Add fallback to static CDP
+  - Call `get_static_cdp()` if AI unavailable
+  - Show which mode is being used
+
+**4. Update Command Executor UI**
+- [ ] Generate parameter forms from Command.parameters
+- [ ] Show execution mode indicator
+  - "Dynamic CDP Generation" or "Static CDP Script"
+  - Display agent prompt (optional)
   - Show generated CDP before execution (optional)
 
-#### Testing Tasks
+#### Backend Cleanup
 
-**8. Test Suite Updates**
-- [ ] Unit tests for markdown parser
-  - Test YAML frontmatter parsing
-  - Test section extraction (Parameters, Rules, etc.)
-  - Test optional CDP script handling
-- [ ] Unit tests for AI prompt generation
-  - Test prompt builder with all sections
-  - Test parameter substitution in prompt
-  - Validate prompt format
-- [ ] Integration tests for command execution
-  - Test dynamic CDP generation
-  - Test static CDP execution
-  - Test fallback behavior
-- [ ] Remove old JSON command tests
-  - Delete JSON-based test cases
-  - Update test fixtures to use markdown
-  - Verify all tests pass with new format
+**5. Deprecation Cleanup**
+- [ ] Remove old JSON-based command.rs file (marked deprecated)
+- [ ] Remove JSON command tests
+- [ ] Delete any JSON command fixtures
 
-#### Documentation Tasks
+#### Documentation
 
-**9. Update Documentation**
-- [ ] Update command examples in docs
-  - Show markdown template examples
-  - Demonstrate optional CDP script
-  - Show dynamic vs static approaches
+**6. User Documentation**
 - [ ] Create command authoring guide
   - How to write markdown templates
-  - Best practices for parameters and rules
-  - When to include CDP script vs dynamic
-- [ ] Update API documentation
-  - Document new command structure
-  - Update Tauri command signatures
-  - Remove references to JSON format
+  - Best practices
+  - Example templates
+- [ ] Update API documentation for frontend
+  - New command structure
+  - Tauri command signatures
+  - Migration guide
 
 ---
 
