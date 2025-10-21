@@ -7,6 +7,9 @@ import type {
   ExecutionReport,
   ChatMessageRequest,
   WorkflowResult,
+  ProfileResult,
+  CommandConfig,
+  CommandInfo,
 } from './types';
 
 export async function launchBrowser(screenWidth?: number, screenHeight?: number): Promise<string> {
@@ -70,4 +73,47 @@ export async function executeCdpScript(scriptJson: string): Promise<ExecutionRep
 // Agent workflow commands
 export async function processChatMessage(request: ChatMessageRequest): Promise<WorkflowResult> {
   return await invoke<WorkflowResult>('process_chat_message', { request });
+}
+
+// ============================================================================
+// Command System Commands (Phase 3)
+// ============================================================================
+
+/**
+ * Save a command configuration
+ */
+export async function saveCommand(config: CommandConfig): Promise<ProfileResult<void>> {
+  return await invoke<ProfileResult<void>>('save_command', { config });
+}
+
+/**
+ * Get a command configuration by name
+ */
+export async function getCommand(name: string): Promise<ProfileResult<CommandConfig>> {
+  return await invoke<ProfileResult<CommandConfig>>('get_command', { name });
+}
+
+/**
+ * List all saved commands
+ */
+export async function listCommands(): Promise<ProfileResult<CommandInfo[]>> {
+  return await invoke<ProfileResult<CommandInfo[]>>('list_commands');
+}
+
+/**
+ * Delete a command by name
+ */
+export async function deleteCommand(name: string): Promise<ProfileResult<void>> {
+  return await invoke<ProfileResult<void>>('delete_command', { name });
+}
+
+/**
+ * Execute a command with parameters
+ * Returns the CDP script JSON with substituted parameters
+ */
+export async function executeCommand(
+  name: string,
+  params: Record<string, string>
+): Promise<ProfileResult<string>> {
+  return await invoke<ProfileResult<string>>('execute_command', { name, params });
 }

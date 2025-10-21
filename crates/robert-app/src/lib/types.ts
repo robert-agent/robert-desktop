@@ -180,3 +180,47 @@ export interface PasswordValidation {
   errors: string[];
   suggestions: string[];
 }
+
+// ============================================================================
+// Command System Types (Phase 3)
+// ============================================================================
+
+/**
+ * Simple parameter type for command inputs
+ */
+export type SimpleParameterType = 'text' | 'number' | 'boolean';
+
+/**
+ * Simple parameter definition for commands
+ */
+export interface SimpleParameter {
+  name: string; // Parameter name (used in script as {{name}})
+  param_type: SimpleParameterType;
+  label: string; // User-facing label
+  required: boolean;
+  default_value?: string;
+}
+
+/**
+ * Command configuration
+ * Stored as encrypted JSON in ~/.robert/users/{username}/commands/
+ */
+export interface CommandConfig {
+  name: string; // Unique command identifier (kebab-case)
+  description: string; // Human-readable description
+  script: string; // CDP script template with {{parameter}} placeholders
+  parameters: SimpleParameter[];
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}
+
+/**
+ * Command summary information for list views
+ */
+export interface CommandInfo {
+  name: string;
+  description: string;
+  parameter_count: number;
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}
