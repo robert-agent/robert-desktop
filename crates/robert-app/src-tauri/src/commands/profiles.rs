@@ -5,15 +5,18 @@
 //! - User listing
 //! - Profile management
 //! - Session management
+//! - Command management (Phase 3)
 
 use crate::profiles::{
     auth::{AuthError, AuthService},
+    command::{CommandExecutor, CommandInfo, CommandManager},
     manager::UserManager,
     storage::{load_user_profile, save_user_profile},
-    types::UserConfig,
+    types::{CommandConfig, UserConfig},
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tauri::State;
 
 // ============================================================================
@@ -254,5 +257,172 @@ pub async fn has_users() -> Result<ProfileResult<bool>, String> {
             log::error!("❌ Failed to check users: {}", e);
             Ok(ProfileResult::error(e.to_string()))
         }
+    }
+}
+
+// ============================================================================
+// Command System Commands (Phase 3)
+// ============================================================================
+
+/// Save a command configuration
+///
+/// # Parameters
+/// - `config`: The command configuration to save
+///
+/// # Returns
+/// Success if saved, error message if failed
+#[tauri::command]
+pub async fn save_command(
+    state: State<'_, AppState>,
+    config: CommandConfig,
+) -> Result<ProfileResult<()>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.save_command(&config) {
+            Ok(_) => {
+                log::info!("✅ Command '{}' saved", config.name);
+                Ok(ProfileResult::success(()))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to save command: {}", e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Get a command configuration by name
+///
+/// # Parameters
+/// - `name`: The command name to retrieve
+///
+/// # Returns
+/// CommandConfig if found, error message if not found
+#[tauri::command]
+pub async fn get_command(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<ProfileResult<CommandConfig>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.load_command(&name) {
+            Ok(config) => {
+                log::info!("✅ Command '{}' loaded", name);
+                Ok(ProfileResult::success(config))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to load command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// List all saved commands
+///
+/// # Returns
+/// List of CommandInfo for all saved commands
+#[tauri::command]
+pub async fn list_commands(
+    state: State<'_, AppState>,
+) -> Result<ProfileResult<Vec<CommandInfo>>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.list_commands() {
+            Ok(commands) => {
+                log::info!("📋 Listed {} commands", commands.len());
+                Ok(ProfileResult::success(commands))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to list commands: {}", e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Delete a command by name
+///
+/// # Parameters
+/// - `name`: The command name to delete
+///
+/// # Returns
+/// Success if deleted, error message if failed
+#[tauri::command]
+pub async fn delete_command(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<ProfileResult<()>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let manager = CommandManager::new(session.username.clone(), encryption_key);
+
+        match manager.delete_command(&name) {
+            Ok(_) => {
+                log::info!("✅ Command '{}' deleted", name);
+                Ok(ProfileResult::success(()))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to delete command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Execute a command with parameters
+///
+/// # Parameters
+/// - `name`: The command name to execute
+/// - `params`: Map of parameter names to values
+///
+/// # Returns
+/// CDP script JSON with substituted parameters, ready for execution
+#[tauri::command]
+pub async fn execute_command(
+    state: State<'_, AppState>,
+    name: String,
+    params: HashMap<String, String>,
+) -> Result<ProfileResult<String>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let executor = CommandExecutor::new(session.username.clone(), encryption_key);
+
+        match executor.execute_command(&name, params) {
+            Ok(script) => {
+                log::info!("✅ Command '{}' executed successfully", name);
+                Ok(ProfileResult::success(script))
+            }
+            Err(e) => {
+                log::error!("❌ Failed to execute command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
     }
 }

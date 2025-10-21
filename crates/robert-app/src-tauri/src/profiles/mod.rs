@@ -19,4 +19,7 @@ pub mod types;
 // Re-export commonly used types
 // Note: Temporarily allow dead_code for types that will be used in Phase 2-5
 #[allow(unused_imports)]
-pub use types::{BrowserProfile, BrowserProfileInfo, UserConfig, UserPreferences, UserStats};
+pub use types::{
+    BrowserProfile, BrowserProfileInfo, CommandConfig, SimpleParameter, SimpleParameterType,
+    UserConfig, UserPreferences, UserStats,
+};

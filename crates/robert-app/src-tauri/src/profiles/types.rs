@@ -172,6 +172,64 @@ pub struct BrowserProfileInfo {
 // Command System Types
 // ============================================================================
 
+/// Simple command configuration for Phase 3 (JSON-based, not markdown)
+///
+/// This is a simplified version for MVP. Full markdown-based commands
+/// with frontmatter and generative UI will come in Phase 4.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandConfig {
+    /// Unique command identifier (kebab-case)
+    /// Example: "clothing-search", "check-prices"
+    pub name: String,
+
+    /// Human-readable description shown in UI
+    pub description: String,
+
+    /// CDP script template with {{parameter}} placeholders
+    /// Example: "Page.navigate {\"url\": \"{{url}}\"}"
+    pub script: String,
+
+    /// Command parameters
+    pub parameters: Vec<SimpleParameter>,
+
+    /// ISO 8601 timestamp of command creation
+    pub created_at: DateTime<Utc>,
+
+    /// ISO 8601 timestamp of last update
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Simple parameter definition for Phase 3 (text only)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimpleParameter {
+    /// Parameter name (used in script as {{name}})
+    pub name: String,
+
+    /// Parameter type (text, number, boolean for MVP)
+    pub param_type: SimpleParameterType,
+
+    /// User-facing label
+    pub label: String,
+
+    /// Whether this parameter is required
+    pub required: bool,
+
+    /// Optional default value
+    pub default_value: Option<String>,
+}
+
+/// Simple parameter types for Phase 3
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum SimpleParameterType {
+    /// Text input
+    Text,
+    /// Numeric input
+    Number,
+    /// Boolean checkbox
+    Boolean,
+}
+
 /// Command frontmatter metadata (parsed from YAML)
 ///
 /// This structure is extracted from the YAML frontmatter section at the
