@@ -11,7 +11,7 @@
 /// - Migration from older versions
 ///
 /// File system structure:
-/// ```
+/// ```text
 /// ~/.robert/
 /// ├── app-config.json          # Global application config
 /// ├── users/
