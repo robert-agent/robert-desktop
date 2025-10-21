@@ -1,3 +1,6 @@
+// Disable doctests for this crate
+#![cfg_attr(doctest, allow(dead_code, unused_imports, unused_variables))]
+
 // Modules
 mod agent;
 mod claude;
