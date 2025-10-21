@@ -20,6 +20,8 @@
   let error = '';
   let isEditing = false;
   let showPreview = false;
+  let editorMode: 'wizard' | 'markdown' = 'wizard'; // Toggle between wizard and markdown editor
+  let markdownContent = ''; // For direct markdown editing
 
   // Temporary input fields for adding items
   let newRule = '';
@@ -279,11 +281,41 @@
 
     return md;
   }
+
+  function switchToMarkdownMode() {
+    // Generate markdown from current wizard values
+    markdownContent = generateMarkdownPreview();
+    editorMode = 'markdown';
+  }
+
+  function switchToWizardMode() {
+    // Parse markdown back to wizard fields (basic parsing)
+    // For now, just switch mode - we can enhance parsing later
+    editorMode = 'wizard';
+  }
 </script>
 
 <div class="command-editor">
   <div class="header">
     <h2>{isEditing ? 'Edit Command' : 'New Command'}</h2>
+    <div class="mode-toggle">
+      <button
+        type="button"
+        class="mode-btn"
+        class:active={editorMode === 'wizard'}
+        on:click={switchToWizardMode}
+      >
+        Wizard
+      </button>
+      <button
+        type="button"
+        class="mode-btn"
+        class:active={editorMode === 'markdown'}
+        on:click={switchToMarkdownMode}
+      >
+        Markdown
+      </button>
+    </div>
     <button class="btn-close" on:click={onCancel}>×</button>
   </div>
 
@@ -295,240 +327,262 @@
         <div class="error-message">{error}</div>
       {/if}
 
-      <!-- Frontmatter Section -->
-      <div class="section">
-        <h3>Command Information</h3>
-
-        <div class="form-group">
-          <label for="name">
-            Command Name <span class="required">*</span>
-            <span class="hint">(kebab-case: my-command)</span>
-          </label>
-          <input
-            id="name"
-            type="text"
-            bind:value={name}
-            placeholder="my-command"
-            disabled={isEditing}
-            required
-          />
+      {#if editorMode === 'markdown'}
+        <!-- Markdown Editor Mode -->
+        <div class="section">
+          <h3>Markdown Editor</h3>
+          <p class="hint">
+            Edit the command markdown directly. Switch to Wizard mode for a guided form.
+          </p>
+          <textarea
+            class="markdown-editor"
+            bind:value={markdownContent}
+            placeholder="Enter your command markdown here..."
+            rows="25"
+          ></textarea>
+          <p class="hint">
+            Note: Markdown parsing will be added soon. For now, use Wizard mode to create commands.
+          </p>
         </div>
+      {:else}
+        <!-- Wizard Mode -->
+        <!-- Frontmatter Section -->
+        <div class="section">
+          <h3>Command Information</h3>
 
-        <div class="form-group">
-          <label for="description">
-            Description <span class="required">*</span>
-          </label>
-          <input
-            id="description"
-            type="text"
-            bind:value={description}
-            placeholder="What does this command do?"
-            required
-          />
-        </div>
-
-        <div class="form-row">
           <div class="form-group">
-            <label for="version">
-              Version <span class="required">*</span>
+            <label for="name">
+              Command Name <span class="required">*</span>
+              <span class="hint">(kebab-case: my-command)</span>
             </label>
-            <input id="version" type="text" bind:value={version} placeholder="1.0.0" required />
-          </div>
-
-          <div class="form-group">
-            <label for="browserProfile">Browser Profile</label>
             <input
-              id="browserProfile"
+              id="name"
               type="text"
-              bind:value={browserProfile}
-              placeholder="Optional profile name"
+              bind:value={name}
+              placeholder="my-command"
+              disabled={isEditing}
+              required
             />
           </div>
-        </div>
-      </div>
 
-      <!-- Parameters Section -->
-      <div class="section">
-        <h3>
-          Parameters
-          <button type="button" class="btn-add" on:click={addParameter}>+ Add Parameter</button>
-        </h3>
-
-        {#if parameters.length === 0}
-          <div class="empty-message">
-            No parameters defined. Click "Add Parameter" to create one.
+          <div class="form-group">
+            <label for="description">
+              Description <span class="required">*</span>
+              <span class="hint">Describe what this command does and what it achieves</span>
+            </label>
+            <textarea
+              id="description"
+              bind:value={description}
+              placeholder="This command navigates to a website and extracts product information..."
+              rows="4"
+              required
+            ></textarea>
           </div>
-        {:else}
-          <div class="items-list">
-            {#each parameters as param, i (i)}
-              <div class="parameter-item">
-                <div class="param-header">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="version">
+                Version <span class="required">*</span>
+              </label>
+              <input id="version" type="text" bind:value={version} placeholder="1.0.0" required />
+            </div>
+
+            <div class="form-group">
+              <label for="browserProfile">Browser Profile</label>
+              <input
+                id="browserProfile"
+                type="text"
+                bind:value={browserProfile}
+                placeholder="Optional profile name"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Parameters Section -->
+        <div class="section">
+          <h3>
+            Parameters
+            <button type="button" class="btn-add" on:click={addParameter}>+ Add Parameter</button>
+          </h3>
+
+          {#if parameters.length === 0}
+            <div class="empty-message">
+              No parameters defined. Click "Add Parameter" to create one.
+            </div>
+          {:else}
+            <div class="items-list">
+              {#each parameters as param, i (i)}
+                <div class="parameter-item">
+                  <div class="param-header">
+                    <input
+                      type="text"
+                      bind:value={param.name}
+                      placeholder="parameter_name"
+                      class="param-name"
+                      required
+                    />
+                    <select
+                      value={param.param_type.type}
+                      on:change={(e) => updateParameterType(i, e.currentTarget.value)}
+                      class="param-type"
+                    >
+                      <option value="text_input">Text Input</option>
+                      <option value="short_text">Short Text</option>
+                      <option value="dropdown">Dropdown</option>
+                      <option value="radio">Radio</option>
+                      <option value="checkbox">Checkbox</option>
+                      <option value="slider">Slider</option>
+                      <option value="color_picker">Color Picker</option>
+                      <option value="date_picker">Date Picker</option>
+                    </select>
+                    <button
+                      type="button"
+                      class="btn-remove"
+                      on:click={() => removeParameter(i)}
+                      title="Remove parameter"
+                    >
+                      ×
+                    </button>
+                  </div>
                   <input
                     type="text"
-                    bind:value={param.name}
-                    placeholder="parameter_name"
-                    class="param-name"
+                    bind:value={param.label}
+                    placeholder="User-facing label"
+                    class="param-label"
                     required
                   />
-                  <select
-                    value={param.param_type.type}
-                    on:change={(e) => updateParameterType(i, e.currentTarget.value)}
-                    class="param-type"
-                  >
-                    <option value="text_input">Text Input</option>
-                    <option value="short_text">Short Text</option>
-                    <option value="dropdown">Dropdown</option>
-                    <option value="radio">Radio</option>
-                    <option value="checkbox">Checkbox</option>
-                    <option value="slider">Slider</option>
-                    <option value="color_picker">Color Picker</option>
-                    <option value="date_picker">Date Picker</option>
-                  </select>
+                  <div class="param-options">
+                    <label class="checkbox-label">
+                      <input type="checkbox" bind:checked={param.required} />
+                      Required
+                    </label>
+                    <input
+                      type="text"
+                      bind:value={param.placeholder}
+                      placeholder="Placeholder text (optional)"
+                      class="param-placeholder"
+                    />
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Rules Section -->
+        <div class="section">
+          <h3>Rules</h3>
+          <p class="section-hint">Constraints and guidelines for executing this command</p>
+
+          <div class="add-item">
+            <input
+              type="text"
+              bind:value={newRule}
+              placeholder="Add a rule or constraint..."
+              on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addRule())}
+            />
+            <button type="button" class="btn-add-small" on:click={addRule}>Add</button>
+          </div>
+
+          {#if rules.length > 0}
+            <ul class="items-list">
+              {#each rules as rule, i (i)}
+                <li>
+                  <span class="item-text">{rule}</span>
                   <button
                     type="button"
-                    class="btn-remove"
-                    on:click={() => removeParameter(i)}
-                    title="Remove parameter"
+                    class="btn-remove-small"
+                    on:click={() => removeRule(i)}
+                    title="Remove rule"
                   >
                     ×
                   </button>
-                </div>
-                <input
-                  type="text"
-                  bind:value={param.label}
-                  placeholder="User-facing label"
-                  class="param-label"
-                  required
-                />
-                <div class="param-options">
-                  <label class="checkbox-label">
-                    <input type="checkbox" bind:checked={param.required} />
-                    Required
-                  </label>
-                  <input
-                    type="text"
-                    bind:value={param.placeholder}
-                    placeholder="Placeholder text (optional)"
-                    class="param-placeholder"
-                  />
-                </div>
-              </div>
-            {/each}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </div>
+
+        <!-- Checklist Section -->
+        <div class="section">
+          <h3>Success Checklist</h3>
+          <p class="section-hint">Criteria to verify successful execution</p>
+
+          <div class="add-item">
+            <input
+              type="text"
+              bind:value={newChecklistItem}
+              placeholder="Add success criterion..."
+              on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+            />
+            <button type="button" class="btn-add-small" on:click={addChecklistItem}>Add</button>
           </div>
-        {/if}
-      </div>
 
-      <!-- Rules Section -->
-      <div class="section">
-        <h3>Rules</h3>
-        <p class="section-hint">Constraints and guidelines for executing this command</p>
-
-        <div class="add-item">
-          <input
-            type="text"
-            bind:value={newRule}
-            placeholder="Add a rule or constraint..."
-            on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addRule())}
-          />
-          <button type="button" class="btn-add-small" on:click={addRule}>Add</button>
+          {#if checklist.length > 0}
+            <ul class="items-list">
+              {#each checklist as item, i (i)}
+                <li>
+                  <span class="item-text">{item}</span>
+                  <button
+                    type="button"
+                    class="btn-remove-small"
+                    on:click={() => removeChecklistItem(i)}
+                    title="Remove item"
+                  >
+                    ×
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
 
-        {#if rules.length > 0}
-          <ul class="items-list">
-            {#each rules as rule, i (i)}
-              <li>
-                <span class="item-text">{rule}</span>
-                <button
-                  type="button"
-                  class="btn-remove-small"
-                  on:click={() => removeRule(i)}
-                  title="Remove rule"
-                >
-                  ×
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-
-      <!-- Checklist Section -->
-      <div class="section">
-        <h3>Success Checklist</h3>
-        <p class="section-hint">Criteria to verify successful execution</p>
-
-        <div class="add-item">
-          <input
-            type="text"
-            bind:value={newChecklistItem}
-            placeholder="Add success criterion..."
-            on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
-          />
-          <button type="button" class="btn-add-small" on:click={addChecklistItem}>Add</button>
-        </div>
-
-        {#if checklist.length > 0}
-          <ul class="items-list">
-            {#each checklist as item, i (i)}
-              <li>
-                <span class="item-text">{item}</span>
-                <button
-                  type="button"
-                  class="btn-remove-small"
-                  on:click={() => removeChecklistItem(i)}
-                  title="Remove item"
-                >
-                  ×
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-
-      <!-- CDP Script Template Section (Optional) -->
-      <div class="section">
-        <h3>
-          <label class="checkbox-label">
-            <input type="checkbox" bind:checked={includeCdpScript} />
-            Include Static CDP Script Template (Optional)
-          </label>
-        </h3>
-        <p class="section-hint">
-          If not provided, AI will generate CDP commands dynamically from the command description
-        </p>
-
-        {#if includeCdpScript}
-          <div class="form-group">
-            <label for="cdpScript">
-              CDP Script JSON
-              <button type="button" class="btn-format" on:click={formatCdpScript}>
-                Format JSON
-              </button>
+        <!-- CDP Script Template Section (Optional) -->
+        <div class="section">
+          <h3>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={includeCdpScript} />
+              Include Static CDP Script Template (Optional)
             </label>
-            <textarea
-              id="cdpScript"
-              bind:value={cdpScriptTemplate}
-              placeholder="Enter CDP script JSON"
-              rows="12"
-            ></textarea>
-            <div class="hint">This will be used as fallback if AI generation is unavailable</div>
-          </div>
-        {/if}
-      </div>
+          </h3>
+          <p class="section-hint">
+            If not provided, AI will generate CDP commands dynamically from the command description
+          </p>
 
-      <!-- Preview Section -->
-      <div class="section">
-        <h3>
-          <button type="button" class="btn-preview" on:click={() => (showPreview = !showPreview)}>
-            {showPreview ? '▼' : '▶'} Preview Markdown
-          </button>
-        </h3>
+          {#if includeCdpScript}
+            <div class="form-group">
+              <label for="cdpScript">
+                CDP Script JSON
+                <button type="button" class="btn-format" on:click={formatCdpScript}>
+                  Format JSON
+                </button>
+              </label>
+              <textarea
+                id="cdpScript"
+                bind:value={cdpScriptTemplate}
+                placeholder="Enter CDP script JSON"
+                rows="12"
+              ></textarea>
+              <div class="hint">This will be used as fallback if AI generation is unavailable</div>
+            </div>
+          {/if}
+        </div>
 
-        {#if showPreview}
-          <pre class="markdown-preview">{generateMarkdownPreview()}</pre>
-        {/if}
-      </div>
+        <!-- Preview Section -->
+        <div class="section">
+          <h3>
+            <button type="button" class="btn-preview" on:click={() => (showPreview = !showPreview)}>
+              {showPreview ? '▼' : '▶'} Preview Markdown
+            </button>
+          </h3>
+
+          {#if showPreview}
+            <pre class="markdown-preview">{generateMarkdownPreview()}</pre>
+          {/if}
+        </div>
+      {/if}
+      <!-- End Wizard Mode -->
 
       <!-- Form Actions -->
       <div class="form-actions">
@@ -905,5 +959,62 @@
   button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  /* Mode Toggle */
+  .mode-toggle {
+    display: flex;
+    gap: 0.5rem;
+    background: #f0f0f0;
+    border-radius: 6px;
+    padding: 0.25rem;
+  }
+
+  .mode-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #666;
+    transition: all 0.2s;
+  }
+
+  .mode-btn:hover {
+    background: #e0e0e0;
+  }
+
+  .mode-btn.active {
+    background: white;
+    color: #0066cc;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Markdown Editor */
+  .markdown-editor {
+    width: 100%;
+    min-height: 500px;
+    padding: 1rem;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+  }
+
+  .markdown-editor:focus {
+    outline: none;
+    border-color: #0066cc;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+  }
+
+  /* Enhanced Description Field */
+  textarea#description {
+    min-height: 100px;
+    resize: vertical;
+    line-height: 1.5;
   }
 </style>
