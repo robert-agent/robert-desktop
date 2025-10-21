@@ -19,4 +19,11 @@ pub mod types;
 // Re-export commonly used types
 // Note: Temporarily allow dead_code for types that will be used in Phase 2-5
 #[allow(unused_imports)]
-pub use types::{BrowserProfile, BrowserProfileInfo, UserConfig, UserPreferences, UserStats};
+pub use types::{UserConfig, UserPreferences, UserStats};
+
+// Re-export browser types from the browser module
+#[allow(unused_imports)]
+pub use browser::{
+    BrowserConfig, BrowserLauncher, BrowserProfile, BrowserProfileInfo, BrowserSession,
+    LauncherError, ProfileError, SessionError, SessionId, SessionInfo, SessionManager,
+};
