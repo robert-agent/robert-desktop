@@ -112,10 +112,13 @@ impl AuthService {
     ///
     /// # Example
     /// ```no_run
-    /// use crate::profiles::auth::AuthService;
+    /// use robert_app_lib::profiles::auth::AuthService;
     ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let session = AuthService::login("alice", "password123", None)?;
     /// println!("Logged in as: {}", session.username);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn login(
         username: &str,
@@ -189,10 +192,13 @@ impl AuthService {
     ///
     /// # Example
     /// ```no_run
-    /// use crate::profiles::auth::AuthService;
+    /// use robert_app_lib::profiles::auth::AuthService;
     ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let session = AuthService::create_and_login("alice", "secure_password", None)?;
     /// println!("Created and logged in as: {}", session.username);
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn create_and_login(
         username: &str,
@@ -321,6 +327,51 @@ mod tests {
             result,
             Err(AuthError::UserNotFound(username)) if username == "nonexistent"
         ));
+    }
+
+    #[test]
+    fn test_create_and_login_success() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create and login a new user
+        let session =
+            AuthService::create_and_login("new_user", "secure_password123", Some(temp_dir.path()))
+                .unwrap();
+
+        assert_eq!(session.username, "new_user");
+        // Verify encryption key is accessible
+        let key = session.encryption_key.lock().unwrap();
+        assert_eq!(key.as_bytes().len(), 32); // AES-256 key
+
+        // Verify the user can login again with same password
+        let login_session =
+            AuthService::login("new_user", "secure_password123", Some(temp_dir.path())).unwrap();
+
+        assert_eq!(login_session.username, "new_user");
+        let login_key = login_session.encryption_key.lock().unwrap();
+        assert_eq!(login_key.as_bytes().len(), 32);
+    }
+
+    #[test]
+    fn test_create_and_login_duplicate_user() {
+        let temp_dir = TempDir::new().unwrap();
+
+        // Create first user
+        AuthService::create_and_login(
+            "duplicate_user",
+            "secure_password123",
+            Some(temp_dir.path()),
+        )
+        .unwrap();
+
+        // Try to create same user again - should fail
+        let result = AuthService::create_and_login(
+            "duplicate_user",
+            "different_password456",
+            Some(temp_dir.path()),
+        );
+
+        assert!(result.is_err());
     }
 
     #[test]
