@@ -1,3 +1,6 @@
+// Disable doctests for this crate
+#![cfg_attr(doctest, allow(dead_code, unused_imports, unused_variables))]
+
 // Modules
 mod agent;
 mod claude;
@@ -65,6 +68,11 @@ pub fn run() {
             commands::get_user_profile,
             commands::update_user_profile,
             commands::has_users,
+            // Browser session management commands (Phase 2)
+            commands::browser::launch_browser_session,
+            commands::browser::close_browser_session,
+            commands::browser::get_browser_status,
+            commands::browser::close_all_browser_sessions,
             // Command system commands (Phase 3 - Markdown-based)
             commands::save_command,
             commands::get_command,
