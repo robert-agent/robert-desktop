@@ -3,7 +3,9 @@
   import { listCommands, deleteCommand } from '../lib/tauri';
   import type { CommandInfo } from '../lib/types';
 
+  // eslint-disable-next-line no-unused-vars
   export let onEdit: (name: string) => void;
+  // eslint-disable-next-line no-unused-vars
   export let onExecute: (name: string) => void;
   export let onCreate: () => void;
 

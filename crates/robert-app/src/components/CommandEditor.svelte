@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { saveCommand, getCommand } from '../lib/tauri';
-  import type { CommandConfig, SimpleParameter, SimpleParameterType } from '../lib/types';
+  import type { CommandConfig, SimpleParameter } from '../lib/types';
 
   export let commandName: string | null = null; // null for new command
   export let onSave: () => void;
@@ -88,7 +88,7 @@
     // Try to parse script as JSON to validate
     try {
       JSON.parse(script);
-    } catch (e) {
+    } catch {
       error = 'Script must be valid JSON';
       return;
     }
@@ -141,7 +141,7 @@
       const parsed = JSON.parse(script);
       script = JSON.stringify(parsed, null, 2);
       error = '';
-    } catch (e) {
+    } catch {
       error = 'Cannot format: Script must be valid JSON';
     }
   }
@@ -201,20 +201,21 @@
           rows="12"
           required
         ></textarea>
-        <div class="hint">
-          Use double braces around parameter names for substitution, e.g. url
-        </div>
+        <div class="hint">Use double braces around parameter names for substitution, e.g. url</div>
       </div>
 
       <div class="form-group">
         <label>
           Parameters
-          <button type="button" class="btn-add-param" on:click={addParameter}>+ Add Parameter</button
+          <button type="button" class="btn-add-param" on:click={addParameter}
+            >+ Add Parameter</button
           >
         </label>
 
         {#if parameters.length === 0}
-          <div class="empty-params">No parameters defined. Click "Add Parameter" to create one.</div>
+          <div class="empty-params">
+            No parameters defined. Click "Add Parameter" to create one.
+          </div>
         {:else}
           <div class="parameters-list">
             {#each parameters as param, i (i)}
