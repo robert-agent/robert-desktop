@@ -65,6 +65,11 @@ pub fn run() {
             commands::get_user_profile,
             commands::update_user_profile,
             commands::has_users,
+            // Browser session management commands (Phase 2)
+            commands::browser::launch_browser_session,
+            commands::browser::close_browser_session,
+            commands::browser::get_browser_status,
+            commands::browser::close_all_browser_sessions,
             // Logging commands
             commands::log_frontend_message,
             commands::get_logs,

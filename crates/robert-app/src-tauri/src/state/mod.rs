@@ -1,5 +1,6 @@
 use crate::developer_mode::DevTestServer;
 use crate::profiles::auth::UserSession;
+use crate::profiles::browser::SessionManager;
 use robert_webdriver::ChromeDriver;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -13,6 +14,8 @@ pub struct AppState {
     /// Active user session (username, config, and encryption key)
     /// None if no user is logged in
     pub user_session: Arc<Mutex<Option<UserSession>>>,
+    /// Browser session manager for Phase 2 (ephemeral profiles)
+    pub session_manager: SessionManager,
 }
 
 impl AppState {
@@ -25,6 +28,7 @@ impl AppState {
             dev_server: Arc::new(Mutex::new(None)),
             session_id: Arc::new(Mutex::new(session_id)),
             user_session: Arc::new(Mutex::new(None)),
+            session_manager: SessionManager::new(),
         }
     }
 }
