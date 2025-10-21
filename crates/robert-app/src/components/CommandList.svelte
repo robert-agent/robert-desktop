@@ -3,6 +3,7 @@
   import { listCommands, deleteCommand } from '../lib/tauri';
   import type { CommandInfo } from '../lib/types';
 
+  // Props for parent component callbacks
   // eslint-disable-next-line no-unused-vars
   export let onEdit: (name: string) => void;
   // eslint-disable-next-line no-unused-vars
@@ -79,26 +80,47 @@
     </div>
   {:else}
     <div class="commands">
-      {#each commands as cmd (cmd.name)}
+      {#each commands as cmd (cmd.command_name)}
         <div class="command-card">
           <div class="command-header">
-            <h3>{cmd.name}</h3>
+            <div class="command-title">
+              <h3>{cmd.command_name}</h3>
+              <span class="version-badge">v{cmd.version}</span>
+              {#if cmd.browser_profile}
+                <span class="profile-badge" title="Browser Profile">
+                  {cmd.browser_profile}
+                </span>
+              {/if}
+            </div>
             <div class="command-actions">
-              <button class="btn-icon" on:click={() => onExecute(cmd.name)} title="Execute">
-                ▶️
+              <button
+                class="btn-icon btn-execute"
+                on:click={() => onExecute(cmd.command_name)}
+                title="Execute"
+              >
+                ▶
               </button>
-              <button class="btn-icon" on:click={() => onEdit(cmd.name)} title="Edit">✏️</button>
-              <button class="btn-icon" on:click={() => handleDelete(cmd.name)} title="Delete">
-                🗑️
+              <button
+                class="btn-icon btn-edit"
+                on:click={() => onEdit(cmd.command_name)}
+                title="Edit"
+              >
+                ✏
+              </button>
+              <button
+                class="btn-icon btn-delete"
+                on:click={() => handleDelete(cmd.command_name)}
+                title="Delete"
+              >
+                🗑
               </button>
             </div>
           </div>
           <p class="command-description">{cmd.description}</p>
           <div class="command-meta">
-            <span class="meta-item">
-              {cmd.parameter_count} parameter{cmd.parameter_count !== 1 ? 's' : ''}
+            <span class="meta-item" title="Last updated">
+              Updated: {formatDate(cmd.updated_at)}
             </span>
-            <span class="meta-item">Created: {formatDate(cmd.created_at)}</span>
           </div>
         </div>
       {/each}
@@ -196,8 +218,15 @@
   .command-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 0.5rem;
+  }
+
+  .command-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .command-header h3 {
@@ -207,29 +236,67 @@
     font-family: 'Monaco', 'Courier New', monospace;
   }
 
+  .version-badge {
+    padding: 0.15rem 0.5rem;
+    background: #e8f4fd;
+    color: #007acc;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'Monaco', 'Courier New', monospace;
+  }
+
+  .profile-badge {
+    padding: 0.15rem 0.5rem;
+    background: #fff4e6;
+    color: #e67e22;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
   .command-actions {
     display: flex;
     gap: 0.5rem;
   }
 
   .btn-icon {
-    padding: 0.25rem 0.5rem;
+    padding: 0.4rem 0.6rem;
     background: transparent;
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.2s;
+    font-size: 0.95rem;
+    transition: all 0.2s;
   }
 
   .btn-icon:hover {
     background: #f0f0f0;
   }
 
+  .btn-execute:hover {
+    background: #e8f9ed;
+    border-color: #28a745;
+    color: #28a745;
+  }
+
+  .btn-edit:hover {
+    background: #e8f4fd;
+    border-color: #007acc;
+    color: #007acc;
+  }
+
+  .btn-delete:hover {
+    background: #fee;
+    border-color: #dc3545;
+    color: #dc3545;
+  }
+
   .command-description {
     margin: 0.5rem 0;
     color: #666;
     font-size: 0.9rem;
+    line-height: 1.4;
   }
 
   .command-meta {
@@ -238,6 +305,8 @@
     font-size: 0.8rem;
     color: #999;
     margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f0f0f0;
   }
 
   .meta-item {

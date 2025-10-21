@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { saveCommand, getCommand } from '../lib/tauri';
-  import type { CommandConfig, SimpleParameter } from '../lib/types';
+  import type { Command, CommandParameter, ParameterType } from '../lib/types';
 
   export let commandName: string | null = null; // null for new command
   export let onSave: () => void;
@@ -9,26 +9,36 @@
 
   let name = '';
   let description = '';
-  let script = '';
-  let parameters: SimpleParameter[] = [];
+  let version = '1.0.0';
+  let browserProfile = '';
+  let parameters: CommandParameter[] = [];
+  let rules: string[] = [];
+  let checklist: string[] = [];
+  let includeCdpScript = false;
+  let cdpScriptTemplate = '';
   let loading = false;
   let error = '';
   let isEditing = false;
+  let showPreview = false;
+
+  // Temporary input fields for adding items
+  let newRule = '';
+  let newChecklistItem = '';
 
   onMount(async () => {
     if (commandName) {
       isEditing = true;
       await loadCommand(commandName);
     } else {
-      // New command - set default CDP script template
-      script = JSON.stringify(
+      // New command - set default CDP script template example
+      cdpScriptTemplate = JSON.stringify(
         {
           name: 'My Command',
           cdp_commands: [
             {
               method: 'Page.navigate',
               params: {
-                url: '{{url}}',
+                url: 'https://example.com',
               },
             },
           ],
@@ -46,10 +56,17 @@
       const result = await getCommand(cmdName);
       if (result.success && result.data) {
         const cmd = result.data;
-        name = cmd.name;
-        description = cmd.description;
-        script = cmd.script;
+        name = cmd.frontmatter.command_name;
+        description = cmd.frontmatter.description;
+        version = cmd.frontmatter.version;
+        browserProfile = cmd.frontmatter.browser_profile || '';
         parameters = cmd.parameters;
+        rules = cmd.rules;
+        checklist = cmd.checklist;
+        if (cmd.cdp_script_template) {
+          includeCdpScript = true;
+          cdpScriptTemplate = cmd.cdp_script_template;
+        }
       } else {
         error = result.error || 'Failed to load command';
       }
@@ -80,32 +97,43 @@
       return;
     }
 
-    if (!script.trim()) {
-      error = 'Script is required';
+    if (!version.match(/^\d+\.\d+\.\d+$/)) {
+      error = 'Version must be in semantic version format (e.g., 1.0.0)';
       return;
     }
 
-    // Try to parse script as JSON to validate
-    try {
-      JSON.parse(script);
-    } catch {
-      error = 'Script must be valid JSON';
-      return;
+    // Validate CDP script if included
+    if (includeCdpScript && cdpScriptTemplate.trim()) {
+      try {
+        JSON.parse(cdpScriptTemplate);
+      } catch {
+        error = 'CDP script must be valid JSON';
+        return;
+      }
     }
 
     loading = true;
 
-    const config: CommandConfig = {
-      name: name.trim(),
-      description: description.trim(),
-      script: script.trim(),
+    const command: Command = {
+      frontmatter: {
+        command_name: name.trim(),
+        description: description.trim(),
+        browser_profile: browserProfile.trim() || undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: version.trim(),
+        changelog: [],
+      },
       parameters,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      rules,
+      checklist,
+      generative_ui: undefined,
+      cdp_script_template:
+        includeCdpScript && cdpScriptTemplate.trim() ? cdpScriptTemplate.trim() : undefined,
     };
 
     try {
-      const result = await saveCommand(config);
+      const result = await saveCommand(command);
       if (result.success) {
         onSave();
       } else {
@@ -124,10 +152,11 @@
       ...parameters,
       {
         name: '',
-        param_type: 'text',
+        param_type: { type: 'text_input' },
         label: '',
+        placeholder: '',
         required: true,
-        default_value: '',
+        default: undefined,
       },
     ];
   }
@@ -136,14 +165,119 @@
     parameters = parameters.filter((_, i) => i !== index);
   }
 
-  function formatScript() {
+  function getParameterTypeLabel(paramType: ParameterType): string {
+    if (paramType.type === 'text_input') return 'Text Input';
+    if (paramType.type === 'short_text') return 'Short Text';
+    if (paramType.type === 'dropdown') return 'Dropdown';
+    if (paramType.type === 'radio') return 'Radio';
+    if (paramType.type === 'checkbox') return 'Checkbox';
+    if (paramType.type === 'slider') return 'Slider';
+    if (paramType.type === 'color_picker') return 'Color Picker';
+    if (paramType.type === 'date_picker') return 'Date Picker';
+    return 'Unknown';
+  }
+
+  function updateParameterType(index: number, typeStr: string) {
+    const param = parameters[index];
+    if (typeStr === 'text_input') {
+      param.param_type = { type: 'text_input' };
+    } else if (typeStr === 'short_text') {
+      param.param_type = { type: 'short_text', max_length: undefined };
+    } else if (typeStr === 'dropdown') {
+      param.param_type = { type: 'dropdown', options: [] };
+    } else if (typeStr === 'radio') {
+      param.param_type = { type: 'radio', options: [] };
+    } else if (typeStr === 'checkbox') {
+      param.param_type = { type: 'checkbox' };
+    } else if (typeStr === 'slider') {
+      param.param_type = { type: 'slider', min: 0, max: 100, step: 1, unit: undefined };
+    } else if (typeStr === 'color_picker') {
+      param.param_type = { type: 'color_picker' };
+    } else if (typeStr === 'date_picker') {
+      param.param_type = { type: 'date_picker' };
+    }
+    // Trigger reactivity by reassigning array
+    parameters = [...parameters];
+  }
+
+  function addRule() {
+    if (newRule.trim()) {
+      rules = [...rules, newRule.trim()];
+      newRule = '';
+    }
+  }
+
+  function removeRule(index: number) {
+    rules = rules.filter((_, i) => i !== index);
+  }
+
+  function addChecklistItem() {
+    if (newChecklistItem.trim()) {
+      checklist = [...checklist, newChecklistItem.trim()];
+      newChecklistItem = '';
+    }
+  }
+
+  function removeChecklistItem(index: number) {
+    checklist = checklist.filter((_, i) => i !== index);
+  }
+
+  function formatCdpScript() {
     try {
-      const parsed = JSON.parse(script);
-      script = JSON.stringify(parsed, null, 2);
+      const parsed = JSON.parse(cdpScriptTemplate);
+      cdpScriptTemplate = JSON.stringify(parsed, null, 2);
       error = '';
     } catch {
-      error = 'Cannot format: Script must be valid JSON';
+      error = 'Cannot format: CDP script must be valid JSON';
     }
+  }
+
+  function generateMarkdownPreview(): string {
+    let md = '---\n';
+    md += `command_name: ${name || 'untitled'}\n`;
+    md += `description: ${description || 'No description'}\n`;
+    if (browserProfile) {
+      md += `browser_profile: ${browserProfile}\n`;
+    }
+    md += `version: ${version}\n`;
+    md += `created_at: ${new Date().toISOString()}\n`;
+    md += `updated_at: ${new Date().toISOString()}\n`;
+    md += 'changelog: []\n';
+    md += '---\n\n';
+
+    if (parameters.length > 0) {
+      md += '## Parameters\n\n';
+      parameters.forEach((p) => {
+        const req = p.required ? ' (required)' : ' (optional)';
+        md += `- **${p.name}** (${getParameterTypeLabel(p.param_type)}${req}): ${p.label}\n`;
+      });
+      md += '\n';
+    }
+
+    if (rules.length > 0) {
+      md += '## Rules\n\n';
+      rules.forEach((r) => {
+        md += `- ${r}\n`;
+      });
+      md += '\n';
+    }
+
+    if (checklist.length > 0) {
+      md += '## Checklist\n\n';
+      checklist.forEach((c) => {
+        md += `- [ ] ${c}\n`;
+      });
+      md += '\n';
+    }
+
+    if (includeCdpScript && cdpScriptTemplate.trim()) {
+      md += '## CDP Script Template\n\n';
+      md += '```json\n';
+      md += cdpScriptTemplate;
+      md += '\n```\n';
+    }
+
+    return md;
   }
 </script>
 
@@ -161,81 +295,98 @@
         <div class="error-message">{error}</div>
       {/if}
 
-      <div class="form-group">
-        <label for="name">
-          Command Name <span class="required">*</span>
-          <span class="hint">(kebab-case: my-command)</span>
-        </label>
-        <input
-          id="name"
-          type="text"
-          bind:value={name}
-          placeholder="my-command"
-          disabled={isEditing}
-          required
-        />
+      <!-- Frontmatter Section -->
+      <div class="section">
+        <h3>Command Information</h3>
+
+        <div class="form-group">
+          <label for="name">
+            Command Name <span class="required">*</span>
+            <span class="hint">(kebab-case: my-command)</span>
+          </label>
+          <input
+            id="name"
+            type="text"
+            bind:value={name}
+            placeholder="my-command"
+            disabled={isEditing}
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="description">
+            Description <span class="required">*</span>
+          </label>
+          <input
+            id="description"
+            type="text"
+            bind:value={description}
+            placeholder="What does this command do?"
+            required
+          />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="version">
+              Version <span class="required">*</span>
+            </label>
+            <input id="version" type="text" bind:value={version} placeholder="1.0.0" required />
+          </div>
+
+          <div class="form-group">
+            <label for="browserProfile">Browser Profile</label>
+            <input
+              id="browserProfile"
+              type="text"
+              bind:value={browserProfile}
+              placeholder="Optional profile name"
+            />
+          </div>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label for="description">
-          Description <span class="required">*</span>
-        </label>
-        <input
-          id="description"
-          type="text"
-          bind:value={description}
-          placeholder="What does this command do?"
-          required
-        />
-      </div>
-
-      <div class="form-group">
-        <label for="script">
-          CDP Script <span class="required">*</span>
-          <button type="button" class="btn-format" on:click={formatScript}>Format JSON</button>
-        </label>
-        <textarea
-          id="script"
-          bind:value={script}
-          placeholder="Enter CDP script JSON with placeholders"
-          rows="12"
-          required
-        ></textarea>
-        <div class="hint">Use double braces around parameter names for substitution, e.g. url</div>
-      </div>
-
-      <div class="form-group">
-        <label>
+      <!-- Parameters Section -->
+      <div class="section">
+        <h3>
           Parameters
-          <button type="button" class="btn-add-param" on:click={addParameter}
-            >+ Add Parameter</button
-          >
-        </label>
+          <button type="button" class="btn-add" on:click={addParameter}>+ Add Parameter</button>
+        </h3>
 
         {#if parameters.length === 0}
-          <div class="empty-params">
+          <div class="empty-message">
             No parameters defined. Click "Add Parameter" to create one.
           </div>
         {:else}
-          <div class="parameters-list">
+          <div class="items-list">
             {#each parameters as param, i (i)}
               <div class="parameter-item">
-                <div class="param-row">
+                <div class="param-header">
                   <input
                     type="text"
                     bind:value={param.name}
-                    placeholder="Parameter name (e.g., url)"
+                    placeholder="parameter_name"
                     class="param-name"
                     required
                   />
-                  <select bind:value={param.param_type} class="param-type">
-                    <option value="text">Text</option>
-                    <option value="number">Number</option>
-                    <option value="boolean">Boolean</option>
+                  <select
+                    value={param.param_type.type}
+                    on:change={(e) => updateParameterType(i, e.currentTarget.value)}
+                    class="param-type"
+                  >
+                    <option value="text_input">Text Input</option>
+                    <option value="short_text">Short Text</option>
+                    <option value="dropdown">Dropdown</option>
+                    <option value="radio">Radio</option>
+                    <option value="checkbox">Checkbox</option>
+                    <option value="slider">Slider</option>
+                    <option value="color_picker">Color Picker</option>
+                    <option value="date_picker">Date Picker</option>
                   </select>
                   <button
                     type="button"
-                    class="btn-remove-param"
+                    class="btn-remove"
                     on:click={() => removeParameter(i)}
                     title="Remove parameter"
                   >
@@ -245,7 +396,7 @@
                 <input
                   type="text"
                   bind:value={param.label}
-                  placeholder="Label (shown in UI)"
+                  placeholder="User-facing label"
                   class="param-label"
                   required
                 />
@@ -256,9 +407,9 @@
                   </label>
                   <input
                     type="text"
-                    bind:value={param.default_value}
-                    placeholder="Default value (optional)"
-                    class="param-default"
+                    bind:value={param.placeholder}
+                    placeholder="Placeholder text (optional)"
+                    class="param-placeholder"
                   />
                 </div>
               </div>
@@ -267,6 +418,119 @@
         {/if}
       </div>
 
+      <!-- Rules Section -->
+      <div class="section">
+        <h3>Rules</h3>
+        <p class="section-hint">Constraints and guidelines for executing this command</p>
+
+        <div class="add-item">
+          <input
+            type="text"
+            bind:value={newRule}
+            placeholder="Add a rule or constraint..."
+            on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addRule())}
+          />
+          <button type="button" class="btn-add-small" on:click={addRule}>Add</button>
+        </div>
+
+        {#if rules.length > 0}
+          <ul class="items-list">
+            {#each rules as rule, i (i)}
+              <li>
+                <span class="item-text">{rule}</span>
+                <button
+                  type="button"
+                  class="btn-remove-small"
+                  on:click={() => removeRule(i)}
+                  title="Remove rule"
+                >
+                  ×
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+
+      <!-- Checklist Section -->
+      <div class="section">
+        <h3>Success Checklist</h3>
+        <p class="section-hint">Criteria to verify successful execution</p>
+
+        <div class="add-item">
+          <input
+            type="text"
+            bind:value={newChecklistItem}
+            placeholder="Add success criterion..."
+            on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
+          />
+          <button type="button" class="btn-add-small" on:click={addChecklistItem}>Add</button>
+        </div>
+
+        {#if checklist.length > 0}
+          <ul class="items-list">
+            {#each checklist as item, i (i)}
+              <li>
+                <span class="item-text">{item}</span>
+                <button
+                  type="button"
+                  class="btn-remove-small"
+                  on:click={() => removeChecklistItem(i)}
+                  title="Remove item"
+                >
+                  ×
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+
+      <!-- CDP Script Template Section (Optional) -->
+      <div class="section">
+        <h3>
+          <label class="checkbox-label">
+            <input type="checkbox" bind:checked={includeCdpScript} />
+            Include Static CDP Script Template (Optional)
+          </label>
+        </h3>
+        <p class="section-hint">
+          If not provided, AI will generate CDP commands dynamically from the command description
+        </p>
+
+        {#if includeCdpScript}
+          <div class="form-group">
+            <label for="cdpScript">
+              CDP Script JSON
+              <button type="button" class="btn-format" on:click={formatCdpScript}>
+                Format JSON
+              </button>
+            </label>
+            <textarea
+              id="cdpScript"
+              bind:value={cdpScriptTemplate}
+              placeholder="Enter CDP script JSON"
+              rows="12"
+            ></textarea>
+            <div class="hint">This will be used as fallback if AI generation is unavailable</div>
+          </div>
+        {/if}
+      </div>
+
+      <!-- Preview Section -->
+      <div class="section">
+        <h3>
+          <button type="button" class="btn-preview" on:click={() => (showPreview = !showPreview)}>
+            {showPreview ? '▼' : '▶'} Preview Markdown
+          </button>
+        </h3>
+
+        {#if showPreview}
+          <pre class="markdown-preview">{generateMarkdownPreview()}</pre>
+        {/if}
+      </div>
+
+      <!-- Form Actions -->
       <div class="form-actions">
         <button type="button" class="btn-cancel" on:click={onCancel} disabled={loading}>
           Cancel
@@ -282,7 +546,7 @@
 <style>
   .command-editor {
     padding: 1.5rem;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
     background: white;
     border-radius: 8px;
@@ -335,8 +599,39 @@
     font-size: 0.9rem;
   }
 
+  .section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .section:last-of-type {
+    border-bottom: none;
+  }
+
+  .section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .section-hint {
+    color: #999;
+    font-size: 0.85rem;
+    margin: -0.5rem 0 1rem 0;
+  }
+
   .form-group {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
   }
 
   label {
@@ -374,7 +669,7 @@
     resize: vertical;
   }
 
-  input[type='text']:focus,
+  input:focus,
   textarea:focus,
   select:focus {
     outline: none;
@@ -384,6 +679,21 @@
   input:disabled {
     background: #f5f5f5;
     cursor: not-allowed;
+  }
+
+  .btn-add {
+    margin-left: auto;
+    padding: 0.25rem 0.75rem;
+    background: #007acc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .btn-add:hover {
+    background: #005a9e;
   }
 
   .btn-format {
@@ -400,22 +710,20 @@
     background: #e0e0e0;
   }
 
-  .btn-add-param {
-    float: right;
+  .btn-preview {
     padding: 0.25rem 0.75rem;
-    background: #007acc;
-    color: white;
-    border: none;
+    background: transparent;
+    border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 
-  .btn-add-param:hover {
-    background: #005a9e;
+  .btn-preview:hover {
+    background: #f0f0f0;
   }
 
-  .empty-params {
+  .empty-message {
     padding: 1rem;
     background: #f9f9f9;
     border: 1px dashed #ddd;
@@ -425,10 +733,28 @@
     font-size: 0.9rem;
   }
 
-  .parameters-list {
+  .items-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .items-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+
+  .item-text {
+    flex: 1;
+    color: #333;
   }
 
   .parameter-item {
@@ -441,7 +767,7 @@
     gap: 0.5rem;
   }
 
-  .param-row {
+  .param-header {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -455,22 +781,8 @@
     flex: 1;
   }
 
-  .btn-remove-param {
-    font-size: 1.5rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: #c33;
-    padding: 0;
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .btn-remove-param:hover {
-    color: #a11;
-  }
-
-  .param-label {
+  .param-label,
+  .param-placeholder {
     width: 100%;
   }
 
@@ -488,8 +800,69 @@
     margin-bottom: 0;
   }
 
-  .param-default {
+  .btn-remove {
+    font-size: 1.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #c33;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .btn-remove:hover {
+    color: #a11;
+  }
+
+  .add-item {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .add-item input {
     flex: 1;
+  }
+
+  .btn-add-small {
+    padding: 0.5rem 1rem;
+    background: #007acc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .btn-add-small:hover {
+    background: #005a9e;
+  }
+
+  .btn-remove-small {
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #c33;
+    font-size: 1.2rem;
+  }
+
+  .btn-remove-small:hover {
+    color: #a11;
+  }
+
+  .markdown-preview {
+    padding: 1rem;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
   }
 
   .form-actions {
