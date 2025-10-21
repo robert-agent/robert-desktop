@@ -12,6 +12,7 @@ env:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   check-for-changes:
@@ -52,10 +53,137 @@ jobs:
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
-  trigger-canary-release:
-    name: Trigger canary release
+  check-manifest-status:
+    name: Check if manifest needs update or new build needed
     needs: check-for-changes
     if: needs.check-for-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      needs_build: ${{ steps.check.outputs.needs_build }}
+      latest_release_tag: ${{ steps.check.outputs.latest_release_tag }}
+      manifest_version: ${{ steps.check.outputs.manifest_version }}
+    steps:
+      - name: Check manifest vs latest release
+        id: check
+        uses: actions/github-script@v7
+        env:
+          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+        with:
+          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
+          script: |
+            // Decision Logic for Nightly Canary Release
+            //
+            // This job determines whether we need to build a new release or just update the manifest.
+            //
+            // Scenarios:
+            //
+            // Scenario A: Manifest is outdated
+            //   - Latest release: 0.1.1-canary.20251021120000
+            //   - latest.json version: 0.1.1-canary.20251020120000
+            //   - Action: Skip build, go directly to updating manifest (needs_build = false)
+            //   - Reason: A release was built but manifest wasn't updated yet
+            //
+            // Scenario B: Manifest is up-to-date
+            //   - Latest release: 0.1.1-canary.20251021120000
+            //   - latest.json version: 0.1.1-canary.20251021120000
+            //   - Action: Build new release since there are new commits (needs_build = true)
+            //   - Reason: Manifest already points to latest release, need new build for new commits
+            //
+            // Scenario C: No release exists
+            //   - No canary releases found
+            //   - Action: Build new release (needs_build = true)
+            //   - Reason: This is the first canary release
+            //
+            // Scenario D: Release incomplete
+            //   - Latest release exists but missing assets (DMGs, updaters, or signatures)
+            //   - Action: Build new release (needs_build = true)
+            //   - Reason: Previous build failed or didn't complete, need to rebuild
+
+            const owner = 'robert-agent';
+            const repo = 'robert-releases-canary';
+
+            try {
+              // Get the latest canary release
+              const { data: releases } = await github.rest.repos.listReleases({
+                owner,
+                repo,
+                per_page: 5
+              });
+
+              const canaryRelease = releases.find(r => r.tag_name.includes('-canary.'));
+
+              if (!canaryRelease) {
+                // Scenario C: No release exists
+                console.log('No existing canary release found - needs build');
+                core.setOutput('needs_build', 'true');
+                core.setOutput('latest_release_tag', 'none');
+                core.setOutput('manifest_version', 'none');
+                return;
+              }
+
+              console.log(`Latest canary release: ${canaryRelease.tag_name}`);
+
+              // Check if release has all required assets
+              const assets = canaryRelease.assets;
+              const hasDmgs = assets.filter(a => a.name.endsWith('.dmg')).length >= 2;
+              const hasUpdaters = assets.filter(a => a.name.includes('updater.app.tar.gz') && !a.name.endsWith('.sig')).length >= 2;
+              const hasSigs = assets.filter(a => a.name.endsWith('.app.tar.gz.sig')).length >= 2;
+
+              if (!hasDmgs || !hasUpdaters || !hasSigs) {
+                // Scenario D: Release incomplete
+                console.log('⚠️ Latest release is missing assets - needs rebuild');
+                core.setOutput('needs_build', 'true');
+                core.setOutput('latest_release_tag', canaryRelease.tag_name);
+                core.setOutput('manifest_version', 'incomplete');
+                return;
+              }
+
+              console.log(`✅ Latest release has all assets: ${canaryRelease.tag_name}`);
+              core.setOutput('latest_release_tag', canaryRelease.tag_name);
+
+              // Now check latest.json to see if it points to this release
+              try {
+                const { data: manifestFile } = await github.rest.repos.getContent({
+                  owner,
+                  repo,
+                  path: 'latest.json',
+                  ref: 'main'
+                });
+
+                const manifestContent = Buffer.from(manifestFile.content, 'base64').toString('utf-8');
+                const manifest = JSON.parse(manifestContent);
+
+                console.log(`Manifest version: ${manifest.version}`);
+                console.log(`Latest release: ${canaryRelease.tag_name}`);
+
+                core.setOutput('manifest_version', manifest.version);
+
+                if (manifest.version === canaryRelease.tag_name) {
+                  // Scenario B: Manifest is up-to-date
+                  console.log('✅ Manifest is up-to-date with latest release - needs NEW build');
+                  core.setOutput('needs_build', 'true');
+                } else {
+                  // Scenario A: Manifest is outdated
+                  console.log('⚠️ Manifest is outdated - only needs manifest update, skip build');
+                  core.setOutput('needs_build', 'false');
+                }
+              } catch (manifestError) {
+                console.log(`Error reading manifest: ${manifestError.message}`);
+                console.log('Manifest not found or error - needs build');
+                core.setOutput('needs_build', 'true');
+                core.setOutput('manifest_version', 'error');
+              }
+            } catch (error) {
+              console.log(`Error checking releases: ${error.message}`);
+              core.setOutput('needs_build', 'true');
+              core.setOutput('latest_release_tag', 'error');
+              core.setOutput('manifest_version', 'error');
+            }
+
+  trigger-canary-release:
+    name: Trigger canary release
+    needs: check-manifest-status
+    if: needs.check-manifest-status.outputs.needs_build == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger release workflow
@@ -64,6 +192,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             console.log('Triggering canary release workflow...');
+            console.log('Note: Release workflow will automatically trigger manifest update when complete');
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -75,75 +204,10 @@ jobs:
             });
             console.log('✅ Release workflow triggered');
 
-  wait-for-release:
-    name: Wait for release to complete
-    needs: trigger-canary-release
-    runs-on: ubuntu-latest
-    outputs:
-      release_tag: ${{ steps.wait.outputs.release_tag }}
-    steps:
-      - name: Wait for release workflow
-        id: wait
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const maxWaitTime = 30 * 60 * 1000; // 30 minutes
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-
-            console.log('Waiting for release workflow to complete...');
-
-            while (Date.now() - startTime < maxWaitTime) {
-              // Get recent workflow runs
-              const { data: runs } = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: 'release.yml',
-                per_page: 5
-              });
-
-              // Find the most recent canary release run
-              const canaryRun = runs.workflow_runs.find(run => 
-                run.event === 'workflow_dispatch' &&
-                run.created_at > new Date(startTime).toISOString()
-              );
-
-              if (canaryRun) {
-                console.log(`Found workflow run: ${canaryRun.id}, status: ${canaryRun.status}, conclusion: ${canaryRun.conclusion}`);
-                
-                if (canaryRun.status === 'completed') {
-                  if (canaryRun.conclusion === 'success') {
-                    console.log('✅ Release workflow completed successfully');
-                    
-                    // Get the latest canary tag
-                    const { data: tags } = await github.rest.repos.listTags({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      per_page: 10
-                    });
-                    
-                    const canaryTag = tags.find(tag => tag.name.includes('-canary.'));
-                    if (canaryTag) {
-                      core.setOutput('release_tag', canaryTag.name);
-                      console.log(`Release tag: ${canaryTag.name}`);
-                    }
-                    return;
-                  } else {
-                    throw new Error(`Release workflow failed with conclusion: ${canaryRun.conclusion}`);
-                  }
-                }
-              }
-
-              // Wait before checking again
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-
-            throw new Error('Timeout waiting for release workflow to complete');
-
   trigger-update-manifest:
     name: Trigger update manifest
-    needs: wait-for-release
+    needs: check-manifest-status
+    if: needs.check-manifest-status.outputs.needs_build == 'false' && needs.check-manifest-status.outputs.latest_release_tag != 'none'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger update-manifest workflow
@@ -162,105 +226,4 @@ jobs:
               }
             });
             console.log('✅ Update-manifest workflow triggered');
-
-  wait-and-merge-pr:
-    name: Wait for manifest PR and auto-merge
-    needs: trigger-update-manifest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for PR and merge
-        uses: actions/github-script@v7
-        env:
-          RELEASES_REPO_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
-        with:
-          github-token: ${{ secrets.RELEASES_REPO_TOKEN }}
-          script: |
-            const maxWaitTime = 15 * 60 * 1000; // 15 minutes
-            const checkInterval = 30 * 1000; // 30 seconds
-            const startTime = Date.now();
-
-            console.log('Waiting for manifest PR to be created...');
-
-            while (Date.now() - startTime < maxWaitTime) {
-              // List PRs in the canary releases repo
-              const { data: prs } = await github.rest.pulls.list({
-                owner: 'robert-agent',
-                repo: 'robert-releases-canary',
-                state: 'open',
-                sort: 'created',
-                direction: 'desc',
-                per_page: 5
-              });
-
-              // Find PR created by github-actions bot with "Update latest.json" in title
-              const manifestPr = prs.find(pr => 
-                pr.user.login === 'github-actions[bot]' &&
-                pr.title.includes('Update latest.json') &&
-                new Date(pr.created_at) > new Date(startTime)
-              );
-
-              if (manifestPr) {
-                console.log(`Found manifest PR #${manifestPr.number}: ${manifestPr.title}`);
-                
-                // Wait a bit for checks to start
-                await new Promise(resolve => setTimeout(resolve, 10000));
-                
-                // Check if PR has any required checks
-                const { data: checks } = await github.rest.checks.listForRef({
-                  owner: 'robert-agent',
-                  repo: 'robert-releases-canary',
-                  ref: manifestPr.head.sha
-                });
-
-                if (checks.total_count > 0) {
-                  // Wait for checks to complete
-                  console.log('Waiting for PR checks to complete...');
-                  let checksComplete = false;
-                  const checkStartTime = Date.now();
-                  
-                  while (!checksComplete && Date.now() - checkStartTime < 10 * 60 * 1000) {
-                    const { data: updatedChecks } = await github.rest.checks.listForRef({
-                      owner: 'robert-agent',
-                      repo: 'robert-releases-canary',
-                      ref: manifestPr.head.sha
-                    });
-                    
-                    const allComplete = updatedChecks.check_runs.every(
-                      check => check.status === 'completed'
-                    );
-                    const allSuccess = updatedChecks.check_runs.every(
-                      check => check.conclusion === 'success' || check.conclusion === 'neutral'
-                    );
-                    
-                    if (allComplete && allSuccess) {
-                      checksComplete = true;
-                      break;
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 10000));
-                  }
-                }
-                
-                // Merge the PR
-                try {
-                  await github.rest.pulls.merge({
-                    owner: 'robert-agent',
-                    repo: 'robert-releases-canary',
-                    pull_number: manifestPr.number,
-                    merge_method: 'squash',
-                    commit_title: `${manifestPr.title}`,
-                    commit_message: 'Automatically merged by nightly workflow'
-                  });
-                  console.log(`✅ Merged PR #${manifestPr.number}`);
-                  return;
-                } catch (error) {
-                  console.error(`Failed to merge PR: ${error.message}`);
-                  throw error;
-                }
-              }
-
-              // Wait before checking again
-              await new Promise(resolve => setTimeout(resolve, checkInterval));
-            }
-
-            throw new Error('Timeout waiting for manifest PR to be created');
+            console.log('Note: Update-manifest workflow will handle PR creation and auto-merge');
