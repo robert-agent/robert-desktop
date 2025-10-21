@@ -1,13 +1,20 @@
-//! Command system (Phase 3)
+//! DEPRECATED: Old JSON-based command system
 //!
-//! This module handles simple JSON-based commands with parameter substitution.
-//! Phase 3 MVP focuses on basic command storage and execution without markdown
-//! parsing or generative UI (those come in Phase 4-5).
+//! This module is deprecated and replaced by `command_md.rs` which implements
+//! the correct markdown-template-based approach as per the specification.
 //!
-//! Features:
-//! - Save/load/list/delete commands as encrypted JSON files
-//! - Simple parameter substitution ({{param_name}})
-//! - Execute commands as CDP scripts
+//! DO NOT USE - Use `command_md` instead.
+//!
+//! This file is kept for reference only and will be removed in the future.
+//!
+//! # Why Deprecated
+//!
+//! The original implementation used JSON files with simple `{{param}}` substitution.
+//! The correct approach is to use markdown template files that describe tasks for
+//! an AI agent, with optional CDP JSON that can be generated dynamically.
+
+#![allow(dead_code)]
+#![allow(unused_imports)]
 
 use crate::profiles::{
     crypto::EncryptionKey,
@@ -103,10 +110,7 @@ impl CommandManager {
 
     /// Get the commands directory for this user
     fn get_commands_dir(&self) -> Result<PathBuf> {
-        Ok(get_commands_dir(
-            &self.username,
-            self.base_dir.as_ref().map(|p| p.as_path()),
-        )?)
+        Ok(get_commands_dir(&self.username, self.base_dir.as_deref())?)
     }
 
     /// Get the file path for a command
@@ -131,7 +135,8 @@ impl CommandManager {
         let json = serde_json::to_string_pretty(config)?;
 
         // Encrypt
-        let encrypted = crate::profiles::crypto::encrypt_file(json.as_bytes(), &self.encryption_key)?;
+        let encrypted =
+            crate::profiles::crypto::encrypt_file(json.as_bytes(), &self.encryption_key)?;
 
         // Write to file
         fs::write(command_path, encrypted)?;
@@ -258,11 +263,7 @@ impl CommandExecutor {
     ///
     /// # Returns
     /// - Substituted CDP script ready for execution
-    pub fn execute_command(
-        &self,
-        name: &str,
-        params: HashMap<String, String>,
-    ) -> Result<String> {
+    pub fn execute_command(&self, name: &str, params: HashMap<String, String>) -> Result<String> {
         // Load command config
         let config = self.manager.load_command(name)?;
 
@@ -410,11 +411,10 @@ mod tests {
         assert!(validate_parameter_value("bool", "true", &SimpleParameterType::Boolean).is_ok());
         assert!(validate_parameter_value("bool", "false", &SimpleParameterType::Boolean).is_ok());
 
-        assert!(validate_parameter_value("num", "not-a-number", &SimpleParameterType::Number)
-            .is_err());
         assert!(
-            validate_parameter_value("bool", "yes", &SimpleParameterType::Boolean).is_err()
+            validate_parameter_value("num", "not-a-number", &SimpleParameterType::Number).is_err()
         );
+        assert!(validate_parameter_value("bool", "yes", &SimpleParameterType::Boolean).is_err());
     }
 
     #[test]
@@ -465,7 +465,7 @@ mod tests {
     fn test_parameter_substitution() {
         use tempfile::TempDir;
 
-        let temp_dir = TempDir::new().unwrap();
+        let _temp_dir = TempDir::new().unwrap();
         let (key, _) = derive_key("test_password", None).unwrap();
 
         let executor = CommandExecutor::new("testuser".to_string(), key);
@@ -496,7 +496,9 @@ mod tests {
         let mut params = HashMap::new();
         params.insert("url".to_string(), "https://example.com".to_string());
 
-        let result = executor.execute_command("navigate-command", params).unwrap();
+        let result = executor
+            .execute_command("navigate-command", params)
+            .unwrap();
 
         assert!(result.contains("https://example.com"));
         assert!(!result.contains("{{url}}"));
@@ -506,7 +508,7 @@ mod tests {
     fn test_missing_required_parameter() {
         use tempfile::TempDir;
 
-        let temp_dir = TempDir::new().unwrap();
+        let _temp_dir = TempDir::new().unwrap();
         let (key, _) = derive_key("test_password", None).unwrap();
 
         let executor = CommandExecutor::new("testuser".to_string(), key);

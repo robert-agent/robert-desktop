@@ -11,8 +11,10 @@
 pub mod auth;
 pub mod browser;
 pub mod command;
+pub mod command_md;
 pub mod crypto;
 pub mod manager;
+pub mod markdown;
 pub mod storage;
 pub mod types;
 

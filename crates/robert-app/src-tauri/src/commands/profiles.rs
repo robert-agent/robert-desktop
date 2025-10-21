@@ -9,10 +9,10 @@
 
 use crate::profiles::{
     auth::{AuthError, AuthService},
-    command::{CommandExecutor, CommandInfo, CommandManager},
+    command_md::{CommandExecutor, CommandManager},
     manager::UserManager,
     storage::{load_user_profile, save_user_profile},
-    types::{CommandConfig, UserConfig},
+    types::{Command, CommandInfo, UserConfig},
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
@@ -261,20 +261,20 @@ pub async fn has_users() -> Result<ProfileResult<bool>, String> {
 }
 
 // ============================================================================
-// Command System Commands (Phase 3)
+// Command System Commands (Phase 3 - Markdown-based)
 // ============================================================================
 
-/// Save a command configuration
+/// Save a command (markdown-based)
 ///
 /// # Parameters
-/// - `config`: The command configuration to save
+/// - `command`: The Command structure to save
 ///
 /// # Returns
 /// Success if saved, error message if failed
 #[tauri::command]
 pub async fn save_command(
     state: State<'_, AppState>,
-    config: CommandConfig,
+    command: Command,
 ) -> Result<ProfileResult<()>, String> {
     let user_session = state.user_session.lock().await;
 
@@ -282,13 +282,13 @@ pub async fn save_command(
         let encryption_key = session.get_encryption_key();
         let manager = CommandManager::new(session.username.clone(), encryption_key);
 
-        match manager.save_command(&config) {
+        match manager.save_command(&command) {
             Ok(_) => {
-                log::info!("✅ Command '{}' saved", config.name);
+                log::info!("Saved command '{}'", command.frontmatter.command_name);
                 Ok(ProfileResult::success(()))
             }
             Err(e) => {
-                log::error!("❌ Failed to save command: {}", e);
+                log::error!("Failed to save command: {}", e);
                 Ok(ProfileResult::error(e.to_string()))
             }
         }
@@ -297,18 +297,18 @@ pub async fn save_command(
     }
 }
 
-/// Get a command configuration by name
+/// Get a command by name (markdown-based)
 ///
 /// # Parameters
 /// - `name`: The command name to retrieve
 ///
 /// # Returns
-/// CommandConfig if found, error message if not found
+/// Command structure if found, error message if not found
 #[tauri::command]
 pub async fn get_command(
     state: State<'_, AppState>,
     name: String,
-) -> Result<ProfileResult<CommandConfig>, String> {
+) -> Result<ProfileResult<Command>, String> {
     let user_session = state.user_session.lock().await;
 
     if let Some(session) = user_session.as_ref() {
@@ -316,12 +316,12 @@ pub async fn get_command(
         let manager = CommandManager::new(session.username.clone(), encryption_key);
 
         match manager.load_command(&name) {
-            Ok(config) => {
-                log::info!("✅ Command '{}' loaded", name);
-                Ok(ProfileResult::success(config))
+            Ok(command) => {
+                log::info!("Command '{}' loaded", name);
+                Ok(ProfileResult::success(command))
             }
             Err(e) => {
-                log::error!("❌ Failed to load command '{}': {}", name, e);
+                log::error!("Failed to load command '{}': {}", name, e);
                 Ok(ProfileResult::error(e.to_string()))
             }
         }
@@ -392,7 +392,45 @@ pub async fn delete_command(
     }
 }
 
-/// Execute a command with parameters
+/// Build execution prompt for a command (AI-driven)
+///
+/// # Parameters
+/// - `name`: The command name to execute
+/// - `params`: Map of parameter names to values
+///
+/// # Returns
+/// AI prompt string to send to LLM for CDP generation
+#[tauri::command]
+pub async fn build_command_prompt(
+    state: State<'_, AppState>,
+    name: String,
+    params: HashMap<String, String>,
+) -> Result<ProfileResult<String>, String> {
+    let user_session = state.user_session.lock().await;
+
+    if let Some(session) = user_session.as_ref() {
+        let encryption_key = session.get_encryption_key();
+        let executor = CommandExecutor::new(session.username.clone(), encryption_key.clone());
+
+        // Load user profile if exists
+        let user_profile = load_user_profile(&session.username, &encryption_key, None).ok();
+
+        match executor.build_execution_prompt(&name, params, user_profile) {
+            Ok(prompt) => {
+                log::info!("Built execution prompt for command '{}'", name);
+                Ok(ProfileResult::success(prompt))
+            }
+            Err(e) => {
+                log::error!("Failed to build prompt for command '{}': {}", name, e);
+                Ok(ProfileResult::error(e.to_string()))
+            }
+        }
+    } else {
+        Ok(ProfileResult::error("No active session".to_string()))
+    }
+}
+
+/// Get static CDP script with parameter substitution (fallback)
 ///
 /// # Parameters
 /// - `name`: The command name to execute
@@ -401,7 +439,7 @@ pub async fn delete_command(
 /// # Returns
 /// CDP script JSON with substituted parameters, ready for execution
 #[tauri::command]
-pub async fn execute_command(
+pub async fn get_static_cdp(
     state: State<'_, AppState>,
     name: String,
     params: HashMap<String, String>,
@@ -412,13 +450,13 @@ pub async fn execute_command(
         let encryption_key = session.get_encryption_key();
         let executor = CommandExecutor::new(session.username.clone(), encryption_key);
 
-        match executor.execute_command(&name, params) {
+        match executor.get_static_cdp_script(&name, params) {
             Ok(script) => {
-                log::info!("✅ Command '{}' executed successfully", name);
+                log::info!("Retrieved static CDP for command '{}'", name);
                 Ok(ProfileResult::success(script))
             }
             Err(e) => {
-                log::error!("❌ Failed to execute command '{}': {}", name, e);
+                log::error!("Failed to get static CDP for command '{}': {}", name, e);
                 Ok(ProfileResult::error(e.to_string()))
             }
         }
