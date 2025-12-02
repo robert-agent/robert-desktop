@@ -1,4 +1,4 @@
-use crate::{GraphError, GraphStore, VectorStore, Node};
+use crate::{GraphError, GraphStore, VectorStore, Node, Edge};
 use crate::ephemeral_graph::EphemeralGraph;
 use std::collections::HashSet;
 

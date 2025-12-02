@@ -74,7 +74,7 @@ impl GraphStore for SurrealStore {
         
         // Let's use a custom query
         let sql = format!("SELECT * FROM node:{}->?", id);
-        let mut response = self.db.query(sql).await
+        let _response = self.db.query(sql).await
             .map_err(|e| GraphError::Storage(e.to_string()))?;
             
         // Parsing this dynamic result is tricky without a specific struct

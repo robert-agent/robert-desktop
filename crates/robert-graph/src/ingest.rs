@@ -9,11 +9,10 @@ pub struct IngestionPipeline<S: GraphStore + VectorStore> {
 
 impl<S: GraphStore + VectorStore> IngestionPipeline<S> {
     pub fn new(store: S) -> Result<Self, GraphError> {
-        let model = TextEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::AllMiniLML6V2,
-            show_download_progress: true,
-            ..Default::default()
-        }).map_err(|e| GraphError::Storage(format!("Failed to load embedding model: {}", e)))?;
+        let mut options = InitOptions::new(EmbeddingModel::AllMiniLML6V2);
+        options.show_download_progress = true;
+        let model = TextEmbedding::try_new(options)
+            .map_err(|e| GraphError::Storage(format!("Failed to load embedding model: {}", e)))?;
 
         Ok(Self {
             store,
