@@ -1,1807 +1,553 @@
-# Robert - Automation for Everyone
+# Robert - The Memory Layer for AI
 ## Product Requirements Document
 
 ## Executive Summary
 
-**Robert** is an open-source, local-first browser automation tool that brings the power of automation to everyone—not just programmers. While tools like Zapier and IFTTT require API knowledge, Claude agents are complex to create, and GPT's interface provides no visibility, Robert lets users **watch automation happen in real-time**, learn by observation, and maintain full control with the ability to abort operations at any moment.
+**Robert** is the neutral, trusted "Context OS" that sits between users and AI reasoning providers—combining **sophisticated memory control** with **agentic autonomy**. While tools like ChatGPT and Claude vertically integrate memory with reasoning, and Mem.ai offers "thought partnership" without action, Robert unbundles the AI stack AND executes workflows autonomously.
 
-Built with eye-candy visual feedback and delivered as a native desktop application, Robert runs entirely on your device with optional cloud inference. Unlike centralized alternatives (Herd, Monitoro) that require programming knowledge and lock you into their platforms, Robert is free, open, and designed for **visual learners who want to see their automation work**.
+The AI market is bifurcating: **Reasoning** (OpenAI, Anthropic, Google) is becoming commoditized infrastructure, competing on price and intelligence per token. **Memory**—the proprietary, highly sensitive context that defines who the user is and what they know—remains locked in provider black boxes.
+
+**The critical gap**: Current AI tools (ChatGPT, Mem.ai, Notion AI) are **retrieval engines, not execution engines**. Users ask questions, get answers, then manually execute workflows. Robert provides **domain-specific autonomous agents** that execute end-to-end workflows within user-defined boundaries.
+
+Robert solves this through a **Firewalled Architecture + Agentic Execution**: Memory stays Personal (user-owned, structured, portable), while Reasoning remains Commoditized (rented, ephemeral, interchangeable). We manage the user's digital brain, structure it into a knowledge graph, and **autonomously execute workflows** using the reasoning model of their choice.
 
 ## Product Vision
 
-**Automation for everyone, powered by local execution and visual feedback.**
+**Context control + agentic execution: AI that acts on your behalf within defined domains.**
 
-We believe automation should be:
-- **Visual**: Watch automation happen, don't just hope it works
-- **Learnable**: See what's happening, understand by observation
-- **Controllable**: Abort operations, pause, inspect state
-- **Local-first**: Run on your device, own your data and privacy
-- **Open**: Free, auditable, community-driven
-- **Beautiful**: Eye-candy UI that makes automation delightful
+We believe AI should be:
+- **Controllable**: Users curate what AI knows, not accept black-box profiles
+- **Portable**: Memory travels across jobs, platforms, and providers
+- **Segregated**: Personal vs. professional contexts kept separate
+- **Transparent**: Users see what memories are active for any query
+- **Firewalled**: Reasoning providers see anonymized context, never full user profiles
+- **Platform-agnostic**: Works across Windows, macOS, Linux, iOS, Android
+- **Agentic**: Executes workflows autonomously, not just retrieves information
 
 ### The Problem
 
-**Current automation tools have critical flaws:**
+**Current AI systems have fatal flaws:**
 
-1. **API-based tools (Zapier, IFTTT)** require understanding APIs, webhooks, and integration points
-2. **AI agents (Claude, GPT)** are black boxes—you don't see what they're doing until it's done (or wrong)
-3. **Programming tools (Playwright, Selenium)** require coding skills and test-runner mindsets
-4. **Centralized platforms (Herd, Monitoro)** lock you into their ecosystem and require programming knowledge
+1. **The "Mystery Meat" Profile**: Users have no control over what AI "knows." A business owner cannot tell ChatGPT: "Remember my 2024 pricing, but explicitly forget the 2019 PDF for generation purposes."
+
+2. **Platform Fragmentation**: Context is scattered across devices and platforms. Apple Intelligence only works on Apple. Copilot only works on Microsoft. No neutral layer exists.
+
+3. **Vertical Integration Conflicts**: To get smart answers, you must give OpenAI your data. To keep secrets, you must use a dumb model. No middle ground.
+
+4. **The "Thought Partner" Trap (Mem.ai)**: Retrieval without execution. Users ask "What should I quote for this project?" AI retrieves pricing data and gives an answer. User still manually creates the quote in a separate tool. **No workflow execution, no domain ownership, no autonomy.**
+
+5. **The "Walled Garden" Problem (Notion AI)**: Only indexes documents within Notion. Enterprise teams use Jira, Slack, Figma, Linear, Google Docs, email, and local files. **Notion AI can't answer cross-tool questions.** No intelligent context sharding across teams, roles, or personal vs. professional boundaries.
 
 **What users actually need:**
-- Visual confirmation that automation is working
-- Ability to learn by watching
-- Control to stop operations mid-flight
-- Privacy through local execution
-- Freedom from vendor lock-in
+- Curated intelligence without black-box memory
+- Context segregation (work vs. personal, current job vs. portable career knowledge)
+- Data portability when changing jobs or providers
+- Cross-platform AI continuity
+- Privacy through structural neutrality
+- **Autonomous agents that execute workflows, not just retrieve information**
+- **Universal indexing across all tools** (not locked to one vendor's ecosystem)
+- **Sophisticated context sharding** (team graphs, personal graphs, role-based access, cross-tool intelligence)
 
 ### Our Solution
 
-**Browser automation as the universal interface:**
-- The browser is the universal app—everything happens there
-- Visual feedback shows exactly what's happening
-- Users can watch, learn, and build confidence
-- Local execution keeps data private and secure
-- Open source ensures freedom and transparency
+**ContextOS: An Operating System for AI Memory**
+
+Robert is not just a chat client; it's a Memory Layer that enables:
+
+- **The Sarah Test**: An interior designer marks a 2019 pricing document as "outdated" without deleting it. Robert keeps it for tax records but never uses it for pricing quotes. She "fine-tuned" her AI without writing code.
+
+- **Firewalled Architecture**: Three-party model—User (local keys, hot state) → Robert (trusted utility cloud for sync/compute) → Reasoning Provider (untrusted, sees only anonymized context).
+
+- **GraphRAG**: Knowledge graphs instead of simple vector search. Entities, relationships, temporal reasoning. Answers questions like "How has our strategy changed since last year?"—impossible for standard RAG.
+
+- **Reactive Pruning**: Users don't organize proactively. They fix AI mistakes at the moment of frustration. Zero-cost curation when motivated.
+
+- **Enterprise Network Effect**: Individual users curate personal knowledge graphs. Teams sync proprietary graphs (legal precedents, client portfolios). We monetize synchronization of structured wisdom, not compute.
 
 ### Competitive Landscape
 
-**Tools like Herd and Monitoro** are moving in the right direction with visual feedback and eye-candy interfaces. However, they:
-- ❌ Require programming/test-runner knowledge
-- ❌ Run on centralized infrastructure
-- ❌ Lock users into proprietary platforms
-- ❌ Charge for what should be free
+**Why competitors can't build Robert:**
+
+| Player | Conflict | Robert's Advantage |
+|--------|----------|-------------------|
+| **OpenAI/Anthropic** | Business model relies on mining user data. Cannot credibly offer provider-neutral switching. | We have no conflict: protecting data *is* the business model. |
+| **Apple/Microsoft/Google** | Platform lock-in is their strategy. Structurally cannot bridge ecosystems. | Platform-agnostic by design. The Dropbox lesson. |
+| **Dropbox** | Most natural competitor and likely acquirer. Should build this. | Speed to market. Purpose-built, AI-native, no legacy business. |
 
 **Robert's differentiators:**
-- ✅ **Voice-driven creation** - Talk through your automation, we write it for you
-- ✅ **Markdown scripts** - Readable format like Claude agents, not scary YAML
-- ✅ **Local-first execution** - Runs on your device, your control
-- ✅ **Open source** - Free, auditable, community-owned
-- ✅ **Optional cloud** - Send inference to cloud when you choose
-- ✅ **Visual feedback** - Watch automation happen in real-time
-- ✅ **Eye-candy UI** - Beautiful, delightful, confidence-inspiring
+- ✅ **ContextOS** - Sophisticated control over memory boundaries
+- ✅ **Platform-agnostic** - Works everywhere, not just Apple/Microsoft ecosystems
+- ✅ **Structural neutrality** - No business model conflict with data sovereignty
+- ✅ **GraphRAG** - Knowledge graphs enable temporal reasoning
+- ✅ **Firewalled privacy** - Anonymization proxy between user and reasoning providers
 
 ### Vision Statement
 
-> "Make automation as easy as watching a recording, as powerful as programming, and as trustworthy as doing it yourself—all while running on your own device."
+> "Just as the Browser unbundled the OS from the Web, Robert unbundles Memory from the Model—becoming the trusted gateway that ensures AI serves the user, not the other way around."
 
 ## Target Users
 
-### Primary Users - "Automation Curious"
-**Non-programmers who need automation but lack technical skills:**
-- **Small business owners**: Automate repetitive web tasks (data entry, monitoring)
-- **Content creators**: Schedule social media, monitor analytics, capture content
-- **Researchers**: Collect data from websites without coding
-- **Journalists**: Track news sites, archive content, monitor changes
-- **Students**: Automate research workflows, collect academic data
-- **Marketers**: Monitor competitors, track campaigns, capture screenshots
+### Phase 1: "Vibe Coder" & "Paranoid Pro" (Months 0-9)
+
+**Prosumers with high-end hardware (Mac Apple Silicon first):**
+- **Developers**: Local-first coding assistance without sending code to GitHub Copilot
+- **Designers**: 10-year portfolio curated as knowledge graph
+- **Consultants**: Frameworks, proposals, case studies as portable context
+- **Small business owners**: Client relationships and pricing history under control
 
 **Key characteristics:**
-- Visual learners who need to see automation work
-- Want control and transparency (not black-box AI)
-- Value privacy and local execution
-- Can talk through what they want, no need to learn syntax
-- Need immediate feedback and error visibility
+- Value their time at $100-500/hour
+- Sophisticated, high-income professionals
+- Mixing personal and professional AI usage
+- Privacy-conscious but pragmatic (not ideological)
+- Mac users who expect polished, native experiences
 
-### Secondary Users - "Power Users"
-**Technical users who want better tools:**
-- **QA Engineers**: Visual testing without test-runner complexity
-- **Product Managers**: Document user flows without engineering help
-- **Designers**: Capture UI states across workflows
-- **Data Analysts**: Extract web data without scraping frameworks
-- **DevOps Engineers**: CI/CD integration (future headless mode)
+### Phase 2: Team Infection (Months 9-18)
+
+**Small businesses converting from individual use:**
+- Law firms curating "IP Precedents" graphs
+- Design agencies with shared client portfolios
+- Consultancies with institutional frameworks
+- Medical practices with patient care protocols
 
 **Key characteristics:**
-- Comfortable with technical tools but want better UX
-- Appreciate visual feedback even though they can code
-- Value open source and local execution
-- Need reliable, auditable automation
+- 5-50 employees
+- Need context segregation (work vs. personal)
+- Willing to pay $50-200/user/month for team sync
+- High switching costs once graph is curated
+
+### Phase 3: Enterprise Firewall (Months 18-36)
+
+**Compliance-driven enterprise adoption:**
+- CISOs buying "Shadow AI Audit" capability
+- Enterprises with role-based memory access
+- Organizations needing audit trails
+- Companies with regulatory compliance requirements
+
+**Key characteristics:**
+- 500+ employees
+- $200-500/user/month willingness to pay
+- Context governance as critical infrastructure
+- Treating knowledge graphs as proprietary competitive assets
 
 ## Goals
 
-### Primary Goals (v1.0) - "Watch It Work"
-1. ✅ **Voice-driven agent creator** - Talk through your automation, AI writes it
-2. ✅ **Markdown scripts** - Human-readable format (like Claude agents), not code
-3. ✅ **Real-time visual feedback** - Watch browser automation happen with eye-candy UI
-4. ✅ **Local-first execution** - Runs on your device, complete privacy
-5. ✅ **Full control** - Pause, abort, inspect state at any moment
-6. ✅ **Beautiful UI** - Eye-candy that makes automation delightful
-7. ✅ **Open source** - Free, auditable, community-owned
+### Primary Goals (v1.0) - "ContextOS Core + Agentic Foundation"
+1. ✅ **Local knowledge base** - Users maintain ≥10 documents, cite in ≥30% of queries
+2. ✅ **Context control** - Mark documents as archived, set temporal relevance, segregate contexts
+3. ✅ **Multi-provider reasoning** - 40% of users actively use ≥2 providers
+4. ✅ **GraphRAG** - Knowledge graphs with entities, relationships, temporal reasoning
+5. ✅ **Transparent attribution** - Context sidebar shows what memories are active
+6. ✅ **Reactive pruning** - Users curate via "Mark as Outdated" at moment of failure
+7. ✅ **Cross-device sync** - E2E encrypted sync across Mac/iPhone/Desktop
+8. ✅ **Domain-specific agents (v1.5)** - Users delegate workflows to autonomous agents within defined boundaries
 
 ### Secondary Goals (v1.0)
-1. ✅ **Observable browser** - Visible Chrome window showing automation
-2. ✅ **Step-by-step progress** - See exactly where automation is
-3. ✅ **Screenshot & text capture** - Collect data visually
-4. ✅ **Organized output** - Visual file browser for results
-5. ✅ **User-friendly errors** - Learn from failures with clear guidance
+1. ✅ **Hierarchical memory** - Hot/Warm/Cold storage (MemGPT pattern)
+2. ✅ **Privacy firewall** - PII stripping, token obfuscation before cloud providers
+3. ✅ **Ephemeral compute** - Cloud-assisted indexing for heavy tasks
+4. ✅ **Weekly Active Context (WAC)** - Metric tracking documents >7 days old
+5. ✅ **Native macOS app** - Beautiful, polished Mac-first experience
 
 ### Future Goals (Roadmap)
-1. 🔄 **Voice-driven script creation** - Talk naturally, AI writes Markdown (local-first, optional cloud)
-2. 🔄 **Visual script builder** - Drag-and-drop for non-technical users
-3. 🔄 **Record & replay** - Watch once, automate forever
-4. 🔄 **Community script library** - Share and discover automations
-5. 🔄 **Workflow learning system** - AI agents learn and improve navigation paths automatically
-6. 🔄 **Linux headless mode** - CI/CD and server deployments
-7. 🔄 **Multi-browser support** - Firefox, Edge, Safari
-8. 🔄 **Optional cloud inference** - Send LLM requests to cloud when desired
+1. 🔄 **Domain agents (v1.5)** - Pricing agent, research agent, meeting prep agent, writing agent
+2. 🔄 **Team knowledge graphs** - Shared memory with access control
+3. 🔄 **Context namespacing** - First-class contexts with explicit boundaries
+4. 🔄 **Query mixing (Tor for AI)** - Defeat timing analysis via aggregated queries
+5. 🔄 **Advanced agentic workflows** - Browser/desktop control, email integration
+6. 🔄 **Windows/Linux clients** - Cross-platform expansion
+7. 🔄 **Mobile apps** - iOS/Android companions
 
 ## Product Scope
 
 ### In Scope (v1.0)
 
 #### Platform & Deployment
-- ✅ **macOS desktop application** (macOS 11+)
-- ✅ **Chrome browser** automation
-- ✅ **Local execution** with visible browser
+- ✅ **macOS desktop application** (macOS 11+, Apple Silicon optimized)
+- ✅ **Local-first architecture** with cloud-assisted compute
 - ✅ **Native .app bundle** with DMG installer
+- ✅ **E2E encrypted sync** via zero-knowledge cloud storage
 
 #### User Interface
 - ✅ **Tauri-based desktop app** with Svelte frontend
-- ✅ **Script editor** with Markdown syntax highlighting
-- ✅ **Real-time execution dashboard**
-- ✅ **Live step progress** and status indicators
-- ✅ **Visual output browser** (screenshots, text files)
-- ✅ **Settings panel** for configuration
-- ✅ **Native macOS integration** (menus, notifications)
+- ✅ **Chat interface** for natural language queries
+- ✅ **Context sidebar** showing active memories with attribution
+- ✅ **Knowledge graph browser** visualizing entities and relationships
+- ✅ **Settings panel** for provider configuration, privacy controls
+- ✅ **Native macOS integration** (menus, notifications, Shortcuts)
 
-#### Automation Features
-- ✅ **Claude-generated CDP scripts** - AI writes Chrome DevTools Protocol commands as text
-- ✅ **Runtime script interpretation** - Scripts stored externally, not compiled into binary
-- ✅ **Direct CDP execution** - Full Chrome automation capabilities via CDP protocol
-- ✅ **Basic navigation** (goto, back, forward, refresh)
-- ✅ **Element interactions** (click, type, scroll)
-- ✅ **Wait conditions** (element, timeout, page load)
-- ✅ **Content capture** (screenshots: viewport/full-page/element)
-- ✅ **Text extraction** (page, element-specific)
-- ✅ **Metadata collection** (URL, title, timestamp)
-- ✅ **Error handling** (continue on error, stop on error)
-- ✅ **Advanced CDP commands** - Any CDP command supported by Chrome
+#### Memory Management Features
+- ✅ **GraphRAG knowledge graphs** - Entities, relationships, temporal reasoning
+- ✅ **Hierarchical memory** - Hot (context window), Warm (summaries), Cold (archive)
+- ✅ **Context control** - Mark as outdated, archive, exclude from contexts
+- ✅ **Transparent attribution** - See what memories AI used for each query
+- ✅ **Reactive pruning** - One-click curation at moment of frustration
+- ✅ **Multi-provider switching** - OpenAI, Anthropic, local models
+- ✅ **Context segregation** - Personal vs. work, portable vs. employer-owned
 
-#### Output & Storage
-- ✅ **Structured file output** (screenshots/, text/, html/)
-- ✅ **Manifest.json** with execution summary
-- ✅ **Preview captured content** in app
-- ✅ **Open in Finder** integration
+#### Privacy & Firewall Features
+- ✅ **Local-first processing** - Hot state and keys on device
+- ✅ **Anonymization proxy** - PII stripping before reasoning providers
+- ✅ **Ephemeral cloud compute** - Stateless workers for embeddings
+- ✅ **Zero-knowledge sync** - E2EE cloud storage, Robert holds no keys
+- ✅ **Audit trails** - Log what was sent to reasoning providers
 
 ### Out of Scope (v1.0)
 
 #### Deferred to Future Versions
 - ❌ **Windows/Linux desktop apps** (v2.0+)
-- ❌ **Headless mode** (Linux build, v1.5)
-- ❌ **Firefox/Edge/Safari** automation (v2.0+)
-- ❌ **Multi-tab/window** concurrent automation (v1.5)
-- ❌ **Visual script builder** (v2.5)
-- ❌ **Cloud execution** (v3.0)
-- ❌ **API access** (REST/GraphQL) (v1.5 with Linux)
-- ❌ **Team features** (sharing, versioning) (v3.0)
+- ❌ **Mobile apps** (iOS/Android) (v2.0+)
+- ❌ **Team workspaces** (shared knowledge graphs) (v2.5+)
+- ❌ **Query mixing (Tor-style)** (v3.0)
+- ❌ **Agentic automation** (browser/desktop control) (v3.0)
+- ❌ **Context marketplace** (community templates) (v3.5)
 
 #### Explicitly Excluded
-- ❌ CAPTCHA solving
-- ❌ Proxy rotation
-- ❌ Anti-detection mechanisms
-- ❌ Browser fingerprinting evasion
-- ❌ Cryptocurrency/blockchain interactions
-- ❌ Social media automation (spam/abuse prevention)
+- ❌ Training AI models on user data
+- ❌ Advertising or user profiling
+- ❌ Selling user data to third parties
+- ❌ Cryptocurrency/blockchain features
+- ❌ Social media automation (spam prevention)
 
 ## Requirements
 
 ### Functional Requirements
 
-#### FR1: Desktop Application
-- **FR1.1**: Launch native macOS application (.app bundle)
-- **FR1.2**: Display main window with tabbed interface
-- **FR1.3**: Support dark/light mode (system preference)
-- **FR1.4**: Provide menu bar with standard macOS menus
-- **FR1.5**: Handle window minimize/maximize/close
-- **FR1.6**: Persist window size and position
+#### FR1: Universal Knowledge Base Management
+- **FR1.1**: Import from local files (PDF, Markdown, text, web pages)
+- **FR1.2**: Connect to enterprise tools via APIs (Jira, Slack, Notion, Figma, Linear, Google Workspace)
+- **FR1.3**: Index ephemeral/transient data (project tracking, conversations, design iterations)
+- **FR1.4**: Auto-extract entities (people, projects, concepts) with source tool attribution
+- **FR1.5**: Build unified knowledge graph across all tools with relationship preservation
+- **FR1.6**: Support ≥10GB document corpus per user (cross-tool aggregation)
+- **FR1.7**: Incremental indexing (add documents without full rebuild)
+- **FR1.8**: Search knowledge base with semantic similarity across all sources
 
-#### FR2: Script Management
-- **FR2.1**: Create new Markdown scripts via voice or editor
-- **FR2.2**: Load scripts from file picker
-- **FR2.3**: Save scripts to local filesystem
-- **FR2.4**: Validate script syntax with visual feedback
-- **FR2.5**: Provide script templates and examples
-- **FR2.6**: Syntax highlighting for Markdown
-- **FR2.7**: Auto-completion for action types
+#### FR2: Context Control & Intelligent Sharding (ContextOS)
+- **FR2.1**: Mark documents as "archived" (keep for reference, exclude from generation)
+- **FR2.2**: Set temporal relevance (current vs. historical)
+- **FR2.3**: Segregate contexts (personal, work, projects, teams)
+- **FR2.4**: Context sidebar showing active memories with weights and source tools
+- **FR2.5**: One-click pruning actions ("Mark as Outdated", "Exclude from Context")
+- **FR2.6**: Audit trail of what memories were used for each query
+- **FR2.7**: Team knowledge graphs (shared context across team members)
+- **FR2.8**: Personal knowledge graphs (portable across jobs)
+- **FR2.9**: Role-based context filtering (PM sees project graph, designer sees design nodes)
+- **FR2.10**: Cross-tool intelligent routing ("This query needs Jira + Slack, not Figma")
+- **FR2.11**: Context ownership rules (team-owned vs. user-owned data)
 
-#### FR3: Browser Control
-- **FR3.1**: Launch Chrome browser in controlled mode
-- **FR3.2**: Auto-detect Chrome installation path
-- **FR3.3**: Allow manual Chrome path configuration
-- **FR3.4**: Navigate to specified URLs
-- **FR3.5**: Execute JavaScript in page context
-- **FR3.6**: Wait for page load and element conditions
-- **FR3.7**: Handle browser lifecycle (launch, close, cleanup)
-- **FR3.8**: Manage chromedriver automatically
+#### FR3: GraphRAG
+- **FR3.1**: Entity extraction from documents
+- **FR3.2**: Relationship inference between entities
+- **FR3.3**: Temporal reasoning (time-aware queries)
+- **FR3.4**: Graph traversal for query answering
+- **FR3.5**: Hierarchical memory (Hot/Warm/Cold tiers)
+- **FR3.6**: Cached traversal patterns for common queries
 
-#### FR4: Execution Control
-- **FR4.1**: Start script execution from UI button
-- **FR4.2**: Pause execution mid-script
-- **FR4.3**: Stop/cancel running scripts
-- **FR4.4**: Resume paused execution
-- **FR4.5**: Retry failed steps
-- **FR4.6**: Configure error handling behavior
+#### FR4: Multi-Provider Reasoning
+- **FR4.1**: Support OpenAI, Anthropic, local models
+- **FR4.2**: One-click provider switching
+- **FR4.3**: Per-query provider selection
+- **FR4.4**: Cost tracking per provider
+- **FR4.5**: Automatic fallback if provider fails
 
-#### FR5: Real-time Status Display
-- **FR5.1**: Show execution progress bar
-- **FR5.2**: Display current step and total steps
-- **FR5.3**: List all steps with status icons (pending/running/success/failed)
-- **FR5.4**: Show live logs with timestamps
-- **FR5.5**: Display step duration for completed steps
-- **FR5.6**: Update UI in real-time during execution
-- **FR5.7**: Show current browser URL and page title
+#### FR5: Privacy Firewall
+- **FR5.1**: PII detection and stripping (names, emails, SSN, credit cards)
+- **FR5.2**: Token obfuscation (replace sensitive data with tokens)
+- **FR5.3**: Anonymization proxy before reasoning providers
+- **FR5.4**: Audit log of data sent to cloud
+- **FR5.5**: User consent for cloud inference
 
-#### FR6: User Interactions
-- **FR6.1**: Click elements (by selector)
-- **FR6.2**: Type text into input fields
-- **FR6.3**: Scroll pages (vertical, horizontal, to element)
-- **FR6.4**: Select dropdown options
-- **FR6.5**: Check/uncheck checkboxes
-- **FR6.6**: Select radio buttons
-- **FR6.7**: Submit forms
-- **FR6.8**: Handle alerts/confirms/prompts
+#### FR6: Sync & Cloud Compute
+- **FR6.1**: E2E encrypted cloud storage for knowledge graphs
+- **FR6.2**: Zero-knowledge architecture (Robert holds no keys)
+- **FR6.3**: Ephemeral compute for embedding generation
+- **FR6.4**: Cross-device sync (Mac ↔ iPhone ↔ Desktop)
+- **FR6.5**: Conflict resolution for multi-device edits
 
-#### FR7: Content Capture
-- **FR7.1**: Capture viewport screenshots
-- **FR7.2**: Capture full-page screenshots
-- **FR7.3**: Capture element-specific screenshots
-- **FR7.4**: Extract text content from page or elements
-- **FR7.5**: Capture page HTML
-- **FR7.6**: Collect page metadata (title, URL, timestamp)
-- **FR7.7**: Support PNG and JPEG formats for screenshots
-
-#### FR8: Output Management
-- **FR8.1**: Save captured content to organized directories
-- **FR8.2**: Generate manifest.json with execution summary
-- **FR8.3**: Display output files in visual browser
-- **FR8.4**: Preview screenshots within app
-- **FR8.5**: View text content within app
-- **FR8.6**: Open output directory in Finder
-- **FR8.7**: Clear/delete output from previous runs
-- **FR8.8**: Export manifest as JSON
-
-#### FR9: Configuration & Settings
-- **FR9.1**: Configure Chrome binary path
-- **FR9.2**: Set default timeout values
-- **FR9.3**: Choose output directory location
-- **FR9.4**: Select theme (light/dark/system)
-- **FR9.5**: Configure keyboard shortcuts
-- **FR9.6**: Adjust logging verbosity
-- **FR9.7**: Persist settings across sessions
-
-#### FR10: Help & Documentation
-- **FR10.1**: In-app help documentation
-- **FR10.2**: Example scripts library
-- **FR10.3**: Action reference guide
-- **FR10.4**: Tooltips for UI elements
-- **FR10.5**: Error message explanations
-- **FR10.6**: Onboarding tutorial (first launch)
+#### FR7: Agentic Execution (v1.5+)
+- **FR7.1**: Domain definition interface (user assigns agent to workflow)
+- **FR7.2**: Boundary setting (rules, approval thresholds, constraints)
+- **FR7.3**: Trigger detection (email keywords, calendar events, file changes)
+- **FR7.4**: Multi-step workflow execution (retrieve → process → generate → act)
+- **FR7.5**: Human-in-loop approval gates (flag for review when needed)
+- **FR7.6**: Workflow templates (pricing agent, research agent, meeting prep, writing)
+- **FR7.7**: Execution history and audit trail (what agent did, when, why)
+- **FR7.8**: Agent feedback loop (thumbs up/down, refinement suggestions)
 
 ### Non-Functional Requirements
 
 #### NFR1: Performance
-- **NFR1.1**: App launch < 3 seconds
-- **NFR1.2**: Script load/parse < 500ms
-- **NFR1.3**: Browser launch < 5 seconds
-- **NFR1.4**: Screenshot capture < 2 seconds
-- **NFR1.5**: UI responsiveness < 100ms for interactions
-- **NFR1.6**: Memory footprint < 100MB (app only), app + browser combined < 1.5GB
-- **NFR1.7**: Smooth 60fps UI animations
+- **NFR1.1**: Query response < 2 seconds for typical knowledge base
+- **NFR1.2**: Graph traversal < 200ms P95 latency
+- **NFR1.3**: Indexing 1000 documents < 12 hours (cloud-assisted)
+- **NFR1.4**: Sync time < 5 seconds when coming online
+- **NFR1.5**: Memory footprint < 500MB (app + hot state)
 
 #### NFR2: Reliability
-- **NFR2.1**: 99% uptime for local execution
-- **NFR2.2**: Graceful handling of network timeouts
-- **NFR2.3**: Recovery from page load failures
-- **NFR2.4**: Proper cleanup of browser processes
-- **NFR2.5**: No zombie processes after app quit
-- **NFR2.6**: Crash resistance with automatic recovery
-- **NFR2.7**: Data persistence (no loss on crash)
+- **NFR2.1**: 99% uptime for local operations
+- **NFR2.2**: Zero user-reported data loss
+- **NFR2.3**: Graceful degradation when cloud unavailable
+- **NFR2.4**: Automatic recovery from sync conflicts
+- **NFR2.5**: <1% crash rate
 
 #### NFR3: Usability
-- **NFR3.1**: Intuitive UI (no training required for basic use)
-- **NFR3.2**: Clear, actionable error messages
-- **NFR3.3**: Visual consistency with macOS design guidelines
-- **NFR3.4**: Keyboard shortcuts for common actions
-- **NFR3.5**: Drag-and-drop support for script files
-- **NFR3.6**: Search/filter in logs and output files
-- **NFR3.7**: Undo/redo in script editor
+- **NFR3.1**: Non-technical users can mark documents as archived
+- **NFR3.2**: Context curation requires <5 seconds per action
+- **NFR3.3**: Clear error messages with recovery suggestions
+- **NFR3.4**: Keyboard shortcuts for power users
+- **NFR3.5**: Visual consistency with macOS design
 
 #### NFR4: Compatibility
 - **NFR4.1**: macOS 11 Big Sur and later
-- **NFR4.2**: Chrome 100+ (latest 3 major versions)
-- **NFR4.3**: Both Intel and Apple Silicon Macs
-- **NFR4.4**: Screen resolutions from 1280x800 to 5K
+- **NFR4.2**: Both Intel and Apple Silicon Macs
+- **NFR4.3**: Screen resolutions from 1280x800 to 5K
 
 #### NFR5: Security & Privacy
-- **NFR5.1**: Local-first inference (100% on-device by default)
-- **NFR5.2**: No telemetry or data collection (opt-in only)
-- **NFR5.3**: Optional cloud inference with automatic data obfuscation
-- **NFR5.4**: Multi-layer protection (text + image obfuscation)
-- **NFR5.5**: Secure storage of sensitive data (macOS Keychain integration)
-- **NFR5.6**: Sandboxed browser contexts
-- **NFR5.7**: Audit logging for cloud data transmission
-- **NFR5.8**: No credential harvesting or malicious use
+- **NFR5.1**: E2E encryption with password-derived keys (Argon2)
+- **NFR5.2**: Zero-knowledge cloud architecture
+- **NFR5.3**: External security audit confirms no PII leakage
+- **NFR5.4**: Reasoning providers cannot reconstruct user identity from 1000+ queries
+- **NFR5.5**: No telemetry or data collection (opt-in only)
+- **NFR5.6**: Secure storage of API keys (macOS Keychain)
 
 #### NFR6: Maintainability
 - **NFR6.1**: Modular architecture
-- **NFR6.2**: Comprehensive logging
-- **NFR6.3**: Unit test coverage > 70%
-- **NFR6.4**: Integration tests for core flows
-- **NFR6.5**: Automated CI/CD pipeline
-- **NFR6.6**: Documentation for developers
+- **NFR6.2**: Unit test coverage > 70%
+- **NFR6.3**: Integration tests for core flows
+- **NFR6.4**: Automated CI/CD pipeline
+- **NFR6.5**: Documentation for developers
 
 #### NFR7: Distribution
 - **NFR7.1**: Code-signed macOS application
 - **NFR7.2**: Notarized for Gatekeeper
-- **NFR7.3**: DMG installer with drag-to-Applications
-- **NFR7.4**: App bundle size < 50MB (excluding dependencies)
-- **NFR7.5**: Automatic update mechanism
-- **NFR7.6**: Release notes for each version
+- **NFR7.3**: DMG installer
+- **NFR7.4**: Automatic update mechanism
+- **NFR7.5**: Release notes for each version
 
 ## User Stories
 
-### US1: First Launch Experience
-**As a** new user
-**I want to** quickly understand how to create my first automation
-**So that** I can be productive immediately
+### US1: The Sarah Test (Interior Designer)
+**As a** small business owner with historical pricing data
+**I want to** mark old pricing documents as "archived" without deleting them
+**So that** my AI never quotes outdated rates but I keep records for taxes
 
 **Acceptance Criteria:**
-- App launches with welcome screen
-- Onboarding tutorial explains key concepts
-- Example scripts are pre-loaded
-- One-click to run example
-- Chrome is auto-detected or user is prompted
+- User can click "Mark as Outdated" on document in context sidebar
+- Document remains in knowledge base for historical queries
+- AI excludes archived documents from pricing-related generation
+- User can query "What did we charge in 2019?" and get correct historical answer
 
 **UI Flow:**
 ```
-Launch App → Welcome Screen → Example Selection → Run Example → View Results
+AI quotes wrong price → User sees 2019 doc in context sidebar →
+Clicks "Mark as Outdated" → AI never uses that doc for pricing again
 ```
 
-### US2: Script Creation and Editing
-**As a** QA engineer
-**I want to** create and edit automation scripts visually
-**So that** I don't need to remember syntax
+### US2: Context Segregation (Consultant)
+**As a** consultant changing jobs
+**I want to** separate my portable career knowledge from employer-specific context
+**So that** I take my frameworks with me but leave client IP behind
 
 **Acceptance Criteria:**
-- Script editor with syntax highlighting
-- Auto-completion for actions
-- Real-time validation with error indicators
-- Save/load from file system
-- Templates for common patterns
+- User can create "Personal Career" and "Client X Project" contexts
+- Documents tagged to specific contexts
+- When leaving job, export "Personal Career" context
+- Employer-specific context stays segregated and deletable
 
 **UI Flow:**
 ```
-New Script → Choose Template → Edit in Editor → Validate → Save
+Create Contexts → Tag Documents → Export Personal → Delete Work Context
 ```
 
-### US3: Running Automation with Visual Feedback
-**As a** product manager
-**I want to** see automation progress in real-time
-**So that** I can verify it's working correctly
+### US3: Multi-Provider Reasoning (Developer)
+**As a** developer
+**I want to** use Claude for coding and GPT-4 for writing
+**So that** I get the best model for each task without switching apps
 
 **Acceptance Criteria:**
-- Click "Run" button to start
-- Browser window opens visibly
-- Execution tab shows live progress
-- Each step highlighted as it runs
-- Logs stream in real-time
-- Screenshots appear as captured
+- User can select provider per query
+- Memory stays consistent across providers
+- Cost tracking shows spend per provider
+- One-click switching between providers
 
 **UI Flow:**
 ```
-Load Script → Click Run → View Execution Tab → Monitor Progress → Review Output
+Type query → Select provider dropdown → Submit → Memory consistent across both
 ```
 
-### US4: Capturing User Flows
+### US4: Reactive Pruning (Marketer)
+**As a** marketer tracking competitors
+**I want to** fix AI mistakes when it uses outdated competitor data
+**So that** my reports stay accurate without manual organization
+
+**Acceptance Criteria:**
+- AI gives wrong answer using old data
+- User clicks document in context sidebar
+- Options: "Mark as Outdated", "Exclude from Context", "Delete"
+- Future queries use updated context
+
+**UI Flow:**
+```
+AI error → User frustrated → Clicks offending document →
+"Mark as Outdated" → Problem fixed forever
+```
+
+### US5: Cross-Device Sync (Designer)
 **As a** designer
-**I want to** capture screenshots of multi-step user flows
-**So that** I can document the current state
+**I want to** start research on Mac and continue on iPhone
+**So that** my context travels with me
 
 **Acceptance Criteria:**
-- Script navigates through flow
-- Screenshot after each major step
-- Full-page captures for documentation
-- Organized output with numbered files
-- Preview screenshots in app
-- Export to folder for sharing
+- Knowledge graph syncs across devices
+- <5 second sync when coming online
+- No conflicts or data loss
+- Query on iPhone sees Mac's context
 
 **UI Flow:**
 ```
-Create Flow Script → Add Screenshot Actions → Run → View Screenshots → Open in Finder
+Research on Mac → Add documents →
+Open iPhone app → Context synced → Continue research
 ```
 
-### US5: Form Interaction Testing
-**As a** QA engineer
-**I want to** automate form filling and submission
-**So that** I can test validation rules
+## Business Model
 
-**Acceptance Criteria:**
-- Script fills all form fields (text, select, checkbox, radio)
-- Submits form
-- Captures result page
-- Extracts success/error messages
-- Handles validation errors gracefully
+### Phase 1: The Tool (Seed/Series A)
+- **Target**: Developers & Prosumers (Mac Apple Silicon first)
+- **Value**: "Vibe Coding" on local repos + Context Control
+- **Model**: Freemium / Pro Subscription
 
-**UI Flow:**
-```
-Define Form Steps → Configure Field Values → Add Validation → Run Test → Check Results
-```
+**Pricing:**
+- **Free Tier**: Local-only, single device, 1GB knowledge base
+- **Pro ($10-20/mo)**: Cloud sync, 10GB, multi-device, priority support
 
-### US6: Data Extraction
-**As a** data analyst
-**I want to** extract text from specific page sections
-**So that** I can analyze content
+### Phase 2: The Network (Series B)
+- **Target**: Teams (5-50 employees)
+- **Value**: Shared knowledge graphs with access control
+- **Revenue**: $50/user/mo for team sync
 
-**Acceptance Criteria:**
-- Script specifies CSS selectors
-- Text extracted and saved to files
-- Structured format (JSON/CSV option)
-- Preview extracted data in app
-- Metadata includes timestamps
+**The Moat**: When a team curates a shared knowledge graph (legal precedents, client portfolios), it becomes a proprietary asset. We charge to sync that structured wisdom.
 
-**UI Flow:**
-```
-Navigate to Page → Define Selectors → Extract Text → View in App → Export Data
-```
+**Analogy**: GitHub doesn't own the code; they charge for collaboration. We charge for collaboration around Memory.
 
-### US7: Error Handling and Recovery
-**As a** user
-**I want to** handle errors gracefully during automation
-**So that** partial results are still captured
+### Phase 3: Enterprise (Series B+)
+- **Target**: Enterprises (500+ employees)
+- **Value**: Context governance, compliance, audit trails
+- **Revenue**: $200-500/user/mo
 
-**Acceptance Criteria:**
-- Failed steps highlighted in red
-- Clear error messages with context
-- Option to retry failed step
-- Option to continue or stop
-- Partial outputs still saved
-- Summary report shows success/failure counts
+**The "Wedding Photos" Justification**: People pay for Google Photos before internet bills. Why? Risk of losing wedding photos is unbearable. Extrapolate to business knowledge graphs—a designer's 10-year portfolio, a law firm's precedents. Once curated, it's irreplaceable intellectual capital. Users will pay $200-500/year to protect years of work.
 
-**UI Flow:**
-```
-Run Script → Step Fails → View Error → Choose Action (Retry/Continue/Stop)
-```
+### Revenue Model Progression
+- **Individual (Free or $10-20/mo)**: Customer acquisition, not profit center
+- **Team ($50/user/mo)**: First real revenue
+- **Enterprise ($200-500/user/mo)**: High-margin, sticky (>95% retention)
 
-### US8: Output Management
-**As a** researcher
-**I want to** browse and manage captured outputs
-**So that** I can find and use the data
+**Success Metric**: Path to $100M ARR = 100K individuals (break-even/CAC) + 20K teams ($120M potential) + 100 enterprises ($120M potential)
 
-**Acceptance Criteria:**
-- Output tab shows all captured files
-- Thumbnails for screenshots
-- Text file previews
-- Search/filter by filename or date
-- Open individual files or entire folder
-- Delete old runs
+## Go-to-Market Strategy
 
-**UI Flow:**
-```
-Complete Execution → Switch to Output Tab → Browse Files → Preview → Open in Finder
-```
+### Phase 1: Vibe Coder & Paranoid Pro (Months 0-9)
+**Target**: 10,000 Individual Users (Free & Pro)
 
-### US9: Configuration and Customization
-**As a** power user
-**I want to** customize app behavior
-**So that** it fits my workflow
+**Strategy**: "Infiltration via Utility"
 
-**Acceptance Criteria:**
-- Settings panel accessible from menu
-- Configure Chrome path
-- Adjust default timeouts
-- Choose output directory
-- Set theme preference
-- Define keyboard shortcuts
-- Settings persist across launches
+**Launch Week Blitz (Supabase Style)**:
+- **Day 1**: "Anti-Cloud" Manifesto on Hacker News / Latent Space
+- **Day 2**: VS Code extension for local coding without GitHub Copilot
+- **Day 3**: Obsidian/Notion bridge for "Second Brains"
+- **Day 4**: GraphRAG benchmark white paper
+- **Day 5**: Open source "Local-Sync" protocol
 
-**UI Flow:**
-```
-Open Settings → Adjust Preferences → Save → Settings Applied
-```
+**Distribution**:
+- Product Hunt (Top 5 of the day goal)
+- Hacker News front page
+- Mac productivity blogs
+- Developer Twitter
 
-### US10: Script Sharing
-**As a** team lead
-**I want to** share scripts with my team
-**So that** everyone can run the same automation
+### Phase 2: Team Infection (Months 9-18)
+**Target**: 1,000 Team Customers (5-10 users each)
 
-**Acceptance Criteria:**
-- Export script as Markdown file
-- Include dependencies/requirements
-- Add comments/documentation
-- Share via file, email, or repo
-- Import and run on another machine
+**Strategy**: Bottoms-up. Individual users bring Robert to teams.
 
-**UI Flow:**
-```
-Create Script → Add Documentation → Export → Share File → Teammate Imports → Runs Successfully
-```
+**Sales Motion**:
+1. User curates personal graph
+2. Realizes "my team needs this"
+3. Self-serve team creation
+4. Viral loop: team members become users
 
-## User Profiles and Multi-User Support
+### Phase 3: Enterprise Firewall (Months 18-36)
+**Target**: 50 Enterprise Customers (500+ users each)
 
-### Overview
+**Strategy**: "Shadow AI Audit" trojan horse
 
-Robert supports **multiple user profiles** on a shared computer, with each user having their own isolated workspace, browser profiles, commands, and preferences. This architecture ensures privacy and personalization for family computers or shared workstations.
-
-### Key Concepts
-
-#### User Profile
-A **user** represents an individual person using Robert. Each user has:
-- **Authentication**: Password-protected with encrypted file storage
-- **Personal workspace**: Isolated directory at `~/.robert/users/{username}/`
-- **Browser profiles**: One or more Chromium browser sessions with saved state
-- **Commands**: Custom automation scripts created and refined over time
-- **Preferences**: AI agent context via `user-profile.md`
-
-#### Browser Profile
-A **browser profile** is a Chromium user data directory containing cookies, history, extensions, and other browser state. Each user can have:
-- **Ephemeral profile** (default): Clean, temporary browser with no state (deleted after session)
-- **Named profiles**: Persistent browsers like "writing", "product-search", "shopping"
-- **One default profile**: User's preferred persistent profile for general use
-
-#### Command
-A **command** is a reusable automation workflow defined in a **Markdown template file**. The markdown describes what the AI agent should do, including:
-
-- **Natural language instructions** for the automation task
-- **Parameters** that users can customize (e.g., search query, budget limit)
-- **Rules and constraints** for execution (e.g., "never use Amazon")
-- **Success criteria** checklist (e.g., "capture at least 3 results")
-- **Optional CDP JSON** as a reference (agent can generate dynamically if not provided)
-
-Commands:
-- Belong to a specific user (cannot be shared between users)
-- Specify which browser profile to use (or use ephemeral by default)
-- Define parameters (form inputs) for user customization
-- May include generative UI specifications for control panels
-- May optionally include sample CDP scripts, but this is **not required**
-- Evolve over time through AI-assisted refinement
-
-### Architecture
-
-#### File Structure
-
-```
-~/.robert/
-├── users/
-│   ├── alice/
-│   │   ├── user.json                    # App config, metadata, file paths
-│   │   ├── user-profile.md              # AI context: preferences, persona, goals
-│   │   ├── browser-profiles/
-│   │   │   ├── default/                 # Default persistent profile
-│   │   │   ├── writing/                 # Named profile for writing tasks
-│   │   │   └── product-search/          # Named profile for shopping
-│   │   └── commands/
-│   │       ├── clothing-search.md       # Custom command
-│   │       └── research-topic.md
-│   └── bob/
-│       ├── user.json
-│       ├── user-profile.md
-│       ├── browser-profiles/
-│       │   └── default/
-│       └── commands/
-│           └── check-email.md
-└── app-config.json                      # Global app settings
-```
-
-#### User Data Files
-
-**`user.json`** - Configuration and metadata:
-```json
-{
-  "username": "alice",
-  "created_at": "2025-10-17T10:00:00Z",
-  "browser_profiles": {
-    "default": "~/.robert/users/alice/browser-profiles/default",
-    "writing": "~/.robert/users/alice/browser-profiles/writing",
-    "product-search": "~/.robert/users/alice/browser-profiles/product-search"
-  },
-  "preferences": {
-    "theme": "dark",
-    "default_timeout_ms": 5000,
-    "inference_mode": "local"
-  }
-}
-```
-
-**`user-profile.md`** - AI agent context (included with all prompts):
-```markdown
-# User Profile: Alice
-
-## Preferences
-- Prefers detailed explanations over concise ones
-- Values privacy and data minimization
-- Tech-savvy, comfortable with technical terminology
-
-## Goals
-- Automate repetitive research tasks
-- Streamline online shopping workflows
-- Track competitor product launches
-
-## Language Style
-- Professional and direct
-- No emojis or casual language
-- Prefers bullet points over paragraphs
-```
-
-**`command-[name].md`** - Command definition:
-```markdown
----
-command_name: clothing-search
-description: Search for clothing items across multiple retailers
-browser_profile: product-search
-created_at: 2025-10-17T10:00:00Z
-version: 1.2.0
----
-
-# Clothing Search Command
-
-## Parameters
-- outfit_type: text (required) - "What outfit are you looking for?"
-- size: dropdown (required) - ["XS", "S", "M", "L", "XL", "XXL"]
-- budget_max: number (optional) - Maximum price in USD
-- color_preference: text (optional)
-
-## Rules
-- Never shop on amazon.com
-- Prioritize retailers with free returns
-- Filter out fast fashion brands
-
-## Checklist
-- [ ] Search at least 3 different retailers
-- [ ] Capture product images and prices
-- [ ] Extract shipping information
-- [ ] Save results to markdown file
-- [ ] Present top 5 options to user
-
-## Generative UI
-```json
-{
-  "layout": "vertical",
-  "components": [
-    {"type": "text_input", "name": "outfit_type", "label": "Outfit Type", "placeholder": "e.g., winter jacket, cocktail dress"},
-    {"type": "dropdown", "name": "size", "label": "Size", "options": ["XS", "S", "M", "L", "XL", "XXL"]},
-    {"type": "slider", "name": "budget_max", "label": "Max Budget", "min": 0, "max": 500, "step": 10},
-    {"type": "color_picker", "name": "color_preference", "label": "Preferred Color (optional)"}
-  ]
-}
-```
-
-## CDP Script Template (Optional)
-
-**This section is optional.** The AI agent can generate CDP commands dynamically based on the markdown instructions above (Parameters, Rules, Checklist). However, you may include a sample CDP script as a starting point:
-
-```json
-{
-  "name": "clothing-search",
-  "cdp_commands": [
-    {"method": "Page.navigate", "params": {"url": "https://retailer1.com"}},
-    {"method": "Runtime.evaluate", "params": {"expression": "..."}}
-  ]
-}
-```
-
-**Note**: If this section is omitted, the agent will generate CDP commands based on the natural language description in the markdown.
-```
-````
-
-### User Workflows
-
-#### First Launch (No Users Exist)
-1. App detects no users at `~/.robert/users/`
-2. Auto-creates default user profile
-3. Shows simple username/password setup screen
-4. Encrypts user directory with derived key from password
-5. Creates ephemeral browser profile for first session
-
-#### Subsequent Launches (Users Exist)
-1. App shows profile selector dropdown
-2. User selects profile and enters password
-3. Decrypts user directory
-4. Loads user preferences and available commands
-5. Opens last-used browser profile (or ephemeral if none selected)
-
-#### Creating a New User Profile
-1. User clicks "Add Profile" button
-2. Self-service form: username + password
-3. App creates directory structure at `~/.robert/users/{username}/`
-4. Initializes default files: `user.json`, `user-profile.md`
-5. Encrypts directory with password-derived key
-
-#### Creating a Browser Profile
-1. User navigates to Settings > Browser Profiles
-2. Clicks "New Browser Profile"
-3. Enters profile name (e.g., "shopping", "work")
-4. App creates Chromium user data directory at `~/.robert/users/{user}/browser-profiles/{name}/`
-5. Profile available for command execution
-
-#### Creating a Command
-1. User opens chat interface
-2. Describes desired automation in natural language
-3. AI agent generates command markdown with:
-   - Parameter definitions
-   - Suggested generative UI layout
-   - Initial CDP script template
-4. User reviews and approves
-5. Command saved to `~/.robert/users/{user}/commands/{name}.md`
-
-#### Running a Command
-1. User clicks command dropdown in chat interface
-2. Selects command (e.g., "clothing-search")
-3. Generative UI form renders with parameters
-4. User fills in form (outfit type, size, budget)
-5. App checks if specified browser profile exists:
-   - If exists: Launch browser with that profile
-   - If missing: Alert user and suggest "Refine Command"
-   - If not specified: Use ephemeral profile (default behavior)
-6. AI generates CDP script from template + parameters
-7. Browser automation executes visibly
-8. Results captured and presented to user
-9. User provides feedback (👍/👎)
-
-#### Refining a Command
-1. Command execution fails or produces unexpected results
-2. User clicks "Refine Command" button
-3. AI analyzes failure context:
-   - Error messages
-   - User corrections
-   - Missing prerequisites (e.g., browser profile doesn't exist)
-4. AI suggests improvements to command markdown
-5. User reviews and approves changes
-6. Updated command saved (version incremented)
-
-### Session Management
-
-#### Session Definition
-A **session** is the lifetime of a browser profile from launch to close. Multiple commands can run within a single session.
-
-**Example:**
-```
-User launches browser with "product-search" profile
-  → Runs "clothing-search" command (searches for jacket)
-  → Runs "compare-prices" command (compares jacket prices)
-  → Runs "clothing-search" again (searches for shoes)
-  → Closes browser
-Session ends, browser state saved to profile
-```
-
-#### Multiple Sessions
-- A user can have **multiple browser profiles/sessions running simultaneously**
-- Each profile runs in a separate Chromium process
-- Example: "writing" profile open for documentation, "shopping" profile open for research
-- **Only one user can have active sessions at a time** (single-user lock)
-
-### Security and Privacy
-
-#### Password-Based Encryption
-- User files encrypted with key derived from password (PBKDF2 or Argon2)
-- Encryption applied to entire user directory: `~/.robert/users/{username}/`
-- Password required on login to decrypt and access user data
-
-#### Profile Isolation (UI-Level)
-- UI only shows browser profiles belonging to active user
-- Commands dropdown filtered to current user's commands
-- Other users' directories not visible in UI
-- **Note**: File system permissions NOT enforced (relies on UI restrictions and encryption)
-
-#### Default User Auto-Creation
-- Single-user scenario: App auto-creates default profile on first launch
-- Prompts for password to secure even single-user setups
-- Eliminates friction for majority use case (one person, one computer)
-
-#### Browser Profile Privacy
-- Browser profiles isolated per user
-- Chromium user data directories separate from system browser
-- Prevents cross-contamination of cookies, history, and cached data
-- Ephemeral profiles leave no trace after session ends
-
-### Command System Details
-
-#### Command Parameters
-Commands define parameters that users fill in before execution:
-
-**Parameter Types:**
-- `text_input`: Open-ended text (long form)
-- `short_text`: Single-line text input
-- `dropdown`: Select from predefined options
-- `radio`: Single choice from small set (2-4 options)
-- `checkbox`: Boolean on/off
-- `slider`: Numeric range selection
-- `color_picker`: Color selection
-- `date_picker`: Date selection
-
-#### Generative UI
-The AI agent generates UI layouts saved in command markdown. Users interact with dynamic forms that:
-- Render alongside chat interface (not replacing it)
-- Provide visual controls for parameter input
-- Allow real-time refinement via chat (e.g., "change budget to $200")
-- Support advanced mode (expert users can edit markdown directly)
-
-**Example Generated UI:**
-```json
-{
-  "layout": "two_column",
-  "left_panel": [
-    {"type": "text_input", "name": "search_query", "label": "What are you looking for?"},
-    {"type": "slider", "name": "max_price", "label": "Budget", "min": 0, "max": 1000}
-  ],
-  "right_panel": [
-    {"type": "dropdown", "name": "category", "label": "Category", "options": ["Electronics", "Clothing", "Home"]},
-    {"type": "checkbox", "name": "free_shipping", "label": "Free shipping only"}
-  ]
-}
-```
-
-#### Command Refinement Feedback Loop
-1. **Thumbs Up (👍)**: Command works as expected, no changes needed
-2. **Thumbs Down (👎)**: Triggers refinement workflow:
-   - AI analyzes what went wrong
-   - Suggests specific improvements to command markdown
-   - User approves/rejects suggestions
-   - Updated command saved with version increment
-
-#### Command Versioning
-Commands track version history:
-```markdown
----
-version: 1.2.0
-changelog:
-  - 1.0.0: Initial creation
-  - 1.1.0: Added color preference parameter
-  - 1.2.0: Fixed timeout issue with slow-loading product pages
----
-```
-
-### Implementation Requirements
-
-#### Functional Requirements
-- **FR-PROFILE-1**: Support multiple user profiles with password authentication
-- **FR-PROFILE-2**: Encrypt user directories with password-derived keys
-- **FR-PROFILE-3**: Auto-create default user on first launch (single-user scenario)
-- **FR-PROFILE-4**: Profile selector dropdown for multi-user computers
-- **FR-PROFILE-5**: Isolate browser profiles per user (UI-level restrictions)
-- **FR-PROFILE-6**: Support ephemeral (clean) browser profiles as default behavior
-- **FR-PROFILE-7**: Allow users to create named persistent browser profiles
-- **FR-PROFILE-8**: Store browser profile data in `~/.robert/users/{user}/browser-profiles/`
-- **FR-PROFILE-9**: Commands belong to specific users (no sharing)
-- **FR-PROFILE-10**: Command dropdown filtered by active user
-- **FR-PROFILE-11**: Generate dynamic UI forms from command parameter definitions
-- **FR-PROFILE-12**: Render generative UI alongside chat interface
-- **FR-PROFILE-13**: Allow multiple browser sessions per user simultaneously
-- **FR-PROFILE-14**: Enforce single active user at a time (user lock)
-- **FR-PROFILE-15**: Include `user-profile.md` as context in all AI prompts
-- **FR-PROFILE-16**: Support command refinement via thumbs up/down feedback
-- **FR-PROFILE-17**: Version commands and track changelog
-
-#### Non-Functional Requirements
-- **NFR-PROFILE-1**: Password encryption using industry-standard KDF (Argon2 or PBKDF2)
-- **NFR-PROFILE-2**: User directory encryption/decryption < 500ms
-- **NFR-PROFILE-3**: Profile switching < 2 seconds
-- **NFR-PROFILE-4**: Support 10+ browser profiles per user
-- **NFR-PROFILE-5**: Graceful handling of missing browser profiles
-- **NFR-PROFILE-6**: Command markdown validation with clear error messages
-
-### Future Enhancements
-
-#### Phase 2 (v2.0)
-- Command templates (shareable boilerplates, not full commands)
-- Export/import commands (sanitized for privacy)
-- Family admin controls (parent manages child profiles)
-
-#### Phase 3 (v3.0)
-- Team workspaces (shared commands for organizations)
-- Command marketplace (curated community templates)
-- Cloud sync for user profiles (encrypted, opt-in)
-
----
-
-## Chat-Driven AI Workflow System
-
-### Overview
-
-Robert features an **injected chat interface** that appears on web pages, allowing users to request automations in natural language. The system uses **AI-generated CDP scripts** with a sophisticated template system and feedback loop for continuous improvement.
-
-### Architecture Components
-
-#### 1. Chat Interface Injection
-- **Visual chat sidebar** injected into all web pages
-- **Persistent across navigation** - stays visible as user browses
-- **Bi-directional communication** with Tauri backend
-- **Feedback mechanism** - thumbs up/down for every action
-
-#### 2. AI Inference Engine
-- **Template-based prompts** loaded at compile time (not external files)
-- **Two workflow types**:
-  - **CDP Generation**: User request → AI → CDP JSON → Browser execution
-  - **Config Update**: User feedback → AI → Updated agent instructions
-- **Step frame context** included in prompts:
-  - Screenshot of current page
-  - DOM structure
-  - Previous action taken
-  - New instruction from user
-
-#### 3. Agent Configuration System
-- **TOML-based agent configs** stored in `~/.config/robert/agents/`
-- **Two default agents**:
-  - `cdp-generator.toml`: Generates CDP automation scripts
-  - `meta-agent.toml`: Updates agent configs based on feedback
-- **Agent settings**: Model selection, temperature, retry limits
-- **Instructions**: System prompts that evolve based on user feedback
-
-#### 4. Prompt Template System
-Templates are embedded in Rust code at compile time:
-
-```rust
-pub fn build_cdp_prompt(
-    user_request: &str,
-    current_url: Option<&str>,
-    page_title: Option<&str>,
-    agent_instructions: &str,
-) -> String {
-    // Includes:
-    // - Agent system instructions
-    // - Current page context (URL, title)
-    // - Screenshot reference (captured separately)
-    // - HTML content (captured separately)
-    // - CDP command reference
-    // - User's natural language request
-}
-```
-
-### End-to-End Workflows
-
-#### Workflow 3b: Typical Path (CDP Automation)
-
-```
-User types in chat: "Click the login button"
-    ↓
-Chat UI → process_chat_message(request) → Tauri Backend
-    ↓
-Capture screenshot + HTML of current page
-    ↓
-Build prompt with template:
-  - Agent instructions (from config)
-  - Page context (URL, title, screenshot, HTML)
-  - User request
-  - CDP command reference
-    ↓
-Send to Claude API (local or cloud)
-    ↓
-Claude returns CDP JSON script
-    ↓
-Validate CDP script structure
-    ↓
-Execute CDP commands via ChromeDriver
-    ↓
-Show result in chat + Display thumbs up/down buttons
-    ↓
-User provides feedback (👍 or 👎)
-```
-
-#### Workflow 3a: Meta Path (Config Update from Feedback)
-
-```
-User clicks thumbs down 👎
-    ↓
-Chat UI → submit_action_feedback(feedback) → Tauri Backend
-    ↓
-Build feedback message:
-  - Original user request
-  - What went wrong
-  - Error details
-  - User comment (optional)
-    ↓
-Load meta-agent config
-    ↓
-Build config update prompt:
-  - Current agent config (TOML)
-  - Feedback message
-  - Failure context
-    ↓
-Send to Claude API
-    ↓
-Claude returns updated agent config (TOML)
-    ↓
-Parse and save updated config
-    ↓
-Future requests use improved instructions
-```
-
-### Step Frame Format
-
-Every request to the AI includes a "step frame" with complete context:
-
-```json
-{
-  "screenshot": "path/to/screenshot.png",
-  "dom": "<html>...</html>",
-  "current_url": "https://example.com",
-  "page_title": "Example Page",
-  "previous_action": {
-    "type": "click",
-    "target": "button#login",
-    "result": "success"
-  },
-  "user_instruction": "Fill the username field with 'admin'"
-}
-```
-
-This ensures the AI has full visual and structural context for generating accurate CDP commands.
-
-### Feedback Loop
-
-The system implements a **self-improving feedback loop**:
-
-1. **Initial Performance**: Agent follows base instructions
-2. **User Provides Feedback**: Thumbs down triggers analysis
-3. **Meta-Agent Updates Config**: Analyzes what went wrong, updates instructions
-4. **Improved Future Performance**: Agent learns from mistakes
-5. **Continuous Improvement**: Each failure makes the agent smarter
-
-**Example Evolution:**
-```toml
-# Initial config
-[cdp-generator]
-instructions = "Generate CDP commands from user requests"
-
-# After feedback: "It didn't wait for the button to load"
-[cdp-generator]
-instructions = """
-Generate CDP commands from user requests.
-Always add wait conditions before interacting with elements.
-Check if elements exist before clicking them.
-"""
-
-# After more feedback: "It clicked the wrong button"
-[cdp-generator]
-instructions = """
-Generate CDP commands from user requests.
-Always add wait conditions before interacting with elements.
-Check if elements exist before clicking them.
-Use data-test-selector attributes when available for reliability.
-Verify element text content matches user intent before clicking.
-"""
-```
-
-### Chat Interface Features
-
-**Injected UI Elements:**
-- Chat sidebar (collapsible)
-- Message history
-- Input field with send button
-- Feedback buttons (👍/👎) after each action
-- Processing indicators
-- Error messages with context
-
-**User Experience:**
-1. Chat appears on every page
-2. User types natural language request
-3. AI response appears in chat
-4. Action executes visibly in browser
-5. User sees result and provides feedback
-6. System learns and improves
-
-### Technical Implementation
-
-**Files Created:**
-- `crates/robert-app/src-tauri/src/agent/mod.rs` - Module structure
-- `crates/robert-app/src-tauri/src/agent/config.rs` - Agent configuration management
-- `crates/robert-app/src-tauri/src/agent/prompts.rs` - Prompt template system
-- `crates/robert-app/src-tauri/src/agent/workflow.rs` - Workflow execution logic
-- `crates/robert-app/src-tauri/src/commands/agent.rs` - Tauri commands for chat
-- `crates/robert-webdriver/src/chat_ui.js` - Injected chat interface (updated)
-
-**Tauri Commands:**
-- `process_chat_message` - Main entry point for chat submissions
-- `submit_action_feedback` - Handle thumbs up/down feedback
-- `init_agent_configs` - Create default agent configurations
-- `get_agent_config` / `update_agent_config` - CRUD for agents
-- `list_agent_configs` - List available agents
-
-### Testing Requirements
-
-Given the critical nature of the templating and inference systems, we require:
-
-**Template System Tests:**
-- ✅ Prompt generation with all context types
-- ✅ Template variable substitution
-- ✅ Edge cases (missing context, empty fields)
-- ✅ Output format validation
-
-**Inference Engine Tests:**
-- ✅ CDP generation workflow end-to-end
-- ✅ Config update workflow end-to-end
-- ✅ Error handling and recovery
-- ✅ Claude API integration
-- ✅ Response parsing and validation
-
-**Target Coverage:** >90% for template system, >85% for workflows
-
-### Security & Privacy
-
-**Local-First by Default:**
-- Templates embedded in binary (no external files)
-- Agent configs stored locally (`~/.config/robert/`)
-- Screenshots and HTML captured temporarily
-- All processing happens on-device
-
-**Cloud Inference (Optional):**
-- User explicitly opts in
-- Sensitive data obfuscation before sending
-- Screenshot sanitization
-- Audit logs of what was sent
-
-## Script Format Specification
-
-**Note:** See [SCRIPT_FORMAT.md](SCRIPT_FORMAT.md) for full specification.
-
-### Claude-Generated CDP Scripts
-
-Robert uses **AI-generated Chrome DevTools Protocol (CDP) commands** for browser automation. Claude analyzes your natural language requests and generates CDP command sequences as text strings.
-
-**Key Architecture Decisions:**
-- **Scripts are NOT compiled** - CDP commands stored as text/JSON, interpreted at runtime
-- **Claude generates the scripts** - User describes task in natural language, Claude outputs CDP commands
-- **Direct CDP execution** - Runtime interpreter sends commands directly to Chrome via chromiumoxide
-- **No code in binary** - All browsing logic external to compiled application
-
-### Example Claude-Generated Script
-
-**User Request:** "Navigate to example.com, take a screenshot, and click the login button"
-
-**Claude Generates:**
-```json
-{
-  "name": "example-login-automation",
-  "description": "Navigate and click login",
-  "cdp_commands": [
-    {
-      "method": "Page.navigate",
-      "params": {
-        "url": "https://example.com"
-      }
-    },
-    {
-      "method": "Page.captureScreenshot",
-      "params": {
-        "format": "png",
-        "captureBeyondViewport": true
-      },
-      "save_as": "homepage.png"
-    },
-    {
-      "method": "Runtime.evaluate",
-      "params": {
-        "expression": "document.querySelector('button#login').click()"
-      }
-    }
-  ]
-}
-```
-
-### CDP Command Examples
-
-Common CDP commands Claude can generate:
-
-| CDP Method | Purpose | Example Params |
-|------------|---------|----------------|
-| `Page.navigate` | Navigate to URL | `{"url": "https://example.com"}` |
-| `Page.captureScreenshot` | Take screenshot | `{"format": "png", "captureBeyondViewport": true}` |
-| `Runtime.evaluate` | Execute JavaScript | `{"expression": "document.title"}` |
-| `Input.dispatchMouseEvent` | Click elements | `{"type": "mousePressed", "x": 100, "y": 200}` |
-| `Input.dispatchKeyEvent` | Type text | `{"type": "char", "text": "hello"}` |
-| `Network.getCookies` | Get cookies | `{}` |
-| `DOM.getDocument` | Get DOM tree | `{}` |
-| `Emulation.setGeolocationOverride` | Set location | `{"latitude": 37.7749, "longitude": -122.4194}` |
-
-See [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) for full reference.
-
-## Workflow Learning System (Future Feature)
-
-### Overview
-
-The **Workflow Learning System** enables AI agents to learn, document, and iteratively improve website navigation workflows without broad exploration. Instead of exploring a website from scratch each time, agents reference standardized workflow files that contain proven navigation paths with empirical confidence scores.
-
-**Problem Solved:**
-- Traditional AI agents waste time exploring websites repeatedly
-- No shared knowledge between agent instances
-- Brittle selectors break when sites update
-- No learning from experience or failures
-
-**Solution:**
-Two complementary file formats that agents create and improve autonomously:
-
-### Format 1: Workflow Graph (`.workflow.md`)
-
-**Purpose**: High-level navigation roadmap showing how to navigate from A→B
-
-**Structure**:
-- **Nodes**: Pages, buttons, forms, modals with selectors and URL patterns
-- **Edges**: Actions (click, type, navigate) with wait conditions and success indicators
-- **Confidence scores**: Based on empirical success rates from actual executions
-- **Error recovery**: Documented strategies for common failures
-- **Alternative paths**: Multiple proven ways to achieve the same goal
-- **Mermaid diagrams**: Visual workflow representation
-
-**Example**:
-```markdown
----
-domain: github.com
-workflow_name: create_repository
-version: 1.0.0
-success_rate: 0.98
-tested_sessions: 45
----
-
-## Edge: github_home → new_repo_button
-**Action**: click
-**Selector**: `[data-test-selector="global-create-menu-button"]`
-**Confidence**: 0.98
-**Success Indicators**: Dropdown menu becomes visible
-**Alternative Selectors**: ["button[aria-label='Create new...']"]
-```
-
-### Format 2: Step Frame (`.frames.json`)
-
-**Purpose**: Detailed execution traces capturing every moment of a workflow session
-
-**Each frame contains**:
-- **Screenshot**: Visual state saved as PNG file
-- **DOM snapshot**: Complete page structure as HTML
-- **Interactive elements**: All clickable/typeable elements with bounding boxes
-- **Action metadata**: What action was taken, target selector, input data
-- **Natural language transcript**: Human-readable description, reasoning, expected outcome
-- **State changes**: URL changes, network requests, DOM mutations
-- **Verification**: Success/failure indicators
-- **Learning data**: Selector stability scores, alternative selectors discovered
-
-**Example**:
-```json
-{
-  "frames": [
-    {
-      "frame_id": 0,
-      "screenshot": {"path": "./screenshots/frame_0000.png"},
-      "action": {
-        "type": "click",
-        "target": {"selector": "[data-test-selector='create-button']"},
-        "intent": "Open the create menu"
-      },
-      "transcript": {
-        "action_description": "Clicking the '+' button to open create menu",
-        "reasoning": "Standard entry point for creating items on GitHub",
-        "expected_outcome": "Dropdown menu should appear"
-      },
-      "learning": {
-        "selector_stability": 0.98,
-        "action_reliability": 0.96
-      }
-    }
-  ]
-}
-```
-
-### How It Works
-
-**1. Recording Phase**
-- Agent executes a workflow while capturing detailed frames
-- Each frame includes screenshot, DOM state, action, and transcript
-- Session saved as `.frames.json` with all evidence
-
-**2. Learning Phase**
-- Agent analyzes multiple session frames
-- Calculates selector stability and confidence scores
-- Extracts nodes, edges, and alternative paths
-- Creates/updates `.workflow.md` with learned knowledge
-
-**3. Execution Phase**
-- Agent loads `.workflow.md` before executing
-- Follows highest-confidence path
-- Records new session while executing
-- Updates confidence scores based on results
-- Continuous improvement loop
-
-### Key Features
-
-**🎯 Confidence-Based Navigation**
-- Every selector has empirical success rate (0.0-1.0)
-- Agent automatically chooses most reliable selectors
-- Falls back to alternatives when primary fails
-- Example: `data-test-selector` (0.98) preferred over class-based (0.87)
-
-**🔄 Self-Improving System**
-```
-Session 1:   60% success → discovering the workflow
-Session 10:  85% success → learning reliable selectors
-Session 50:  94% success → optimized with error recovery
-Session 100: 97% success → mature, production-ready
-```
-
-**🛡️ Built-In Error Recovery**
-- Documents common failure scenarios
-- Proven recovery strategies included
-- Automatic fallback to alternative paths
-- Example: Rate limit → Wait 60s → Retry
-
-**🤝 Multi-Agent Knowledge Sharing**
-- Multiple agents contribute to same workflow
-- Merge alternative selectors and strategies
-- Weighted confidence score averaging
-- Version control for workflow evolution
-
-### File Organization
-
-```
-workflows/
-├── github.com/
-│   ├── create_repository/
-│   │   ├── github.com_create_repository_v1.workflow.md    # Graph
-│   │   ├── session_abc123/
-│   │   │   ├── *.frames.json                              # Frames
-│   │   │   ├── screenshots/frame_*.png
-│   │   │   └── dom/frame_*.html
-│   │   └── session_xyz789/
-│   └── create_issue/
-└── gmail.com/
-    └── compose_email/
-```
-
-### Agent Integration
-
-Agents use this system to:
-1. **Execute workflows** using proven paths from `.workflow.md`
-2. **Record sessions** capturing frames for learning
-3. **Analyze patterns** to improve selector choices
-4. **Update graphs** with new confidence scores
-5. **Share knowledge** by committing updated workflows
-6. **Recover from errors** using documented strategies
-
-### Benefits
-
-**For Agents:**
-- ✅ No exploration needed - follow proven paths
-- ✅ Higher reliability with empirical confidence
-- ✅ Automatic error recovery
-- ✅ Learn from every execution
-- ✅ Share knowledge across instances
-
-**For Users:**
-- ✅ Faster automation setup
-- ✅ More reliable workflows
-- ✅ Transparent agent behavior (view frames/graphs)
-- ✅ Workflows improve over time
-- ✅ Community can share workflow knowledge
-
-### Documentation
-
-Complete specifications available in:
-- [agent-formats/specs/WORKFLOW_GRAPH_SCHEMA.md](../agent-formats/specs/WORKFLOW_GRAPH_SCHEMA.md) - Graph format spec
-- [agent-formats/specs/STEP_FRAME_SCHEMA.md](../agent-formats/specs/STEP_FRAME_SCHEMA.md) - Frame format spec
-- [agent-formats/specs/AGENT_WORKFLOW_STANDARDS.md](../agent-formats/specs/AGENT_WORKFLOW_STANDARDS.md) - Integration guide
-- [agent-formats/README.md](../agent-formats/README.md) - Overview and examples
-
-**Note**: This feature is planned for a future release. The format specifications are complete and ready for implementation when AI agent capabilities are integrated into Robert.
-
-## Output Format Specification
-
-### Directory Structure
-
-```
-output/
-├── run_2025-10-08_10-30-45_abc123/
-│   ├── manifest.json
-│   ├── screenshots/
-│   │   ├── 001_homepage.png
-│   │   ├── 002_results.png
-│   │   └── 003_error.png
-│   ├── text/
-│   │   ├── 001_homepage.txt
-│   │   └── 002_results.txt
-│   ├── html/
-│   │   └── 001_homepage.html
-│   └── logs/
-│       └── execution.log
-└── run_2025-10-08_11-15-22_def456/
-    └── ...
-```
-
-### Manifest Format
-
-```json
-{
-  "run_id": "abc123-def456-789",
-  "script_name": "Example Automation",
-  "script_version": "1.0.0",
-  "timestamp_start": "2025-10-08T10:30:45Z",
-  "timestamp_end": "2025-10-08T10:31:15Z",
-  "duration_ms": 30000,
-  "status": "completed",
-  "browser": {
-    "type": "chrome",
-    "version": "120.0.6099.109",
-    "user_agent": "Mozilla/5.0..."
-  },
-  "steps": [
-    {
-      "step_number": 1,
-      "action": "navigate",
-      "parameters": {
-        "url": "https://example.com"
-      },
-      "status": "success",
-      "timestamp": "2025-10-08T10:30:46Z",
-      "duration_ms": 1234,
-      "outputs": []
-    },
-    {
-      "step_number": 2,
-      "action": "screenshot",
-      "parameters": {
-        "type": "full_page",
-        "filename": "homepage.png"
-      },
-      "status": "success",
-      "timestamp": "2025-10-08T10:30:48Z",
-      "duration_ms": 456,
-      "outputs": [
-        {
-          "type": "file",
-          "path": "screenshots/001_homepage.png",
-          "size_bytes": 234567
-        }
-      ]
-    }
-  ],
-  "summary": {
-    "total_steps": 5,
-    "successful_steps": 4,
-    "failed_steps": 1,
-    "skipped_steps": 0
-  },
-  "errors": [
-    {
-      "step_number": 4,
-      "timestamp": "2025-10-08T10:31:10Z",
-      "error_type": "ElementNotFound",
-      "message": "Could not find element: .missing-selector",
-      "recoverable": true,
-      "action_taken": "continued"
-    }
-  ],
-  "warnings": [
-    "Timeout value lower than recommended for network requests"
-  ],
-  "system_info": {
-    "os": "macOS 14.0",
-    "app_version": "1.0.0"
-  }
-}
-```
-
-## Safety & Privacy Features
-
-### Local-First Inference
-
-**Default: 100% Local Execution**
-- All AI inference runs on-device (voice-to-script, planning, suggestions)
-- Zero data sent to cloud by default
-- Complete privacy and offline capability
-- Uses Mac's Neural Engine when available
-- Fast, efficient quantized models
-
-**Benefits:**
-- Complete privacy - your automation workflows never leave your device
-- No API keys required
-- No usage tracking or data retention
-- Works offline
-- Zero ongoing costs
-
-### Optional Cloud Inference
-
-**Advanced Feature (Opt-In Only):**
-- Users can choose to use cloud AI (GPT-4, Claude, etc.) for more powerful models
-- Clearly opt-in with informed consent
-- Never required - local inference always available
-
-**When Enabled: Automatic Safety**
-
-### Multi-Layer Data Protection
-
-**1. Text Obfuscation**
-- Automatic detection and redaction of sensitive data:
-  - Passwords and API keys
-  - Credit card numbers and CVV codes
-  - Social Security Numbers (SSN)
-  - Personal identifiable information (PII)
-  - Private keys and credentials
-- Pattern matching with context awareness
-- Tokenization (sensitive data stored locally, tokens sent to cloud)
-- Original data never leaves your device
-
-**Example:**
-```
-Original: "Login with password SuperSecret123"
-Sent to cloud: "Login with password [PASSWORD_REDACTED_8CHARS]"
-Cloud response: "Fill input#password with [PASSWORD_REDACTED_8CHARS]"
-Local execution: Robert replaces token with actual password
-```
-
-**2. Image Obfuscation**
-- Screenshots and page captures are scanned before cloud transmission
-- Computer vision detects sensitive visual content:
-  - Password fields (visible or masked)
-  - Credit card forms
-  - Personal information in documents
-  - Private messages or emails
-- Automatic blurring or pixelation of sensitive regions
-- OCR + pattern matching for text in images
-
-**Example:**
-```
-Screenshot contains login form:
-- Email field: "john@example.com" → Blurred
-- Password field: "••••••••" → Blurred region
-- Only safe layout information sent to cloud
-```
-
-**3. User Controls**
-- Sensitivity levels (Maximum/Balanced/Minimal)
-- Manual review before sending to cloud
-- Per-automation opt-in/out
-- Audit log of what was sent where
-
-**4. Encryption**
-- Sensitive data encrypted in macOS Keychain
-- TLS 1.3 for cloud API calls
-- Certificate pinning
-- Hardware-backed keys (Secure Enclave)
-
-### Privacy Guarantees
-
-**What We Never Do:**
-- ❌ Send data to cloud by default
-- ❌ Store sensitive data long-term
-- ❌ Log passwords or API keys
-- ❌ Share data with third parties
-- ❌ Train AI models on your data
-- ❌ Track usage without consent
-
-**What We Always Do:**
-- ✅ Local inference by default
-- ✅ Obfuscate before any cloud transmission
-- ✅ Encrypt sensitive data
-- ✅ Give users full control
-- ✅ Maintain audit logs (local only)
-- ✅ Open source for auditability
-
-### Compliance
-- GDPR compliant (data minimization, user consent)
-- CCPA compliant (consumer rights, opt-out)
-- SOC 2 principles (security, privacy, audit)
-
-**See [SAFETY_PRIVACY.md](SAFETY_PRIVACY.md) for complete technical details.**
-
----
+**Sales Motion**:
+1. CISO discovers employees using ChatGPT with company data
+2. Robert offers audit + compliance solution
+3. Deploy Robert as "official AI gateway"
+4. Enterprise pays $200-500/user/mo
 
 ## Success Metrics
 
 ### Adoption Metrics (3 months post-launch)
-- 500+ downloads
-- 100+ active users (weekly)
-- 50+ scripts created by community
-- 4.0+ average rating
+- 10,000 downloads
+- 1,000 active users (weekly)
+- 100+ GitHub stars
+- 4.5+ average rating
+- Featured on Product Hunt top 5
 
-### Performance Metrics
-- 95% of operations complete within expected time
-- <1% crash rate
-- 90% of executions succeed without manual intervention
+### Product Metrics
+- **Weekly Active Context (WAC)**: 70% of users query documents >7 days old
+- **Context Control**: 90% of users curate context (mark as outdated, archive)
+- **Multi-Provider**: 40% of users actively use ≥2 reasoning providers
+- **Cross-Device**: 50% of users actively use ≥2 devices
 
-### User Satisfaction
-- 80%+ positive feedback
-- <24 hour average support response time
-- 70%+ retention (monthly active users)
+### Business Metrics
+- **Individual → Team Conversion**: 10% of individual users convert to team plans
+- **Enterprise Pipeline**: 5 qualified enterprise leads within 6 months
+- **Retention**: >95% annual retention for teams (curated graphs are irreplaceable)
 
 ### Privacy Metrics
-- 95%+ users comfortable with privacy approach
-- <1% opt-in to cloud inference initially (grows with trust)
-- Zero data breaches or privacy incidents
+- **External Audit**: Confirms reasoning providers cannot reconstruct user identity
+- **User Trust**: 90% of users "trust" Robert with sensitive data (survey)
+- **Opt-In Cloud**: <10% initially (grows with trust to 40%)
 
-### Technical Metrics
-- 99% uptime (local execution reliability)
-- <100MB memory footprint (app only), <1.5GB with browser
-- <50ms UI latency
-- <1 second local inference time
+## Competitive Analysis
+
+### Memory/Context Platforms
+
+| Feature | **Robert (v1.0)** | **Notion AI** | **Obsidian + Copilot** | **Mem.ai** | **ChatGPT Memory** |
+|---------|------------------|--------------|----------------------|-----------|------------------|
+| **Context Control** | ✅ ContextOS | ❌ Black box | ⚠️ Manual | ❌ Automatic | ❌ Black box |
+| **Multi-Provider** | ✅ OpenAI/Anthropic/Local | ❌ Locked to OpenAI | ❌ GitHub only | ❌ Proprietary | ❌ OpenAI only |
+| **Platform-Agnostic** | ✅ Cross-platform | ⚠️ Web + mobile | ⚠️ Desktop only | ⚠️ Web + mobile | ❌ OpenAI ecosystem |
+| **Universal Indexing** | ✅ Jira/Slack/Figma/Local/Email/All | ❌ **Notion only** | ⚠️ Local files only | ⚠️ Limited integrations | ❌ ChatGPT conversations only |
+| **Context Sharding** | ✅ Team/Personal/Role-based/Cross-tool | ❌ **Flat workspace** | ❌ No teams | ❌ Single user | ❌ Single user |
+| **GraphRAG** | ✅ Knowledge graphs | ❌ Vector search | ❌ Full-text | ⚠️ Basic graph | ❌ Vector |
+| **Privacy Firewall** | ✅ Anonymization | ❌ Data sent | ❌ Data sent | ❌ Data sent | ❌ Data sent |
+| **Local-First** | ✅ Hot state local | ❌ Cloud-only | ⚠️ Local files | ❌ Cloud-only | ❌ Cloud-only |
+| **Agentic Execution** | ✅ Domain agents (v1.5) | ❌ Retrieval only | ❌ Retrieval only | ❌ Retrieval only | ❌ Retrieval only |
+| **Enterprise** | ✅ Team graphs | ✅ Workspace | ❌ No teams | ✅ Business | ❌ Plus only |
+
+**Unique Selling Points:**
+1. **ContextOS** - Sophisticated control reasoning providers can't build
+2. **Universal indexing** - Index across ANY tool (Jira, Slack, Figma, local files), not locked to one vendor
+3. **Intelligent context sharding** - Team graphs, personal graphs, role-based access, cross-tool intelligence
+4. **Structural neutrality** - No business model conflict with data sovereignty
+5. **GraphRAG** - Temporal reasoning ("How has strategy changed?")
+6. **Platform-agnostic** - The Dropbox lesson applied to AI
+7. **Firewalled privacy** - Anonymization proxy between user and providers
+8. **Agentic execution** - Domain-specific agents that execute workflows, not just retrieve
 
 ## Risks and Mitigations
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| **Chrome not found on system** | High | Medium | Auto-detection with fallback to manual path config |
-| **chromedriver version mismatch** | High | Medium | Auto-download compatible driver on first launch |
-| **Tauri learning curve for developers** | Medium | Medium | Extensive examples, documentation, active community |
-| **macOS code signing complexity** | High | High | Early setup of certificates, CI automation |
-| **Notarization delays** | Medium | Medium | Automated notarization in CI/CD pipeline |
-| **Chrome updates breaking automation** | High | Medium | Support latest 3 Chrome versions, thirtyfour updates |
-| **Memory leaks in long-running scripts** | Medium | Low | Thorough testing, proper cleanup, memory profiling |
-| **User expectations for unsupported features** | Low | High | Clear documentation of scope, roadmap visibility |
-| **Competition from established tools** | Medium | High | Focus on UX, macOS-native feel, ease of use |
-
-## Go-to-Market Strategy: The Tesla Approach
-
-### Philosophy: Start Premium, Signal Quality
-
-Like Tesla started with the Roadster for affluent early adopters, Robert will launch **exclusively for macOS**—targeting discerning, moneyed users who value quality and design. When they adopt and advocate, it signals status and utility to the broader market.
-
-### Why macOS First?
-
-**Strategic Advantages:**
-1. **Discerning audience** - Mac users expect polished, native experiences and spot poor UX immediately
-2. **Affluent market** - Higher disposable income for productivity tools, willing to pay for quality
-3. **Status signaling** - Mac adoption creates aspirational appeal for Windows/Linux users (FOMO effect)
-4. **Quality feedback** - Mac users provide thoughtful, detailed feedback that refines the product
-5. **Network effects** - Mac users are vocal on Twitter, Product Hunt, Hacker News—they influence their networks
-
-**Technical Advantages:**
-- macOS provides excellent native frameworks (Tauri works beautifully)
-- Consistent platform reduces support burden and testing complexity
-- High-quality screenshots and demos look professional
-- Single platform focus = better UX and polish
-
-### The Playbook
-
-**Phase 0: Foundation (Q4 2025)**
-- ✅ CLI prototype proves technology works
-- 🔄 Beautiful macOS native app in development
-- 🔄 Focus on perfect UX and eye-candy UI
-
-**Phase 1: Premium Launch (Q1 2026) - "The Roadster"**
-- **Target:** macOS power users, designers, product managers, entrepreneurs
-- **Distribution:** Product Hunt, Hacker News, Twitter, Mac communities
-- **Messaging:** "Automation for the discerning Mac user"
-- **Goal:** 1,000 passionate early adopters who love and advocate
-
-**Phase 2: Refinement (Q2-Q3 2026) - "Listen & Polish"**
-- Gather feedback from Mac community
-- Refine UI based on real usage patterns
-- Build reputation for quality and responsiveness
-- **Goal:** 5,000+ MAU, 4.5+ star rating, featured in Mac blogs
-
-**Phase 3: Expansion (Q4 2026) - "The Model S"**
-- Windows desktop app (if demand warrants)
-- Linux headless mode for developers
-- Enterprise features for teams
-- **Goal:** 20,000+ users across platforms
-
-**Phase 4: Mass Market (2027) - "The Model 3"**
-- Web version (if feasible)
-- Mobile companion apps
-- Community marketplace
-- **Goal:** 100,000+ users, established brand
-
-### Pricing Strategy (Premium Positioning)
-
-**Free Tier (Open Source):**
-- Full core functionality
-- Local execution
-- Community scripts
-- No time limits
-
-**Pro Tier ($9.99/month or $99/year):**
-- Cloud sync for scripts
-- Priority support
-- Advanced features (scheduled runs, team sharing)
-- Early access to new features
-
-**Rationale:**
-- Mac users are willing to pay for quality
-- Premium price signals premium quality and sustainable development
-- But open source core ensures freedom, trust, and community ownership
-
-### Success Metrics
-
-**Phase 1 (First 3 months):**
-- 1,000 active users
-- 100+ GitHub stars
-- 4.5+ star average rating
-- Featured on Product Hunt top 5
-- Mentioned by 3+ Mac influencers
-
-**Phase 2 (Months 4-9):**
-- 5,000 active users
-- 500+ GitHub stars
-- Featured in Mac productivity articles
-- 100+ community scripts
-- 50+ Pro subscribers
-
-### Why This Works
-
-1. **Quality Bar** - Mac users will immediately spot poor UX. Meeting their standards means the product is truly great.
-2. **Feedback Quality** - Mac users provide thoughtful feedback that refines the product before wider release.
-3. **Social Proof** - When Mac users advocate, it creates FOMO for Windows/Linux users, building demand.
-4. **Premium Association** - Starting on Mac creates premium brand perception, even though it's free/open source.
-5. **Sustainable Growth** - Better to have 1,000 passionate Mac users than 10,000 lukewarm users. Passion drives word-of-mouth.
-
-## Product Roadmap
-
-### Version 1.0 (Q1 2026) - **macOS Desktop App**
-- ✅ Native Tauri desktop application
-- ✅ Chrome automation via CDP
-- ✅ Beautiful, eye-candy UI designed for Mac
-- ✅ Real-time execution with visual feedback
-- ✅ Screenshot and text capture
-- ✅ Voice-driven Markdown script creation
-- ✅ Output management with visual browser
-
-### Version 1.5 (Q2-Q3 2026) - **Polish & Refine**
-- 🔄 Community script library
-- 🔄 Template system for common automations
-- 🔄 Enhanced visual feedback and animations
-- 🔄 Performance optimizations
-- 🔄 Mac-specific integrations (Shortcuts, Automator)
-
-### Version 2.0 (Q4 2026) - **Cross-Platform Expansion**
-- 🔄 Windows desktop app (if demand warrants)
-- 🔄 Linux headless mode for developers
-- 🔄 Enterprise features (team sharing, SSO)
-- 🔄 Docker container
-- 🔄 REST API
-
-### Version 2.5 (Q1 2027) - **Visual Builder**
-- 🔄 Drag-and-drop script builder
-- 🔄 Record browser interactions (watch once, automate forever)
-- 🔄 Visual selector picker
-- 🔄 Flow diagram view
-
-### Version 3.0 (Q2 2027+) - **AI & Collaboration**
-- ✅ Voice-driven script creation (in v1.0)
-- 🔄 Advanced AI features (error recovery, optimization suggestions)
-- 🔄 **Workflow Learning System** - AI agents learn and improve navigation paths
-  - Session recording with frame capture (screenshots + DOM + transcripts)
-  - Workflow graph generation from sessions
-  - Confidence-based selector management
-  - Multi-agent knowledge sharing
-  - Automatic error recovery strategies
-- 🔄 Team workspaces
-- 🔄 Community script marketplace
-- 🔄 Scheduled runs and automation
-- 🔄 Multi-browser support (Firefox, Safari, Edge)
-
-## Competitive Analysis
-
-### Automation Platforms
-
-| Feature | **Robert (v1.0)** | **Zapier/IFTTT** | **Claude Agents** | **GPT Interface** | **Herd/Monitoro** |
-|---------|-------------------|------------------|-------------------|-------------------|-------------------|
-| **Target User** | Everyone | API-literate users | Programmers | General users | Programmers |
-| **Visual Feedback** | ✅ Real-time browser | ❌ Log-based | ❌ None | ❌ None | ✅ Real-time |
-| **Learning Curve** | ⭐ Voice-driven | ⭐⭐⭐⭐ API knowledge | ⭐⭐⭐⭐⭐ Programming | ⭐ Natural language | ⭐⭐⭐⭐ Test runners |
-| **Control** | ✅ Pause/abort/inspect | ❌ Fire & forget | ❌ Black box | ❌ Black box | ✅ Pause/abort |
-| **Local Execution** | ✅ Your device | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only | ❌ Cloud only |
-| **Privacy** | ✅ Complete | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud | ❌ Data sent to cloud |
-| **Open Source** | ✅ Free & auditable | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary | ❌ Proprietary |
-| **Programming Required** | ❌ Talk only | ⚠️ API knowledge | ✅ Yes | ❌ No | ✅ Yes |
-| **Eye-candy UI** | ✅ Beautiful native | ❌ Functional | ❌ Chat interface | ❌ Chat interface | ✅ Modern web |
-| **Cost** | 🆓 Free | 💰 Subscription | 💰 Subscription | 💰 Subscription | 💰 Subscription |
-
-### Developer Tools
-
-| Feature | **Robert (v1.0)** | **Selenium IDE** | **Playwright** | **Puppeteer** |
-|---------|-------------------|------------------|----------------|---------------|
-| **UI Quality** | ⭐⭐⭐⭐⭐ Native app | ⭐⭐⭐ Extension | ⭐⭐ CLI | ⭐⭐⭐ DevTools |
-| **Target User** | Non-programmers | QA Engineers | Developers | Developers |
-| **Real-time Status** | ✅ Visual dashboard | ⚠️ Basic logs | ❌ Console only | ❌ Console only |
-| **Script Format** | Markdown (readable) | Selenium format | JavaScript/TS | JavaScript |
-| **Ease of Use** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ |
-| **Programming** | ❌ Not required | ⚠️ Some scripting | ✅ Required | ✅ Required |
-| **Output Management** | ✅ Visual browser | ❌ Manual | ❌ Manual | ❌ Manual |
-| **Local Execution** | ✅ Always | ✅ Yes | ✅ Yes | ✅ Yes |
-
-**Unique Selling Points:**
-1. 🌍 **Automation for everyone** - No programming or API knowledge required
-2. 👁️ **Watch it work** - Real-time visual feedback builds confidence
-3. 🎮 **Full control** - Pause, abort, inspect at any moment
-4. 🏠 **Local-first** - Your device, your data, your privacy
-5. 🆓 **Open & free** - No vendor lock-in, community-owned
-6. 🎨 **Eye-candy UI** - Beautiful interface makes automation delightful
-7. 🎤 **Voice-driven** - Talk through automation, AI writes Markdown
+| **Chrome/Gemini Nano threat** | Medium | High | Embrace it. Casual users stay on Chrome, prosumers upgrade to Robert for ContextOS. |
+| **Dropbox builds this** | High | Medium | Speed to market. We're purpose-built, they must pivot organization. Acquisition target. |
+| **Users won't curate** | High | Medium | Reactive pruning at moment of frustration (Sarah test). Zero-cost curation when motivated. |
+| **Local AI won't scale** | High | Low | Cloud-assisted compute for heavy tasks. Ephemeral containers, not data retention. |
+| **Enterprise sales cycle** | Medium | High | Bottoms-up via individuals. Team infection before enterprise sale. |
+| **Privacy breach** | Critical | Low | External audit, E2E encryption, zero-knowledge architecture. |
 
 ## Technical Architecture Overview
 
@@ -1812,133 +558,76 @@ Like Tesla started with the Roadster for affluent early adopters, Robert will la
 │  ┌────────────────────┐      ┌────────────────────┐    │
 │  │  Svelte Frontend   │ IPC  │   Rust Backend     │    │
 │  │                    │◄────►│                    │    │
-│  │  - Script Editor   │      │  - chromiumoxide   │    │
-│  │  - Execution UI    │      │  - System Chrome  │    │
-│  │  - Output Browser  │      │  - Script Executor │    │
-│  │  - Settings Panel  │      │  - Capture Engine  │    │
-│  │                    │      │  - Workflow Learn* │    │
+│  │  - Chat Interface  │      │  - GraphRAG        │    │
+│  │  - Context Sidebar │      │  - Entity Extract  │    │
+│  │  - Graph Browser   │      │  - Anonymization   │    │
+│  │  - Settings Panel  │      │  - Multi-Provider  │    │
+│  │                    │      │  - E2E Sync        │    │
 │  └────────────────────┘      └──────────┬─────────┘    │
 │                                          │              │
 └──────────────────────────────────────────┼──────────────┘
                                            │
-                                * Future: Workflow Learning System
-                                  - Session recording (frames)
-                                  - Workflow graph generation
-                                  - Confidence-based execution
-                                  - Multi-agent knowledge sharing
                               ┌────────────┴──────────────┐
                               │                           │
-                        Sandboxed Mode           Advanced Mode
+                        Local Memory             Trusted Proxy
                               │                           │
                     ┌─────────▼──────────┐    ┌──────────▼─────────┐
-                    │ System Chrome     │    │ Connect to         │
-                    │ Auto-download      │    │ localhost:9222     │
-                    │ Chrome to          │    │                    │
-                    │ ~/.robert/chrome/  │    │ (User's Chrome     │
-                    └─────────┬──────────┘    │  with debug port)  │
-                              │               └──────────┬─────────┘
+                    │ Hot State (Device) │    │ Robert Cloud       │
+                    │ - Encryption keys  │    │ - E2E sync         │
+                    │ - Active context   │    │ - Ephemeral compute│
+                    │ - Graph (hot tier) │    │ - Anonymization    │
+                    └─────────┬──────────┘    └──────────┬─────────┘
                               │                          │
-                              │ Chrome DevTools Protocol │
                               │                          │
-                    ┌─────────▼──────────────────────────▼─────────┐
-                    │            Chrome Browser                     │
-                    │         (Visible or Headless)                 │
-                    └───────────────────────────────────────────────┘
+                              └──────────┬───────────────┘
+                                         │
+                              ┌──────────▼─────────┐
+                              │ Reasoning Providers│
+                              │ - OpenAI           │
+                              │ - Anthropic        │
+                              │ - Local models     │
+                              │ (Untrusted)        │
+                              └────────────────────┘
 ```
 
-## Browser Automation Approach
+## Product Roadmap
 
-### Chrome DevTools Protocol (CDP) via chromiumoxide
+### Version 1.0 (Q1 2026) - **ContextOS Core**
+- ✅ GraphRAG knowledge graphs
+- ✅ Context control (mark as outdated, segregate contexts)
+- ✅ Multi-provider reasoning (OpenAI, Anthropic, local)
+- ✅ Transparent attribution (context sidebar)
+- ✅ Reactive pruning (one-click curation)
+- ✅ E2E encrypted sync (cross-device)
+- ✅ Native macOS app (Apple Silicon optimized)
 
-The application uses **Chrome DevTools Protocol (CDP)** directly through the `chromiumoxide` Rust library, eliminating the need for ChromeDriver. This provides:
+### Version 1.5 (Q2-Q3 2026) - **Polish & Scale**
+- 🔄 Team knowledge graphs (shared memory)
+- 🔄 Context namespacing (first-class contexts)
+- 🔄 Enhanced graph visualization
+- 🔄 Performance optimizations
+- 🔄 Mac-specific integrations (Shortcuts, Automator)
 
-- **Zero external dependencies** for end users
-- **Automatic Chrome download** for sandboxed execution
-- **Two operation modes** for different use cases
+### Version 2.0 (Q4 2026) - **Cross-Platform**
+- 🔄 Windows desktop app
+- 🔄 Linux desktop app
+- 🔄 iOS companion app
+- 🔄 Android companion app
+- 🔄 Enterprise features (SSO, audit trails, compliance)
 
-### Operation Modes
+### Version 2.5 (Q1 2027) - **Enterprise**
+- 🔄 Role-based memory access
+- 🔄 Advanced audit trails
+- 🔄 Integration with corporate systems
+- 🔄 Query mixing (Tor for AI)
 
-#### 1. Sandboxed Mode (Default)
-- **Target**: General users, testing, isolated automation
-- **Chrome Source**: Auto-downloaded via System Chrome to `~/.robert/chrome/`
-- **Profile**: Fresh, isolated session (no user data)
-- **Setup**: Zero - app handles everything
-- **Use Case**: Testing, automation scripts, CI/CD
+### Version 3.0 (Q2 2027+) - **AI & Collaboration**
+- 🔄 Agentic workflows (multi-step automation)
+- 🔄 Context marketplace (community templates)
+- 🔄 Advanced error recovery
+- 🔄 Workflow learning system
 
-**Features:**
-```rust
-// First run: Auto-downloads Chrome binary
-let fetcher = System Chrome::new(
-    System ChromeOptions::builder()
-        .with_path("~/.robert/chrome")
-        .build()
-);
-let info = fetcher.fetch().await?;
-
-// Launch isolated Chrome instance
-let browser = Browser::launch(
-    BrowserConfig::builder()
-        .chrome_executable(info.executable_path)
-        .headless(false)  // Desktop app shows browser
-        .build()
-).await?;
-```
-
-#### 2. Advanced Mode (Power Users)
-- **Target**: Power users needing existing sessions/cookies
-- **Chrome Source**: User's installed Chrome with active profile
-- **Profile**: User's real profile (logged-in accounts, history, cookies)
-- **Setup**: User starts Chrome with `--remote-debugging-port=9222`
-- **Use Case**: Authenticated workflows, personal automation
-
-**User Workflow:**
-```bash
-# User restarts their Chrome with debug flag
-chrome --remote-debugging-port=9222 \
-       --user-data-dir="$HOME/Library/Application Support/Google/Chrome/Default"
-```
-
-**App Connects:**
-```rust
-// Connect to existing Chrome on debug port
-let browser = Browser::connect("http://localhost:9222").await?;
-// Now automating user's real browser with their session
-```
-
-**CLI Flags:**
-```bash
-# Sandboxed mode (default)
-robert google.com
-
-# Advanced mode - connect to debug port
-robert google.com --debug-port 9222
-
-# Or let app launch Chrome with user profile
-robert google.com --use-profile
-```
-
-### Why CDP Instead of WebDriver?
-
-| Aspect | CDP (chromiumoxide) | WebDriver (chromedriver) |
-|--------|---------------------|-------------------------|
-| **External Binary** | None | Requires chromedriver |
-| **User Setup** | Zero | Must install/manage chromedriver |
-| **Version Compatibility** | Automatic | Version matching required |
-| **Chrome Download** | Built-in fetcher | Manual installation |
-| **Performance** | Direct protocol | Extra abstraction layer |
-| **Real Browser Control** | Native support | Limited |
-
-## Dependencies
-
-### External (End Users)
-- **None** - App downloads Chrome automatically in sandboxed mode
-- **Chrome browser** (optional) - For advanced mode with user profile
-
-### Development Tools
-- **Rust** 1.70+
-- **Node.js** 18+ (for frontend build)
-- **Xcode Command Line Tools** (for macOS builds)
-- **Apple Developer ID** (for code signing)
+---
 
 ## Appendix
 
@@ -1946,32 +635,74 @@ robert google.com --use-profile
 - **Desktop Framework**: Tauri 2.0
 - **Frontend**: Svelte + TypeScript + Tailwind CSS
 - **Backend**: Rust 1.70+
-- **Browser Automation**: chromiumoxide (Chrome DevTools Protocol)
-- **Chrome Management**: System Chrome (auto-download)
+- **Knowledge Graphs**: Neo4j / Memgraph (GraphRAG)
+- **Vector Database**: Qdrant / Milvus
+- **Encryption**: Argon2 (key derivation), AES-256-GCM (E2E sync)
+- **Sync**: CRDT-based (electric-sql pattern)
 - **Async Runtime**: tokio
-- **Script Format**: Markdown with YAML frontmatter (pulldown-cmark + serde_yaml)
 - **Build System**: Cargo + Vite
 
 ### Reference Links
 - Tauri: https://v2.tauri.app/
-- chromiumoxide: https://github.com/spider-rs/chromiumoxide
-- Chrome DevTools Protocol: https://chromedevtools.github.io/devtools-protocol/
-- Chrome for Testing: https://developer.chrome.com/blog/chrome-for-testing
+- GraphRAG Research: https://www.microsoft.com/en-us/research/project/graphrag/
+- MemGPT (Hierarchical Memory): https://memgpt.ai/
+- Neo4j: https://neo4j.com/
+- Qdrant: https://qdrant.tech/
 
 ### Glossary
-- **Tauri**: Desktop app framework using Rust backend and web frontend
-- **CDP (Chrome DevTools Protocol)**: Low-level protocol for controlling Chrome browsers
-- **chromiumoxide**: Rust library for browser automation via CDP
-- **System Chrome**: Component that auto-downloads Chrome binaries
-- **Sandboxed Mode**: Isolated Chrome instance with auto-downloaded binary
-- **Advanced Mode**: Connect to user's existing Chrome via debug port
-- **IPC**: Inter-Process Communication (between Tauri frontend/backend)
-- **DMG**: macOS disk image for app distribution
-- **Notarization**: Apple's security verification for macOS apps
+- **ContextOS**: Operating System for AI Memory—sophisticated control over what AI knows
+- **GraphRAG**: Graph Retrieval-Augmented Generation using knowledge graphs
+- **Firewalled Architecture**: Memory (Personal) decoupled from Reasoning (Commoditized)
+- **Reactive Pruning**: Curation at moment of failure, not proactive organization
+- **WAC (Weekly Active Context)**: Metric tracking users querying documents >7 days old
+- **Zero-Knowledge Sync**: E2EE cloud storage where Robert holds no keys
+- **Ephemeral Compute**: Stateless cloud workers for heavy tasks, data destroyed after processing
+- **Anonymization Proxy**: PII stripping + token obfuscation before reasoning providers
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2025-10-08
+**Document Version**: 3.0
+**Last Updated**: 2025-12-02
 **Status**: Approved for Development
 **Target Release**: v1.0 - Q1 2026
+
+---
+
+## Cuts
+
+The following content represents earlier product directions that have been superseded by the ContextOS / Memory Layer vision. Preserved for historical reference.
+
+### Deprecated: Browser Automation Product Vision
+
+*The original PRD positioned Robert as a browser automation tool focused on visual feedback and local-first execution. This direction has been replaced by the ContextOS / Memory Layer for AI positioning.*
+
+**Original Executive Summary** (Deprecated):
+> Robert is an open-source, local-first browser automation tool that brings the power of automation to everyone—not just programmers. While tools like Zapier and IFTTT require API knowledge, Claude agents are complex to create, and GPT's interface provides no visibility, Robert lets users **watch automation happen in real-time**, learn by observation, and maintain full control with the ability to abort operations at any moment.
+
+**Browser Automation Features** (Deprecated - may be revived in v3.0 as agentic workflows):
+- Chrome automation via CDP
+- Visual script builder
+- Markdown-based automation scripts
+- Screenshot and text capture
+- Browser profile management
+- Ephemeral sessions
+
+**User Profiles and Multi-User Support** (Deprecated):
+- Password-protected user profiles
+- Browser profile isolation
+- Command system with generative UI
+- AI-assisted command refinement
+
+**Chat-Driven AI Workflow System** (Deprecated):
+- Injected chat interface on web pages
+- AI-generated CDP scripts
+- Template-based prompts
+- Feedback loop for continuous improvement
+
+**Workflow Learning System** (Deprecated - future feature):
+- Workflow graph (`.workflow.md`)
+- Step frame format (`.frames.json`)
+- Confidence-based navigation
+- Self-improving system
+
+*Note: The browser automation capabilities remain technically viable and may be reintroduced as part of agentic workflows in v3.0+, but are no longer the primary product focus.*
