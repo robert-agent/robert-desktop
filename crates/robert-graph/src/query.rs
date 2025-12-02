@@ -1,6 +1,6 @@
-use crate::{GraphError, GraphStore, VectorStore, Node, Edge};
+use crate::{GraphError, GraphStore, VectorStore, Node};
 use crate::ephemeral_graph::EphemeralGraph;
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 
 pub struct GraphQuery<S: GraphStore + VectorStore> {
     store: S,

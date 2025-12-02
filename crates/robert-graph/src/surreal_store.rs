@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use surrealdb::engine::local::{Db, RocksDb};
 use surrealdb::Surreal;
 use std::path::PathBuf;
+use serde::Deserialize;
 
 pub struct SurrealStore {
     db: Surreal<Db>,

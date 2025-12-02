@@ -60,3 +60,89 @@ impl EphemeralGraph {
 
     // Add more algorithms as needed (PageRank, Community Detection, etc.)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn create_node(id: &str) -> Node {
+        Node {
+            id: id.to_string(),
+            label: "Test".to_string(),
+            properties: json!({}),
+        }
+    }
+
+    fn create_edge(source: &str, target: &str) -> Edge {
+        Edge {
+            source: source.to_string(),
+            target: target.to_string(),
+            relation: "LINKS".to_string(),
+            weight: 1.0,
+        }
+    }
+
+    #[test]
+    fn test_ephemeral_graph_construction() {
+        let mut graph = EphemeralGraph::new();
+        let node1 = create_node("1");
+        let node2 = create_node("2");
+
+        graph.add_node(node1.clone());
+        graph.add_node(node2.clone());
+        graph.add_edge(create_edge("1", "2"));
+
+        assert_eq!(graph.graph.node_count(), 2);
+        assert_eq!(graph.graph.edge_count(), 1);
+    }
+
+    #[test]
+    fn test_scc() {
+        // Create a cycle: 1 -> 2 -> 3 -> 1
+        let nodes = vec![create_node("1"), create_node("2"), create_node("3")];
+        let edges = vec![
+            create_edge("1", "2"),
+            create_edge("2", "3"),
+            create_edge("3", "1"),
+        ];
+
+        let graph = EphemeralGraph::from_nodes_and_edges(nodes, edges);
+        let scc = graph.get_strongly_connected_components();
+
+        assert_eq!(scc.len(), 1); // One component containing all 3 nodes
+        assert_eq!(scc[0].len(), 3);
+    }
+
+    #[test]
+    fn test_disconnected_components() {
+        // 1 -> 2, 3 -> 4
+        let nodes = vec![
+            create_node("1"), create_node("2"),
+            create_node("3"), create_node("4")
+        ];
+        let edges = vec![
+            create_edge("1", "2"),
+            create_edge("3", "4"),
+        ];
+
+        let graph = EphemeralGraph::from_nodes_and_edges(nodes, edges);
+        let scc = graph.get_strongly_connected_components();
+
+        // Each node is its own SCC because there are no cycles, but kosaraju returns components.
+        // Wait, Kosaraju returns strongly connected components. In a DAG (like 1->2), each node is an SCC.
+        // So we expect 4 components.
+        assert_eq!(scc.len(), 4);
+    }
+    
+    #[test]
+    fn test_duplicate_nodes() {
+        let mut graph = EphemeralGraph::new();
+        let node1 = create_node("1");
+        
+        graph.add_node(node1.clone());
+        graph.add_node(node1.clone()); // Should be ignored
+        
+        assert_eq!(graph.graph.node_count(), 1);
+    }
+}
