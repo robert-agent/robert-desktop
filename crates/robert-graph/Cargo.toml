@@ -1,0 +1,23 @@
+[package]
+name = "robert-graph"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+surrealdb = { version = "2.0", features = ["kv-rocksdb"] }
+petgraph = { version = "0.6", features = ["serde-1"] }
+fastembed = "4"
+
+[features]
+default = []
+test-utils = []
+
+[dev-dependencies]
+tokio-test = "0.4"
