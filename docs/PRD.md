@@ -244,36 +244,37 @@ Robert is not just a chat client; it's a Memory Layer that enables:
 - **FR3.5**: Hierarchical memory (Hot/Warm/Cold tiers)
 - **FR3.6**: Cached traversal patterns for common queries
 
-#### FR4: Multi-Provider Reasoning
-- **FR4.1**: Support OpenAI, Anthropic, local models
-- **FR4.2**: One-click provider switching
-- **FR4.3**: Per-query provider selection
-- **FR4.4**: Cost tracking per provider
-- **FR4.5**: Automatic fallback if provider fails
+#### FR4: Agentic Execution (v1.5+)
+- **FR4.1**: Domain definition interface (user assigns agent to workflow)
+- **FR4.2**: Boundary setting (rules, approval thresholds, constraints)
+- **FR4.3**: Trigger detection (email keywords, calendar events, file changes)
+- **FR4.4**: Multi-step workflow execution (retrieve → process → generate → act)
+- **FR4.5**: Human-in-loop approval gates (flag for review when needed)
+- **FR4.6**: Workflow templates (pricing agent, research agent, meeting prep, writing)
+- **FR4.7**: Execution history and audit trail (what agent did, when, why)
+- **FR4.8**: Agent feedback loop (thumbs up/down, refinement suggestions)
 
-#### FR5: Privacy Firewall
-- **FR5.1**: PII detection and stripping (names, emails, SSN, credit cards)
-- **FR5.2**: Token obfuscation (replace sensitive data with tokens)
-- **FR5.3**: Anonymization proxy before reasoning providers
-- **FR5.4**: Audit log of data sent to cloud
-- **FR5.5**: User consent for cloud inference
+#### FR5: Multi-Provider Reasoning
+- **FR5.1**: Support OpenAI, Anthropic, local models
+- **FR5.2**: One-click provider switching
+- **FR5.3**: Per-query provider selection
+- **FR5.4**: Cost tracking per provider
+- **FR5.5**: Automatic fallback if provider fails
 
-#### FR6: Sync & Cloud Compute
-- **FR6.1**: E2E encrypted cloud storage for knowledge graphs
-- **FR6.2**: Zero-knowledge architecture (Robert holds no keys)
-- **FR6.3**: Ephemeral compute for embedding generation
-- **FR6.4**: Cross-device sync (Mac ↔ iPhone ↔ Desktop)
-- **FR6.5**: Conflict resolution for multi-device edits
+#### FR6: Privacy Firewall
+- **FR6.1**: PII detection and stripping (names, emails, SSN, credit cards)
+- **FR6.2**: Token obfuscation (replace sensitive data with tokens)
+- **FR6.3**: Anonymization proxy before reasoning providers
+- **FR6.4**: Audit log of data sent to cloud
+- **FR6.5**: User consent for cloud inference
 
-#### FR7: Agentic Execution (v1.5+)
-- **FR7.1**: Domain definition interface (user assigns agent to workflow)
-- **FR7.2**: Boundary setting (rules, approval thresholds, constraints)
-- **FR7.3**: Trigger detection (email keywords, calendar events, file changes)
-- **FR7.4**: Multi-step workflow execution (retrieve → process → generate → act)
-- **FR7.5**: Human-in-loop approval gates (flag for review when needed)
-- **FR7.6**: Workflow templates (pricing agent, research agent, meeting prep, writing)
-- **FR7.7**: Execution history and audit trail (what agent did, when, why)
-- **FR7.8**: Agent feedback loop (thumbs up/down, refinement suggestions)
+#### FR7: Sync & Cloud Compute
+- **FR7.1**: E2E encrypted cloud storage for knowledge graphs
+- **FR7.3**: Ephemeral compute for embedding generation
+- **FR7.4**: Cross-device sync (Mac ↔ iPhone ↔ Desktop)
+- **FR7.5**: Conflict resolution for multi-device edits
+
+
 
 ### Non-Functional Requirements
 
