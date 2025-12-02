@@ -132,22 +132,20 @@ Robert is not just a chat client; it's a Memory Layer that enables:
 
 ## Goals
 
-### Primary Goals (v1.0) - "ContextOS Core + Agentic Foundation"
+### Primary Goals (Alpha / v0.5) - "ContextOS Core"
 1. ✅ **Local knowledge base** - Users maintain ≥10 documents, cite in ≥30% of queries
 2. ✅ **Context control** - Mark documents as archived, set temporal relevance, segregate contexts
-3. ✅ **Multi-provider reasoning** - 40% of users actively use ≥2 providers
-4. ✅ **GraphRAG** - Knowledge graphs with entities, relationships, temporal reasoning
-5. ✅ **Transparent attribution** - Context sidebar shows what memories are active
-6. ✅ **Reactive pruning** - Users curate via "Mark as Outdated" at moment of failure
-7. ✅ **Cross-device sync** - E2E encrypted sync across Mac/iPhone/Desktop
-8. ✅ **Domain-specific agents (v1.5)** - Users delegate workflows to autonomous agents within defined boundaries
+3. ✅ **GraphRAG** - Knowledge graphs with entities, relationships, temporal reasoning
+4. ✅ **Transparent attribution** - Context sidebar shows what memories are active
+5. ✅ **Reactive pruning** - Users curate via "Mark as Outdated" at moment of failure
+6. ✅ **Native macOS app** - Beautiful, polished Mac-first experience
 
-### Secondary Goals (v1.0)
-1. ✅ **Hierarchical memory** - Hot/Warm/Cold storage (MemGPT pattern)
+### Primary Goals (v1.0) - "Production Ready"
+1. ✅ **Multi-provider reasoning** - 40% of users actively use ≥2 providers
 2. ✅ **Privacy firewall** - PII stripping, token obfuscation before cloud providers
-3. ✅ **Ephemeral compute** - Cloud-assisted indexing for heavy tasks
-4. ✅ **Weekly Active Context (WAC)** - Metric tracking documents >7 days old
-5. ✅ **Native macOS app** - Beautiful, polished Mac-first experience
+3. ✅ **Sync & Cloud Compute** - E2E encrypted sync across Mac/iPhone/Desktop, ephemeral compute
+4. ✅ **Hierarchical memory** - Hot/Warm/Cold storage (MemGPT pattern)
+5. ✅ **Weekly Active Context (WAC)** - Metric tracking documents >7 days old
 
 ### Future Goals (Roadmap)
 1. 🔄 **Domain agents (v1.5)** - Pricing agent, research agent, meeting prep agent, writing agent
@@ -160,36 +158,36 @@ Robert is not just a chat client; it's a Memory Layer that enables:
 
 ## Product Scope
 
-### In Scope (v1.0)
+### In Scope (Alpha / v0.5)
 
 #### Platform & Deployment
 - ✅ **macOS desktop application** (macOS 11+, Apple Silicon optimized)
-- ✅ **Local-first architecture** with cloud-assisted compute
+- ✅ **Local-first architecture** (Local inference or direct API calls)
 - ✅ **Native .app bundle** with DMG installer
-- ✅ **E2E encrypted sync** via zero-knowledge cloud storage
 
 #### User Interface
 - ✅ **Tauri-based desktop app** with Svelte frontend
 - ✅ **Chat interface** for natural language queries
 - ✅ **Context sidebar** showing active memories with attribution
 - ✅ **Knowledge graph browser** visualizing entities and relationships
-- ✅ **Settings panel** for provider configuration, privacy controls
-- ✅ **Native macOS integration** (menus, notifications, Shortcuts)
+- ✅ **Settings panel** for basic configuration
+- ✅ **Native macOS integration** (menus, notifications)
 
 #### Memory Management Features
 - ✅ **GraphRAG knowledge graphs** - Entities, relationships, temporal reasoning
-- ✅ **Hierarchical memory** - Hot (context window), Warm (summaries), Cold (archive)
 - ✅ **Context control** - Mark as outdated, archive, exclude from contexts
 - ✅ **Transparent attribution** - See what memories AI used for each query
 - ✅ **Reactive pruning** - One-click curation at moment of frustration
-- ✅ **Multi-provider switching** - OpenAI, Anthropic, local models
-- ✅ **Context segregation** - Personal vs. work, portable vs. employer-owned
+- ✅ **Context segregation** - Personal vs. work
 
-#### Privacy & Firewall Features
-- ✅ **Local-first processing** - Hot state and keys on device
-- ✅ **Anonymization proxy** - PII stripping before reasoning providers
+### In Scope (v1.0)
+
+#### Advanced Features
+- ✅ **Multi-provider switching** - OpenAI, Anthropic, local models
+- ✅ **Hierarchical memory** - Hot (context window), Warm (summaries), Cold (archive)
+- ✅ **E2E encrypted sync** via zero-knowledge cloud storage
+- ✅ **Privacy Firewall** - PII stripping, token obfuscation
 - ✅ **Ephemeral cloud compute** - Stateless workers for embeddings
-- ✅ **Zero-knowledge sync** - E2EE cloud storage, Robert holds no keys
 - ✅ **Audit trails** - Log what was sent to reasoning providers
 
 ### Out of Scope (v1.0)
@@ -593,14 +591,20 @@ Open iPhone app → Context synced → Continue research
 
 ## Product Roadmap
 
-### Version 1.0 (Q1 2026) - **ContextOS Core**
+### Version 0.5 (Alpha) (Q4 2025) - **ContextOS Core**
 - ✅ GraphRAG knowledge graphs
 - ✅ Context control (mark as outdated, segregate contexts)
-- ✅ Multi-provider reasoning (OpenAI, Anthropic, local)
 - ✅ Transparent attribution (context sidebar)
 - ✅ Reactive pruning (one-click curation)
-- ✅ E2E encrypted sync (cross-device)
 - ✅ Native macOS app (Apple Silicon optimized)
+- ✅ Basic reasoning (Single provider or Local)
+
+### Version 1.0 (Q1 2026) - **Production Ready**
+- ✅ Multi-provider reasoning (OpenAI, Anthropic, local)
+- ✅ E2E encrypted sync (cross-device)
+- ✅ Privacy Firewall (PII stripping)
+- ✅ Ephemeral cloud compute
+- ✅ Hierarchical memory optimization
 
 ### Version 1.5 (Q2-Q3 2026) - **Polish & Scale**
 - 🔄 Team knowledge graphs (shared memory)
