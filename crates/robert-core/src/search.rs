@@ -2,33 +2,59 @@ use robert_graph::{GraphStore, VectorStore, GraphError, Node};
 use robert_graph::query::GraphQuery;
 use robert_graph::ingest::IngestionPipeline;
 use std::sync::Arc;
+use crate::llm::LlmClient;
+use anyhow::Result;
 
 pub struct SearchManager<S: GraphStore + VectorStore> {
     query_engine: GraphQuery<S>,
     ingestion_pipeline: Arc<IngestionPipeline<S>>,
+    llm_client: Arc<LlmClient>,
 }
 
 impl<S: GraphStore + VectorStore + Clone> SearchManager<S> {
-    pub fn new(store: S, ingestion_pipeline: Arc<IngestionPipeline<S>>) -> Self {
+    pub fn new(store: S, ingestion_pipeline: Arc<IngestionPipeline<S>>, llm_client: Arc<LlmClient>) -> Self {
         Self {
             query_engine: GraphQuery::new(store),
             ingestion_pipeline,
+            llm_client,
         }
     }
 
     pub async fn search(&self, query_text: &str, limit: usize) -> Result<Vec<Node>, GraphError> {
         // 1. Embed query
-        // We need to expose embedding from IngestionPipeline or use a separate service
-        // For now, let's assume IngestionPipeline has a public embed_text method (I added it mentally but need to verify/add it)
-        
-        // Wait, I didn't actually add `embed_text` to `IngestionPipeline` in the previous step, I just thought about it.
-        // I should check `ingest.rs` content or just add it now.
-        // I'll assume I need to add it.
-        
-        // Let's assume I will add it.
         let vector = self.ingestion_pipeline.embed_text(query_text).await?;
         
         // 2. Graph Search
         self.query_engine.search(vector, limit).await
+    }
+
+    pub async fn ask(&self, query_text: &str) -> Result<String> {
+        // 1. Retrieve Context
+        let nodes = self.search(query_text, 5).await
+            .map_err(|e| anyhow::anyhow!("Search failed: {}", e))?;
+
+        // 2. Assemble Context
+        let context_str = nodes.iter()
+            .map(|n| {
+                let content = n.properties.get("content_preview")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                format!("- [{}]: {}", n.label, content)
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // 3. Construct Prompt
+        let system_prompt = "You are Robert, a helpful AI assistant with access to the user's personal documents. \
+        Answer the user's question based ONLY on the provided context. If the context doesn't contain the answer, say so.";
+        
+        let user_prompt = format!(
+            "Context:\n{}\n\nQuestion: {}", 
+            context_str, 
+            query_text
+        );
+
+        // 4. Generate Answer
+        self.llm_client.complete(&user_prompt, Some(system_prompt)).await
     }
 }

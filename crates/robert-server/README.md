@@ -1,4 +1,7 @@
-# Robert Server
+# Robert Server [DEPRECATED]
+
+> [!WARNING]
+> **DEPRECATED**: This component is being deprecated in favor of embedded execution in `robert-core`. See `docs/ARCHITECTURE_DECISIONS.md` for details.
 
 Remote execution server for the Robert desktop application. Receives SSL-encrypted requests and forwards them to headless claude-cli processes.
 

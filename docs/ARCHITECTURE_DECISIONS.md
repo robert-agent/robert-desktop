@@ -34,3 +34,19 @@ We will use **SurrealDB exclusively** for the Alpha release.
 - **Pros**: Significantly simpler architecture (single source of truth, no sync logic). Lower RAM usage. Faster implementation.
 - **Cons**: Cannot perform efficient global graph algorithms (PageRank, Leiden) without pulling data into memory. This is acceptable for Alpha scope.
 
+## ADR-003: Deprecate Robert Server in favor of Embedded Core
+**Date**: 2025-12-02
+**Status**: Accepted
+
+### Context
+`robert-server` was designed as a remote execution proxy to isolate `claude` CLI execution. However, the pivot to "ContextOS" (local-first memory layer) prioritizes local execution and simplicity. Running a separate server process adds unnecessary complexity for a local-first desktop app.
+
+### Decision
+We will **deprecate `robert-server`** and **port the Claude execution logic directly into `robert-core`**.
+- `robert-core` will manage the `claude` CLI process directly (embedded).
+- `robert-server` will be marked as deprecated and eventually removed.
+
+### Consequences
+- **Pros**: Simplified architecture (single process/binary), easier distribution, lower latency (no local network hop), better alignment with "local-first" vision.
+- **Cons**: Loss of remote execution capability (can be re-added later if needed).
+

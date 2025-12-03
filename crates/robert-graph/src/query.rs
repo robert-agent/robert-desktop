@@ -1,4 +1,4 @@
-use crate::{GraphError, GraphStore, VectorStore, Node, Edge};
+use crate::{GraphError, GraphStore, VectorStore, Node};
 use crate::ephemeral_graph::EphemeralGraph;
 use std::collections::HashSet;
 
@@ -56,6 +56,7 @@ impl<S: GraphStore + VectorStore> GraphQuery<S> {
 mod tests {
     use super::*;
     use crate::mocks::{MockGraphStore, MockVectorStore};
+    use crate::Edge;
     use async_trait::async_trait;
 
     // Combined mock for testing

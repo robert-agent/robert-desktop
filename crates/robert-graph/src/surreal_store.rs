@@ -5,6 +5,7 @@ use surrealdb::Surreal;
 use std::path::PathBuf;
 use serde::Deserialize;
 
+#[derive(Clone)]
 pub struct SurrealStore {
     db: Surreal<Db>,
 }

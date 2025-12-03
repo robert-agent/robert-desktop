@@ -11,9 +11,9 @@
 ### Phase 1: Foundation & Project Setup
 #### [MODIFY] [Project Structure](file:///Users/lucas/code/rust/robert/Cargo.toml)
 - [x] Initialize Tauri 2.0 workspace (Exists as `robert-app`)
-- [ ] Create new crate: `robert-graph` (GraphRAG engine)
-- [ ] Create new crate: `robert-core` (Business logic & ContextOS)
-- [ ] Register new crates in workspace `Cargo.toml`
+- [x] Create new crate: `robert-graph` (GraphRAG engine)
+- [x] Create new crate: `robert-core` (Business logic & ContextOS)
+- [x] Register new crates in workspace `Cargo.toml`
 
 #### [MODIFY] [Basic UI Shell](file:///Users/lucas/code/rust/robert/crates/robert-app/src/App.svelte)
 - [x] Setup Svelte + Tailwind frontend (Exists)
@@ -23,13 +23,13 @@
 
 ### Phase 2: Core Backend (The Memory Layer)
 #### [NEW] [GraphRAG Engine](file:///Users/lucas/code/rust/robert/crates/robert-graph/src/lib.rs)
-- [ ] **Dependencies**: Add `surrealdb` (embedded, kv-rocksdb), `fastembed`, `tokio`, `serde`.
-- [ ] **GraphStore**: Implement `SurrealStore` struct.
-    - [ ] Initialize embedded SurrealDB instance.
-    - [ ] Define schema: `Node` (chunk), `Edge` (relation).
-- [ ] **IngestionPipeline**: Text -> Chunks -> Embeddings -> SurrealDB.
-- [ ] **GraphQuery**: Vector + Edge Traversal.
-    - [ ] Vector Search (SurrealDB) -> Top K.
+- [x] **Dependencies**: Add `surrealdb` (embedded, kv-rocksdb), `fastembed`, `tokio`, `serde`.
+- [x] **GraphStore**: Implement `SurrealStore` struct.
+    - [x] Initialize embedded SurrealDB instance.
+    - [x] Define schema: `Node` (chunk), `Edge` (relation).
+- [x] **IngestionPipeline**: Text -> Chunks -> Embeddings -> SurrealDB.
+- [x] **GraphQuery**: Vector + Edge Traversal.
+    - [x] Vector Search (SurrealDB) -> Top K.
     - [ ] Filtered Traversal (e.g., "exclude archived").
     - [ ] Context Assembly.
 
@@ -42,9 +42,9 @@
 
 ### Phase 3: ContextOS Features
 #### [NEW] [Context Control](file:///Users/lucas/code/rust/robert/crates/robert-core/src/context.rs)
-- [ ] Implement `Context` struct (id, name, rules)
-- [ ] Implement `ContextManager`: Create/Delete/Switch contexts
-- [ ] Add "Personal" and "Work" default contexts
+- [x] Implement `Context` struct (id, name, rules)
+- [x] Implement `ContextManager`: Create/Delete/Switch contexts
+- [x] Add "Personal" and "Work" default contexts
 
 #### [NEW] [Reactive Pruning](file:///Users/lucas/code/rust/robert/src/components/ContextSidebar.svelte)
 - [ ] UI: "Mark as Outdated" button on sidebar items
@@ -56,6 +56,20 @@
 - [ ] Integrate OpenAI API client (user provides key)
 - [ ] Implement RAG loop: Query -> Graph Search -> Context Assembly -> Prompt -> LLM
 - [ ] Chat UI: Message history, streaming responses
+
+### Phase 4.5: Local Privacy & Edge Intelligence
+#### [NEW] [Local LLM Inference](file:///Users/lucas/code/rust/robert/crates/robert-core/src/llm/local.rs)
+- [ ] **Dependencies**: Add `candle-core`, `candle-nn`, `candle-transformers`, `tokenizers` to `robert-core`.
+- [ ] **Model Management**: Download/Cache SafeTensors models (Phi-4 or DeepSeek).
+- [ ] **LocalProvider**: Implement `LlmProvider::Local` using `candle`.
+
+#### [NEW] [PII Sanitization](file:///Users/lucas/code/rust/robert/crates/robert-core/src/privacy.rs)
+- [ ] **PiiSanitizer**: Struct to handle redaction.
+- [ ] **Dictionary**: Maintain `Real <-> Placeholder` map for session/context.
+- [ ] **Hybrid Detection**:
+    - [ ] Regex for patterns (Email, Phone, SSN).
+    - [ ] Local LLM for semantic PII detection (e.g., "My name is Lucas").
+- [ ] **Integration**: Hook into `LlmClient` before sending queries to remote providers (if any) or logging.
 
 ### Phase 5: Polish & Packaging
 - [ ] E2E Testing of ingestion -> query loop
