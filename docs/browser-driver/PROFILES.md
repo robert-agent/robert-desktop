@@ -1065,9 +1065,9 @@ See "Terminology" section at the beginning of this document.
 
 ### References
 
-- [PRD.md](./PRD.md) - Product Requirements Document
-- [SCRIPT_FORMAT.md](./SCRIPT_FORMAT.md) - CDP Script Format
-- [CHAT_UI.md](./CHAT_UI.md) - Chat Interface Specification
+- [prd.md](./prd.md) - Product Requirements Document
+- [script_format.md](./script_format.md) - CDP Script Format
+- [chat_ui.md](./chat_ui.md) - Chat Interface Specification
 
 ### Change Log
 

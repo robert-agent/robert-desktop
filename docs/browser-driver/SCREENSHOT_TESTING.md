@@ -350,8 +350,8 @@ RUST_LOG=debug cargo run
 
 ## Related Documentation
 
-- [STEP_FRAME_SCHEMA.md](../agent-formats/specs/STEP_FRAME_SCHEMA.md) - Step frame format specification
-- [TESTING.md](TESTING.md) - Overall testing strategy
+- [step_frame_schema.md](../agent-formats/specs/step_frame_schema.md) - Step frame format specification
+- [testing.md](testing.md) - Overall testing strategy
 - [TEST_ORGANIZATION.md](TEST_ORGANIZATION.md) - Test organization guide
 
 ## Summary

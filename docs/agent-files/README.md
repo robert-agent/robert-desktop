@@ -174,10 +174,10 @@ merged_workflow = merge_agent_knowledge([agent_a, agent_b, agent_c])
 
 ## Documentation
 
-- **[specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md)** - Complete workflow graph format specification
-- **[specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md)** - Complete step frame format specification
-- **[specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)** - Best practices and integration guide
-- **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick reference summary
+- **[specs/workflow_graph_schema.md](./specs/workflow_graph_schema.md)** - Complete workflow graph format specification
+- **[specs/step_frame_schema.md](./specs/step_frame_schema.md)** - Complete step frame format specification
+- **[specs/agent_workflow_standards.md](./specs/agent_workflow_standards.md)** - Best practices and integration guide
+- **[quick_reference.md](./quick_reference.md)** - Quick reference summary
 - **[examples/workflows/](./examples/workflows/)** - Example workflows and sessions
 
 ## Examples

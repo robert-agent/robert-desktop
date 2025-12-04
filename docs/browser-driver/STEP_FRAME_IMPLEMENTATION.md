@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete implementation of step frame capture for browser workflows, conforming to the Step Frame Schema specification (`agent-formats/specs/STEP_FRAME_SCHEMA.md`).
+Complete implementation of step frame capture for browser workflows, conforming to the Step Frame Schema specification (`agent-formats/specs/step_frame_schema.md`).
 
 ## Implementation
 
@@ -600,9 +600,9 @@ let options = CaptureOptions {
 
 ## Related Documentation
 
-- [STEP_FRAME_SCHEMA.md](../agent-formats/specs/STEP_FRAME_SCHEMA.md) - Complete schema specification
-- [SCREENSHOT_TESTING.md](./SCREENSHOT_TESTING.md) - Screenshot capture testing
-- [TESTING.md](./TESTING.md) - Overall testing strategy
+- [step_frame_schema.md](../agent-formats/specs/step_frame_schema.md) - Complete schema specification
+- [screenshot_testing.md](./screenshot_testing.md) - Screenshot capture testing
+- [testing.md](./testing.md) - Overall testing strategy
 
 ## Summary
 

@@ -23,8 +23,8 @@ sha2 = { workspace = true }
 log = { workspace = true }
 
 [dev-dependencies]
-warp = "0.3"
-reqwest = "0.11"
+warp = { workspace = true }
+reqwest = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 spider_chrome = { workspace = true }

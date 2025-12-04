@@ -31,17 +31,17 @@ Browser automation is a **means to an end** for agentic execution, not the core 
 ## Documents in This Directory
 
 ### Core Browser Automation
-- **SCRIPT_FORMAT.md** - CDP-based browser automation script format
-- **CHAT_UI.md** - Injected chat interface for browser automation
-- **PROFILES.md** - User profiles and browser profile management
-- **SCREENSHOT_TESTING.md** - Visual regression testing for browser automation
+- **script_format.md** - CDP-based browser automation script format
+- **chat_ui.md** - Injected chat interface for browser automation
+- **profiles.md** - User profiles and browser profile management
+- **screenshot_testing.md** - Visual regression testing for browser automation
 
 ### Workflow Learning System
-- **STEP_FRAME_IMPLEMENTATION.md** - Agent workflow learning and frame capture
-- **VISUALDOM_FORMAT.md** - Visual DOM representation for agents
+- **step_frame_implementation.md** - Agent workflow learning and frame capture
+- **visualdom_format.md** - Visual DOM representation for agents
 
 ### Privacy & Security
-- **USER_PROFILES_PRIVACY.md** - Privacy architecture for browser automation profiles
+- **user_profiles_privacy.md** - Privacy architecture for browser automation profiles
 
 ## Relationship to Current Product
 
@@ -88,4 +88,4 @@ If you're exploring v3.0+ agentic workflows:
 
 ---
 
-**For questions**: See main [PRD.md](../PRD.md) and [PITCH.md](../PITCH.md) for current product direction.
+**For questions**: See main [prd.md](../prd.md) and [pitch.md](../pitch.md) for current product direction.

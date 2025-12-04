@@ -7,12 +7,12 @@ Standardized formats for AI agents to learn and improve website navigation workf
 ```
 agent-formats/
 ├── README.md                    # Start here - Overview and introduction
-├── QUICK_REFERENCE.md           # Quick reference summary
-├── INDEX.md                     # This file - Navigation guide
+├── quick_reference.md           # Quick reference summary
+├── index.md                     # This file - Navigation guide
 ├── specs/                       # Complete specifications
-│   ├── WORKFLOW_GRAPH_SCHEMA.md
-│   ├── STEP_FRAME_SCHEMA.md
-│   └── AGENT_WORKFLOW_STANDARDS.md
+│   ├── workflow_graph_schema.md
+│   ├── step_frame_schema.md
+│   └── agent_workflow_standards.md
 └── examples/workflows/          # Real-world examples
     └── github.com/create_repository/
         ├── *.workflow.md
@@ -24,14 +24,14 @@ agent-formats/
 ### For First-Time Users
 
 1. **[README.md](./README.md)** - Start here for overview
-2. **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick summary of both formats
+2. **[quick_reference.md](./quick_reference.md)** - Quick summary of both formats
 3. **[examples/workflows/](./examples/workflows/)** - See real examples
 
 ### For Implementation
 
-4. **[specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md)** - Complete graph format specification
-5. **[specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md)** - Complete frame format specification
-6. **[specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)** - Integration guide and best practices
+4. **[specs/workflow_graph_schema.md](./specs/workflow_graph_schema.md)** - Complete graph format specification
+5. **[specs/step_frame_schema.md](./specs/step_frame_schema.md)** - Complete frame format specification
+6. **[specs/agent_workflow_standards.md](./specs/agent_workflow_standards.md)** - Integration guide and best practices
 
 ## 📋 The Two Formats
 
@@ -85,27 +85,27 @@ agent-formats/
 → [README.md](./README.md)
 
 **Get a quick overview**
-→ [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
+→ [quick_reference.md](./quick_reference.md)
 
 **See an example**
 → [examples/workflows/github.com/create_repository/](./examples/workflows/github.com/create_repository/)
 
 **Implement workflow graphs**
-→ [specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md)
+→ [specs/workflow_graph_schema.md](./specs/workflow_graph_schema.md)
 
 **Implement session recording**
-→ [specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md)
+→ [specs/step_frame_schema.md](./specs/step_frame_schema.md)
 
 **Integrate into my agent**
-→ [specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)
+→ [specs/agent_workflow_standards.md](./specs/agent_workflow_standards.md)
 
 **Learn best practices**
-→ [specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)
+→ [specs/agent_workflow_standards.md](./specs/agent_workflow_standards.md)
 
 ## 🔗 Related Documentation
 
-- **[../docs/PRD.md](../docs/PRD.md)** - Product requirements (see "Workflow Learning System" section)
-- **[../docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md)** - Implementation plan (see "Phase 9")
+- **[../docs/prd.md](../docs/prd.md)** - Product requirements (see "Workflow Learning System" section)
+- **[../docs/implementation_plan.md](../docs/implementation_plan.md)** - Implementation plan (see "Phase 9")
 - **[../WORKFLOW_FORMATS_ADDED.md](../WORKFLOW_FORMATS_ADDED.md)** - Summary of what was added
 
 ## 📦 File Format Summary

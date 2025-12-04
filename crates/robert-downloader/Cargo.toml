@@ -7,16 +7,16 @@ edition = "2021"
 tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
-reqwest = { version = "0.11", features = ["stream", "json", "blocking", "multipart"] }
+reqwest = { workspace = true }
 futures-util = "0.3"
 git2 = "0.19"
 indicatif = "0.17"
-sha2 = "0.10"
+sha2 = { workspace = true }
 hex = "0.4"
-hf-hub = { version = "0.3.2", features = ["tokio"] }
+hf-hub = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3.8"
+tempfile = { workspace = true }
 tokio-test = { workspace = true }
