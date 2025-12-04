@@ -16,14 +16,14 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 doctest = false
 
 [build-dependencies]
-tauri-build = { version = "2.5", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-tauri = { version = "2.9", features = [] }
-tauri-plugin-opener = "2.5"
-tauri-plugin-updater = "2.9"
-tauri-plugin-dialog = "2.4"
-tauri-plugin-process = "2.3"
+tauri = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tauri-plugin-updater = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+tauri-plugin-process = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
@@ -37,25 +37,25 @@ chrono = { workspace = true }
 warp = { workspace = true }
 reqwest = { workspace = true }
 toml = { workspace = true }
-dirs = "5.0"
+dirs = { workspace = true }
 
 # Logging
-log = "0.4"
-env_logger = "0.11"
+log = { workspace = true }
+env_logger = { workspace = true }
 
 # User Profiles - Cryptography
-argon2 = "0.5"
-aes-gcm = "0.10"
-rand = "0.8"
-zeroize = { version = "1.6", features = ["derive"] }
+argon2 = { workspace = true }
+aes-gcm = { workspace = true }
+rand = { workspace = true }
+zeroize = { workspace = true }
 
 # User Profiles - Utilities
 uuid = { workspace = true }
-once_cell = "1.19"
+once_cell = { workspace = true }
 
 # Markdown command system (Phase 3 refactor)
-pulldown-cmark = "0.9"  # Markdown parsing for command files
-serde_yaml = "0.9"      # YAML frontmatter parsing
+pulldown-cmark = { workspace = true }  # Markdown parsing for command files
+serde_yaml = { workspace = true }      # YAML frontmatter parsing
 
 [dev-dependencies]
 tempfile = { workspace = true }
