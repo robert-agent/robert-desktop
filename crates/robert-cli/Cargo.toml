@@ -3,16 +3,11 @@ name = "robert-cli"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "robert"
-path = "src/main.rs"
-
-[[bin]]
-name = "robert-generate"
-path = "src/bin/robert-generate.rs"
-
 [dependencies]
-robert-webdriver = { path = "../robert-webdriver" }
+robert-core = { path = "../robert-core" }
+robert-downloader = { path = "../robert-downloader" }
 tokio = { workspace = true }
 clap = { workspace = true }
 anyhow = { workspace = true }
+log = { workspace = true }
+env_logger = "0.11"

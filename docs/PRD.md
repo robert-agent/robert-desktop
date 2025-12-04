@@ -164,6 +164,7 @@ Robert is not just a chat client; it's a Memory Layer that enables:
 - ✅ **macOS desktop application** (macOS 11+, Apple Silicon optimized)
 - ✅ **Local-first architecture** (Local inference or direct API calls)
 - ✅ **Native .app bundle** with DMG installer
+- ✅ **Headless CLI** (`robert-cli`) for server/scripted environments
 
 #### User Interface
 - ✅ **Tauri-based desktop app** with Svelte frontend

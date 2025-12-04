@@ -18,6 +18,7 @@ Deliver "ContextOS Core" with a **Split-Brain Generation Architecture**:
 - [x] Initialize Tauri 2.0 workspace (`robert-app`)
 - [x] Create `robert-graph` (GraphRAG engine)
 - [x] Create `robert-core` (Business logic)
+- [x] Restore `robert-cli` for headless management (downloads, memory, inference).
 - [ ] **Dependency Update**: Add `rig-core` to `robert-core` for agent orchestration.
 
 ### Phase 2: The Memory Layer (Partitioned Graph)
