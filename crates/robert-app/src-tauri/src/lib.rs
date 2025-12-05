@@ -30,18 +30,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
-            commands::launch_browser,
-            commands::navigate_to_url,
-            commands::get_page_content,
-            commands::close_browser,
-            commands::take_screenshot,
-            commands::ask_claude,
-            commands::ask_claude_about_page,
+            // Legacy commands removed/refactored
             commands::check_claude_health,
             commands::run_diagnostics,
-            commands::validate_cdp_script,
-            commands::validate_cdp_script_file,
-            commands::execute_cdp_script,
+            // commands::validate_cdp_script,
+            // commands::validate_cdp_script_file,
+            // commands::execute_cdp_script,
             // Developer mode commands
             commands::get_system_paths,
             commands::start_dev_test_server,

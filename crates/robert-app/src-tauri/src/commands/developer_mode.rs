@@ -136,76 +136,14 @@ pub struct ScreenshotInfo {
 #[tauri::command]
 pub async fn dev_capture_screenshot(
     app: AppHandle,
-    state: State<'_, AppState>,
+    _state: State<'_, AppState>,
 ) -> Result<ScreenshotInfo, String> {
     log::info!("📸 [Dev Mode] Manual screenshot capture requested");
-    emit_info(&app, "Capturing screenshot...").ok();
-
-    let driver_lock = state.driver.lock().await;
-
-    if driver_lock.is_none() {
-        let msg = "Browser not launched. Please launch browser first.";
-        log::error!("❌ [Dev Mode] {}", msg);
-        emit_error(&app, msg, None).ok();
-        return Err(msg.to_string());
-    }
-
-    let driver = driver_lock.as_ref().unwrap();
-
-    // Get session ID
-    let session_id = state.session_id.lock().await.clone();
-
-    // Create screenshots directory organized by session
-    let base_dir = std::env::temp_dir().join("robert-screenshots");
-    let session_dir = base_dir.join(&session_id);
-    log::debug!("Screenshot session directory: {:?}", session_dir);
-
-    tokio::fs::create_dir_all(&session_dir).await.map_err(|e| {
-        log::error!("❌ Failed to create screenshot directory: {}", e);
-        format!("Failed to create screenshot directory: {}", e)
-    })?;
-
-    // Generate filename with detailed timestamp (for proper ordering)
-    let now = chrono::Utc::now();
-    let timestamp = now.timestamp();
-    let filename = format!("screenshot_{}.png", now.format("%Y%m%d_%H%M%S_%3f"));
-    let screenshot_path = session_dir.join(&filename);
-    log::debug!("Target path: {:?}", screenshot_path);
-
-    // Capture screenshot
-    log::info!("📸 Capturing screenshot to {:?}", screenshot_path);
-    driver
-        .screenshot_to_file(&screenshot_path)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Screenshot capture failed: {}", e);
-            emit_error(&app, "Screenshot capture failed", Some(e.to_string())).ok();
-            format!("Screenshot capture failed: {}", e)
-        })?;
-
-    // Verify and get file info
-    let metadata = tokio::fs::metadata(&screenshot_path).await.map_err(|e| {
-        log::error!("❌ Screenshot file not found after capture: {}", e);
-        format!("Failed to verify screenshot file: {}", e)
-    })?;
-
-    let size_bytes = metadata.len();
-    let size_kb = size_bytes / 1024;
-
-    log::info!("✓ Screenshot captured: {} ({} KB)", filename, size_kb);
-    emit_success(
-        &app,
-        format!("Screenshot captured: {} ({} KB)", filename, size_kb),
-    )
-    .ok();
-
-    Ok(ScreenshotInfo {
-        path: screenshot_path.to_string_lossy().to_string(),
-        filename,
-        timestamp,
-        size_bytes,
-        size_kb,
-    })
+    // TODO: Implement via HTTP request to standalone webdriver
+    let msg = "Manual screenshot capture is temporarily unavailable in standalone webdriver mode.";
+    log::warn!("{}", msg);
+    emit_error(&app, msg, None).ok();
+    Err(msg.to_string())
 }
 
 /// List all screenshots in the current session
@@ -345,44 +283,13 @@ pub async fn dev_delete_all_screenshots(
 #[tauri::command]
 pub async fn dev_delete_screenshot(
     app: AppHandle,
-    state: State<'_, AppState>,
-    path: String,
+    _state: State<'_, AppState>,
+    _path: String,
 ) -> Result<(), String> {
-    log::info!("🗑️  [Dev Mode] Deleting screenshot: {}", path);
-
-    let screenshot_path = PathBuf::from(&path);
-
-    // Get session ID
-    let session_id = state.session_id.lock().await.clone();
-
-    // Verify it's in our screenshot directory for safety
-    let base_dir = std::env::temp_dir().join("robert-screenshots");
-    let session_dir = base_dir.join(&session_id);
-
-    if !screenshot_path.starts_with(&session_dir) {
-        let msg = "Invalid screenshot path (not in current session directory)";
-        log::error!("❌ {}", msg);
-        return Err(msg.to_string());
-    }
-
-    // Verify filename pattern for safety
-    if let Some(filename) = screenshot_path.file_name().and_then(|n| n.to_str()) {
-        if !filename.starts_with("screenshot_") || !filename.ends_with(".png") {
-            let msg = "Invalid screenshot filename pattern";
-            log::error!("❌ {}", msg);
-            return Err(msg.to_string());
-        }
-    }
-
-    tokio::fs::remove_file(&screenshot_path)
-        .await
-        .map_err(|e| {
-            log::error!("❌ Failed to delete screenshot: {}", e);
-            format!("Failed to delete screenshot: {}", e)
-        })?;
-
-    log::info!("✓ Screenshot deleted from session {}", session_id);
-    emit_success(&app, "Screenshot deleted").ok();
-
-    Ok(())
+    log::info!("📸 [Dev Mode] Manual screenshot capture requested");
+    // TODO: Implement via HTTP request to standalone webdriver
+    let msg = "Manual screenshot capture is temporarily unavailable in standalone webdriver mode.";
+    log::warn!("{}", msg);
+    emit_error(&app, msg, None).ok();
+    Err(msg.to_string())
 }

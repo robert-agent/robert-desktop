@@ -498,8 +498,8 @@ learning_stats:
 
 ## See Also
 
-- [WORKFLOW_GRAPH_SCHEMA.md](./WORKFLOW_GRAPH_SCHEMA.md) - Detailed workflow graph format
-- [STEP_FRAME_SCHEMA.md](./STEP_FRAME_SCHEMA.md) - Detailed step frame format
+- [workflow-graph-schema.md](./workflow-graph-schema.md) - Detailed workflow graph format
+- [step-frame-schema.md](./step-frame-schema.md) - Detailed step frame format
 - [../examples/workflows/](../examples/workflows/) - Example workflows and sessions
 
 ---
