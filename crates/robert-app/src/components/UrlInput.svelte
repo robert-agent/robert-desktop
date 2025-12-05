@@ -1,9 +1,21 @@
 <script lang="ts">
-  import { launchBrowser, navigateToUrl } from '$lib/tauri';
+  import { onMount } from 'svelte';
+  import { launchBrowser, navigateToUrl, getBrowserStatus } from '$lib/tauri';
   import { browserLaunched, isNavigating, currentUrl, currentTitle } from '$lib/stores';
 
   let urlInput = '';
   let errorMessage = '';
+  let isVisible = false;
+
+  onMount(async () => {
+    try {
+      const status = await getBrowserStatus();
+      isVisible = status.is_available;
+    } catch (e) {
+      console.error('Failed to get browser status:', e);
+      isVisible = false;
+    }
+  });
 
   async function handleLaunchBrowser() {
     errorMessage = '';
@@ -61,39 +73,41 @@
   }
 </script>
 
-<div class="url-input-container">
-  <div class="input-row">
-    {#if !$browserLaunched}
-      <button on:click={handleLaunchBrowser} class="launch-button"> Launch Browser </button>
-    {/if}
-    <input
-      type="text"
-      bind:value={urlInput}
-      on:keypress={handleKeyPress}
-      placeholder="Enter URL (e.g., https://example.com)"
-      disabled={$isNavigating}
-      class="url-input"
-    />
-    <button
-      on:click={handleNavigate}
-      disabled={$isNavigating || !urlInput.trim()}
-      class="go-button"
-    >
-      {$isNavigating ? 'Loading...' : 'Go'}
-    </button>
-  </div>
-
-  {#if errorMessage}
-    <div class="error-message">{errorMessage}</div>
-  {/if}
-
-  {#if $currentTitle}
-    <div class="current-page">
-      <strong>{$currentTitle}</strong>
-      <span class="url-display">{$currentUrl}</span>
+{#if isVisible}
+  <div class="url-input-container">
+    <div class="input-row">
+      {#if !$browserLaunched}
+        <button on:click={handleLaunchBrowser} class="launch-button"> Launch Browser </button>
+      {/if}
+      <input
+        type="text"
+        bind:value={urlInput}
+        on:keypress={handleKeyPress}
+        placeholder="Enter URL (e.g., https://example.com)"
+        disabled={$isNavigating}
+        class="url-input"
+      />
+      <button
+        on:click={handleNavigate}
+        disabled={$isNavigating || !urlInput.trim()}
+        class="go-button"
+      >
+        {$isNavigating ? 'Loading...' : 'Go'}
+      </button>
     </div>
-  {/if}
-</div>
+
+    {#if errorMessage}
+      <div class="error-message">{errorMessage}</div>
+    {/if}
+
+    {#if $currentTitle}
+      <div class="current-page">
+        <strong>{$currentTitle}</strong>
+        <span class="url-display">{$currentUrl}</span>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .url-input-container {

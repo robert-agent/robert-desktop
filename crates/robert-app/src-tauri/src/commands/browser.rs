@@ -2,7 +2,6 @@
 ///
 /// This module provides Tauri commands that check the status of the external
 /// webdriver server and proxy requests to it.
-
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -23,11 +22,18 @@ pub struct WebdriverStatus {
 
 /// Check if the Webdriver server is running and available
 #[tauri::command]
-pub async fn get_browser_status(
-    state: State<'_, AppState>,
-) -> Result<WebdriverStatus, String> {
+pub async fn get_browser_status(state: State<'_, AppState>) -> Result<WebdriverStatus, String> {
+    // First check if we are in webdriver mode (detected at startup)
+    let mode_enabled = *state.webdriver_mode.lock().await;
+    if !mode_enabled {
+        return Ok(WebdriverStatus {
+            is_available: false,
+            message: "Webdriver mode disabled (not detected at startup)".to_string(),
+        });
+    }
+
     let client = &state.http_client;
-    
+
     // Attempt to ping the local webdriver server
     // TODO: Make port configurable or discoverable
     let url = "http://localhost:9669/health";
@@ -45,13 +51,11 @@ pub async fn get_browser_status(
                     message: format!("Webdriver server returned status: {}", res.status()),
                 })
             }
-        },
-        Err(e) => {
-            Ok(WebdriverStatus {
-                is_available: false,
-                message: format!("Webdriver server unreachable: {}", e),
-            })
         }
+        Err(e) => Ok(WebdriverStatus {
+            is_available: false,
+            message: format!("Webdriver server unreachable: {}", e),
+        }),
     }
 }
 
@@ -68,13 +72,15 @@ pub async fn execute_webdriver_inference(
         "prompt": prompt
     });
 
-    let res = client.post(url)
+    let res = client
+        .post(url)
         .json(&payload)
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
 
-    let json: serde_json::Value = res.json()
+    let json: serde_json::Value = res
+        .json()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
@@ -96,7 +102,7 @@ pub struct LaunchBrowserRequest {
 pub struct LaunchBrowserResponse {
     pub session_id: String,
     // Stubbed SessionInfo
-    pub session_info: serde_json::Value, 
+    pub session_info: serde_json::Value,
 }
 
 #[tauri::command]
@@ -140,4 +146,3 @@ pub async fn close_browser_session(
 pub async fn close_all_browser_sessions(_state: State<'_, AppState>) -> Result<usize, String> {
     Ok(0)
 }
-

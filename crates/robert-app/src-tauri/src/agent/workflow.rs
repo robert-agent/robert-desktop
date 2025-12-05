@@ -40,6 +40,8 @@ pub enum WorkflowType {
     CdpAutomation,
     /// Update agent configuration
     ConfigUpdate,
+    /// Improve user feedback
+    FeedbackImprovement,
 }
 
 /// Result of workflow execution
@@ -60,6 +62,9 @@ pub struct WorkflowResult {
     /// Agent's understanding of the request so far
     #[serde(skip_serializing_if = "Option::is_none")]
     pub understanding: Option<String>,
+    /// Refined feedback text (for feedback improvement workflow)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refined_feedback: Option<String>,
 }
 
 /// Workflow executor
@@ -77,20 +82,20 @@ impl WorkflowExecutor {
         workflow_type: WorkflowType,
         user_message: String,
         agent_config: &AgentConfig,
-        screenshot_path: Option<PathBuf>,
-        html_content: Option<String>,
+        _screenshot_path: Option<PathBuf>,
+        _html_content: Option<String>,
         http_client: &reqwest::Client,
     ) -> Result<WorkflowResult> {
         match workflow_type {
             WorkflowType::CdpAutomation => {
-                self.execute_cdp_workflow(
-                    user_message,
-                    http_client,
-                )
-                .await
+                self.execute_cdp_workflow(user_message, http_client).await
             }
             WorkflowType::ConfigUpdate => {
                 self.execute_config_update_workflow(user_message, agent_config)
+                    .await
+            }
+            WorkflowType::FeedbackImprovement => {
+                self.execute_feedback_improvement_workflow(user_message, agent_config)
                     .await
             }
         }
@@ -126,13 +131,14 @@ impl WorkflowExecutor {
                     error: Some(format!("Connection failed: {}", e)),
                     clarification: None,
                     understanding: None,
+                    refined_feedback: None,
                 });
             }
         };
 
         if !response.status().is_success() {
-             let error_text = response.text().await.unwrap_or_default();
-             return Ok(WorkflowResult {
+            let error_text = response.text().await.unwrap_or_default();
+            return Ok(WorkflowResult {
                 success: false,
                 workflow_type: WorkflowType::CdpAutomation,
                 message: format!("Server error: {}", error_text),
@@ -141,6 +147,7 @@ impl WorkflowExecutor {
                 error: Some(error_text),
                 clarification: None,
                 understanding: None,
+                refined_feedback: None,
             });
         }
 
@@ -156,13 +163,21 @@ impl WorkflowExecutor {
                     error: Some(e.to_string()),
                     clarification: None,
                     understanding: None,
+                    refined_feedback: None,
                 });
             }
         };
 
-        let status = json.get("status").and_then(|s| s.as_str()).unwrap_or("error");
-        let message = json.get("message").and_then(|s| s.as_str()).unwrap_or("").to_string();
-        
+        let status = json
+            .get("status")
+            .and_then(|s| s.as_str())
+            .unwrap_or("error");
+        let message = json
+            .get("message")
+            .and_then(|s| s.as_str())
+            .unwrap_or("")
+            .to_string();
+
         let success = status == "success";
         let execution_report = json.get("execution_report").cloned();
 
@@ -172,9 +187,14 @@ impl WorkflowExecutor {
             message,
             cdp_script: None, // Server doesn't return raw script currently, or maybe it does in report
             execution_report,
-            error: if success { None } else { Some("Execution failed on server".to_string()) },
-            clarification: None, 
+            error: if success {
+                None
+            } else {
+                Some("Execution failed on server".to_string())
+            },
+            clarification: None,
             understanding: None,
+            refined_feedback: None,
         })
     }
 
@@ -239,6 +259,7 @@ impl WorkflowExecutor {
                     error: None,
                     clarification: None,
                     understanding: None,
+                    refined_feedback: None,
                 })
             }
             Err(e) => Ok(WorkflowResult {
@@ -253,7 +274,75 @@ impl WorkflowExecutor {
                 )),
                 clarification: None,
                 understanding: None,
+                refined_feedback: None,
             }),
+        }
+    }
+
+    /// Execute feedback improvement workflow
+    async fn execute_feedback_improvement_workflow(
+        &self,
+        user_feedback: String,
+        agent_config: &AgentConfig,
+    ) -> Result<WorkflowResult> {
+        let template = PromptTemplate::new(PromptType::FeedbackImprovement);
+        let context = PromptContext {
+            user_feedback: user_feedback.clone(),
+            ..Default::default()
+        };
+        let prompt = template.build(context);
+
+        let claude_response = self
+            .call_claude(&prompt, None, None, &agent_config.settings.model)
+            .await?;
+        
+        let response_text = claude_response.text().trim();
+        
+        // Clean markdown
+        let json_text = if response_text.starts_with("```json") {
+             response_text.trim_start_matches("```json").trim_end_matches("```").trim()
+        } else if response_text.starts_with("```") {
+             response_text.trim_start_matches("```").trim_end_matches("```").trim()
+        } else {
+             response_text
+        };
+
+        // Parse JSON
+        #[derive(Deserialize)]
+        struct FeedbackResponse {
+            #[serde(default)]
+            message: String,
+            refined_feedback: Option<String>,
+        }
+
+        match serde_json::from_str::<FeedbackResponse>(json_text) {
+            Ok(parsed) => {
+                Ok(WorkflowResult {
+                    success: true,
+                    workflow_type: WorkflowType::FeedbackImprovement,
+                    message: parsed.message,
+                    cdp_script: None,
+                    execution_report: None,
+                    error: None,
+                    clarification: None,
+                    understanding: None,
+                    refined_feedback: parsed.refined_feedback,
+                })
+            },
+            Err(e) => {
+                // Fallback if JSON parsing fails - simple pass-through or error
+                 Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::FeedbackImprovement,
+                    message: "I encountered an error processing your feedback.".to_string(),
+                    cdp_script: None,
+                    execution_report: None,
+                    error: Some(format!("Failed to parse response: {}\n{}", e, json_text)),
+                    clarification: None,
+                    understanding: None,
+                    refined_feedback: None,
+                })
+            }
         }
     }
 

@@ -1,23 +1,16 @@
-/// User profiles and multi-user support system
-///
-/// This module implements the complete user profiles feature including:
-/// - User authentication and encryption
-/// - Browser profile management (ephemeral and named)
-/// - Command system with versioning
-/// - Generative UI for command parameters
-///
-/// The system ensures data isolation between users through password-based
-/// encryption using Argon2id for key derivation and AES-256-GCM for file encryption.
-pub mod auth;
-pub mod command;
-pub mod command_md;
-pub mod crypto;
-pub mod manager;
-pub mod markdown;
-pub mod storage;
-pub mod types;
+//! User profiles and multi-user support system
+//!
+//! This module now re-exports types and functionality from the `robert-types` crate.
 
-pub use types::{
+pub use robert_types::profiles::auth;
+pub use robert_types::profiles::command;
+pub use robert_types::profiles::command_md;
+pub use robert_types::profiles::crypto;
+pub use robert_types::profiles::manager;
+pub use robert_types::profiles::markdown;
+pub use robert_types::profiles::storage;
+pub use robert_types::profiles::types;
+
+pub use robert_types::profiles::types::{
     CommandConfig, SimpleParameter, SimpleParameterType, UserConfig, UserPreferences, UserStats,
 };
-

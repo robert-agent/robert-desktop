@@ -183,6 +183,27 @@ Key principles:
             tags: vec!["meta".to_string(), "config".to_string()],
         }
     }
+
+    /// Create default feedback assistant agent config
+    pub fn default_feedback_agent() -> Self {
+        Self {
+            name: "feedback-assistant".to_string(),
+            description: "Helps users improve their feedback and bug reports".to_string(),
+            version: "1.0.0".to_string(),
+            settings: AgentSettings {
+                model: Some("claude-3-5-sonnet-20241022".to_string()),
+                include_screenshots: false,
+                include_html: false,
+                max_retries: 2,
+                temperature: 0.7,
+            },
+            instructions: r#"You are a helpful QA assistant.
+Your goal is to improve bug reports and feedback from users.
+You are professional, concise, and helpful."#.to_string(),
+            examples: vec![],
+            tags: vec!["feedback".to_string(), "qa".to_string()],
+        }
+    }
 }
 
 #[cfg(test)]

@@ -13,6 +13,8 @@ mod state;
 
 use state::AppState;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize custom logger that writes to both console and encrypted log file
@@ -29,6 +31,29 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .manage(AppState::new())
+        .setup(|app| {
+            let state = app.state::<AppState>();
+            let webdriver_mode = state.webdriver_mode.clone();
+
+            // Spawn a task to check webdriver status without blocking startup
+            tauri::async_runtime::spawn(async move {
+                let client = reqwest::Client::new();
+                match client.get("http://localhost:9669/health").send().await {
+                    Ok(res) => {
+                        if res.status().is_success() {
+                            log::info!("✅ Webdriver detected at startup. Enabling webdriver mode.");
+                            *webdriver_mode.lock().await = true;
+                        } else {
+                            log::warn!("⚠️ Webdriver detected but returned error {}. Webdriver mode disabled.", res.status());
+                        }
+                    },
+                    Err(_) => {
+                        log::info!("ℹ️ Webdriver not detected at startup. Webdriver mode disabled.");
+                    }
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // Legacy commands removed/refactored
             commands::check_claude_health,
@@ -67,6 +92,7 @@ pub fn run() {
             commands::browser::close_browser_session,
             commands::browser::get_browser_status,
             commands::browser::close_all_browser_sessions,
+            commands::browser::execute_webdriver_inference,
             // Command system commands (Phase 3 - Markdown-based)
             commands::save_command,
             commands::get_command,
@@ -79,6 +105,8 @@ pub fn run() {
             commands::get_logs,
             commands::clear_logs,
             commands::get_log_size,
+            // Feedback commands
+            commands::submit_application_feedback,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

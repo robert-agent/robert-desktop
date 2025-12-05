@@ -11,6 +11,7 @@
   import ProfileSwitcher from './components/ProfileSwitcher.svelte';
   import ProfileEditor from './components/ProfileEditor.svelte';
   import CommandManager from './components/CommandManager.svelte';
+  import FeedbackDialog from './components/FeedbackDialog.svelte';
   import { initializeUserStore, isLoggedIn, hasUsers, listUsers } from './lib/userStore';
 
   type ViewType = 'chat' | 'debug' | 'developer' | 'profile-editor' | 'commands';
@@ -20,6 +21,7 @@
   let authView: AuthViewType = 'login';
   let updateModalRef: UpdateModal;
   let menuOpen = false;
+  let showFeedbackDialog = false;
 
   // Subscribe to auth state
   let loggedIn = false;
@@ -320,6 +322,44 @@
             <span>Commands</span>
           </button>
           <div class="menu-divider"></div>
+
+          <button
+            class="menu-item"
+            on:click={() => {
+              showFeedbackDialog = true;
+              menuOpen = false;
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M13.5 2.5V10.5C13.5 11.05 13.05 11.5 12.5 11.5H4L1 14.5V2.5C1 1.95 1.45 1.5 2 1.5H12.5C13.05 1.5 13.5 1.95 13.5 2.5Z"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M7.25 8.5H7.26"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path
+                d="M7.25 4.5V6.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+            <span>Send Feedback</span>
+          </button>
+
           <button class="menu-item" on:click={handleCheckForUpdates}>
             <svg
               width="16"
@@ -363,6 +403,8 @@
 
     <!-- Update Modal with auto-check enabled -->
     <UpdateModal bind:this={updateModalRef} autoCheck={true} />
+
+    <FeedbackDialog bind:show={showFeedbackDialog} on:close={() => (showFeedbackDialog = false)} />
   </div>
 {/if}
 

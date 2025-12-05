@@ -47,8 +47,8 @@ async fn main() {
     });
 
     // Health check endpoint
-    let health = warp::path("health")
-        .map(|| warp::reply::json(&serde_json::json!({ "status": "ok" })));
+    let health =
+        warp::path("health").map(|| warp::reply::json(&serde_json::json!({ "status": "ok" })));
 
     // Inference endpoint
     let state_filter = warp::any().map(move || state.clone());
@@ -63,7 +63,7 @@ async fn main() {
 
     // Bind manually to handle "port in use" error gracefully
     let addr = SocketAddr::from(([127, 0, 0, 1], args.port));
-    
+
     match tokio::net::TcpListener::bind(addr).await {
         Ok(listener) => {
             log::info!("Listening on http://{}", addr);
@@ -73,7 +73,10 @@ async fn main() {
         }
         Err(e) => {
             log::error!("Failed to bind to port {}: {}", args.port, e);
-            eprintln!("Error: Port {} is already in use or unavailable.", args.port);
+            eprintln!(
+                "Error: Port {} is already in use or unavailable.",
+                args.port
+            );
             std::process::exit(1);
         }
     }
@@ -117,12 +120,12 @@ async fn handle_inference(
     }
 
     let driver = driver_guard.as_ref().unwrap();
-    
+
     // Get page for execution
     let page = match driver.current_page().await {
         Ok(p) => p,
         Err(e) => {
-             return Ok(warp::reply::json(&InferenceResponse {
+            return Ok(warp::reply::json(&InferenceResponse {
                 status: "error".to_string(),
                 message: format!("Failed to get current page: {}", e),
                 script_steps: None,
@@ -133,11 +136,11 @@ async fn handle_inference(
 
     // 2. Generate Script
     let script_result = state.generator.generate(&req.prompt).await;
-    
+
     match script_result {
         Ok(script) => {
             log::info!("Generated script with {} steps", script.cdp_commands.len());
-            
+
             // 3. Execute Script
             let executor = CdpExecutor::new(page);
             match executor.execute_script(&script).await {

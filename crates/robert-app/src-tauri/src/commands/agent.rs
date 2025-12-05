@@ -230,9 +230,10 @@ async fn load_or_create_agent_config(
         let config = match agent_name {
             "cdp-generator" => AgentConfig::default_cdp_agent(),
             "meta-agent" => AgentConfig::default_meta_agent(),
+            "feedback-assistant" => AgentConfig::default_feedback_agent(),
             _ => {
                 return Err(format!(
-                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent",
+                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent, feedback-assistant",
                     agent_name
                 ));
             }

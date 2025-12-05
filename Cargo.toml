@@ -5,6 +5,7 @@ members = [
     "crates/robert-cli",
     "crates/robert-app/src-tauri",
     "crates/robert-server",
+    "crates/types",
 ]
 # Exclude Tauri app from default builds (requires GTK/Pango system libraries)
 # To build the Tauri app: cargo build -p robert-app
@@ -18,11 +19,12 @@ default-members = [
 # Shared dependencies across all crates
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Browser automation - spider_chrome (maintained fork of chromiumoxide)
+
 spider_chrome = "2.37"
 spider_chromiumoxide_fetcher = "0.7"
 
@@ -33,6 +35,43 @@ clap = { version = "4.0", features = ["derive"] }
 dirs = "5.0"
 futures = "0.3"
 base64 = "0.22"
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 log = "0.4"
+env_logger = "0.11"
+toml = "0.8"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+once_cell = "1.19"
+rand = "0.8"
+
+# Web / Network
+warp = "0.3"
+reqwest = "0.12"
+tokio-stream = { version = "0.1", features = ["net"] }
+async-stream = "0.3"
+async-trait = "0.1"
+
+# Cryptography
+argon2 = "0.5"
+aes-gcm = "0.10"
+zeroize = { version = "1.6", features = ["derive"] }
+
+# Markdown / Data
+pulldown-cmark = "0.9"
+serde_yaml = "0.9"
+
+# Tauri
+tauri = { version = "2.9", features = [] }
+tauri-build = { version = "2.5", features = [] }
+tauri-plugin-opener = "2.5"
+tauri-plugin-updater = "2.9"
+tauri-plugin-dialog = "2.4"
+tauri-plugin-process = "2.3"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Dev
+tempfile = "3.8"
+tokio-test = "0.4"

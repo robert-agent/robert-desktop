@@ -13,6 +13,8 @@ pub struct AppState {
     pub user_session: Arc<Mutex<Option<UserSession>>>,
     /// HTTP Client for communicating with standalone webdriver
     pub http_client: reqwest::Client,
+    /// Webdriver mode enabled (detected at startup)
+    pub webdriver_mode: Arc<Mutex<bool>>,
 }
 
 impl AppState {
@@ -25,6 +27,7 @@ impl AppState {
             session_id: Arc::new(Mutex::new(session_id)),
             user_session: Arc::new(Mutex::new(None)),
             http_client: reqwest::Client::new(),
+            webdriver_mode: Arc::new(Mutex::new(false)),
         }
     }
 }

@@ -4,7 +4,6 @@ use crate::developer_mode::{DevTestServer, SystemPaths};
 use crate::events::*;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::{AppHandle, State};
 
 /// Get system paths for developer mode

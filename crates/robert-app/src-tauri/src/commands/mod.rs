@@ -3,24 +3,25 @@ pub mod browser;
 mod developer_mode;
 mod logging;
 mod profiles;
+mod feedback;
 
 pub use agent::*;
 // Note: browser module is pub mod so we can selectively export commands to avoid conflicts
 pub use developer_mode::*;
 pub use logging::*;
 pub use profiles::*;
+pub use feedback::*;
 
-use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeHealthCheck, ClaudeInput, ClaudeResponse};
+use crate::claude::ClaudeHealthCheck;
 use crate::events::*;
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use tauri::{AppHandle, State};
 
 // Placeholder for remaining non-webdriver commands or cleaned up structure
 // If there are other commands here that don't use webdriver, they should be preserved.
 // Looking at the file, almost everything was webdriver related (navigate, get_content, screenshot, ask_claude).
-// Checks for Claude Health are still valid as they don't depend on webdriver crate directly, 
+// Checks for Claude Health are still valid as they don't depend on webdriver crate directly,
 // BUT check_claude_health implementation in mod.rs might use common types?
 // No, ClaudeHealthCheck is from crate::claude. So that's fine.
 
@@ -146,4 +147,3 @@ async fn check_chrome_installed() -> bool {
     log::debug!("Chrome not found in system");
     false
 }
-

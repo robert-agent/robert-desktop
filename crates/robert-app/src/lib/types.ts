@@ -63,6 +63,11 @@ export interface ScreenshotInfo {
 // CDP Execution types
 export type CommandStatus = 'success' | 'failed' | 'skipped';
 
+export interface WebdriverStatus {
+  is_available: boolean;
+  message: string;
+}
+
 // JSON value type matching serde_json::Value from Rust
 export type JsonValue =
   | null
