@@ -24,12 +24,13 @@ tauri-plugin-opener = { workspace = true }
 tauri-plugin-updater = { workspace = true }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-process = { workspace = true }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 
 # Robert dependencies
-robert-core = { path = "../../robert-core" }
-robert-graph = { path = "../../robert-graph" }
+robert-types = { workspace = true }
+robert-server = { workspace = true }
+
 tokio = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
@@ -43,20 +44,8 @@ dirs = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 
-# User Profiles - Cryptography
-argon2 = { workspace = true }
-aes-gcm = { workspace = true }
-rand = { workspace = true }
-zeroize = { workspace = true }
-
 # User Profiles - Utilities
-uuid = { workspace = true }
 once_cell = { workspace = true }
-
-# Markdown command system (Phase 3 refactor)
-pulldown-cmark = { workspace = true }  # Markdown parsing for command files
-serde_yaml = { workspace = true }      # YAML frontmatter parsing
 
 [dev-dependencies]
 tempfile = { workspace = true }
-

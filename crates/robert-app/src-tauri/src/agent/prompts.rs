@@ -9,6 +9,8 @@ pub enum PromptType {
     CdpGeneration,
     /// Update agent config based on feedback
     ConfigUpdate,
+    /// Improve user feedback prompt
+    FeedbackImprovement,
 }
 
 /// Prompt template builder
@@ -88,6 +90,7 @@ Generate the CDP script now. Output ONLY valid JSON. Do not include any text bef
     }
 
     /// Build planning prompt (first phase - determine if clarification is needed)
+    #[allow(dead_code)]
     pub fn build_planning_prompt(
         &self,
         user_request: &str,
@@ -270,7 +273,52 @@ Output the updated TOML configuration now:"#,
                 &context.user_feedback,
                 context.failure_context.as_deref(),
             ),
+            PromptType::FeedbackImprovement => {
+                self.build_feedback_improvement_prompt(&context.user_feedback)
+            }
         }
+    }
+
+    /// Build feedback improvement prompt
+    pub fn build_feedback_improvement_prompt(&self, user_feedback: &str) -> String {
+        format!(
+            r#"You are a helpful QA assistant. Your goal is to improve the quality of a bug report or feedback provided by a user.
+
+USER INPUT:
+{user_feedback}
+
+INSTRUCTIONS:
+1. Analyze the input for clarity, completeness, and tone.
+2. If the input is vague (e.g., "it's broken"), ask 1-2 specific clarifying questions to get more details.
+3. If the input is relatively clear but unstructured, rewrite it into a clear, professional format (e.g., describing the issue clearly).
+4. If the input is a feature request, frame it as a user story or clear requirement.
+5. Maintain a helpful, professional tone.
+
+OUTPUT FORMAT:
+Respond ONLY with a JSON object in the following format:
+
+{{
+  "response_type": "question" | "improvement",
+  "message": "The text to show to the user (either your questions or the improved version explainer)",
+  "refined_feedback": "The actual improved text of the feedback (null if asking questions)"
+}}
+
+Example - Asking Questions:
+{{
+  "response_type": "question",
+  "message": "I can help submit this. Could you clarify what you mean by 'broken'? Does nothing happen when you click, or do you see an error message?",
+  "refined_feedback": null
+}}
+
+Example - Improvement:
+{{
+  "response_type": "improvement",
+  "message": "I've refined your feedback to be more actionable. How does this look?",
+  "refined_feedback": "Bug Report: The login button is unresponsive. Clicking it produces no effect and no error message is displayed (Console checked)."
+}}
+
+Generate the JSON response now."#
+        )
     }
 }
 

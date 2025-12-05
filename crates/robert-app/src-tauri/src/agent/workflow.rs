@@ -6,23 +6,6 @@ use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeInput, ClaudeResponse};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-/// Planning response types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "response_type", rename_all = "snake_case")]
-pub enum PlanningResponse {
-    /// Agent is ready to proceed
-    Ready {
-        understanding: String,
-        next_step: String,
-    },
-    /// Agent needs clarification
-    ClarificationNeeded {
-        questions: Vec<ClarificationQuestion>,
-        understanding: String,
-    },
-}
-
 /// A question that needs clarification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClarificationQuestion {
@@ -40,6 +23,8 @@ pub enum WorkflowType {
     CdpAutomation,
     /// Update agent configuration
     ConfigUpdate,
+    /// Improve user feedback
+    FeedbackImprovement,
 }
 
 /// Result of workflow execution
@@ -60,6 +45,9 @@ pub struct WorkflowResult {
     /// Agent's understanding of the request so far
     #[serde(skip_serializing_if = "Option::is_none")]
     pub understanding: Option<String>,
+    /// Refined feedback text (for feedback improvement workflow)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refined_feedback: Option<String>,
 }
 
 /// Workflow executor
@@ -77,283 +65,120 @@ impl WorkflowExecutor {
         workflow_type: WorkflowType,
         user_message: String,
         agent_config: &AgentConfig,
-        screenshot_path: Option<PathBuf>,
-        html_content: Option<String>,
+        _screenshot_path: Option<PathBuf>,
+        _html_content: Option<String>,
+        http_client: &reqwest::Client,
     ) -> Result<WorkflowResult> {
         match workflow_type {
             WorkflowType::CdpAutomation => {
-                self.execute_cdp_workflow(
-                    user_message,
-                    agent_config,
-                    screenshot_path,
-                    html_content,
-                )
-                .await
+                self.execute_cdp_workflow(user_message, http_client).await
             }
             WorkflowType::ConfigUpdate => {
                 self.execute_config_update_workflow(user_message, agent_config)
                     .await
             }
+            WorkflowType::FeedbackImprovement => {
+                self.execute_feedback_improvement_workflow(user_message, agent_config)
+                    .await
+            }
         }
     }
 
-    /// Execute CDP generation and automation workflow
+    /// Execute CDP generation and automation workflow via Standalone Webdriver
     async fn execute_cdp_workflow(
         &self,
         user_message: String,
-        agent_config: &AgentConfig,
-        screenshot_path: Option<PathBuf>,
-        html_content: Option<String>,
+        http_client: &reqwest::Client,
     ) -> Result<WorkflowResult> {
         log::info!("╔═══════════════════════════════════════════════════════════╗");
-        log::info!("║  🤖 CDP AUTOMATION WORKFLOW                               ║");
+        log::info!("║  🤖 CDP AUTOMATION WORKFLOW (DELEGATED TO SERVER)         ║");
         log::info!("╚═══════════════════════════════════════════════════════════╝");
 
-        // Note: Browser driver has been removed - page context not available
-        let (current_url, page_title): (Option<String>, Option<String>) = (None, None);
-        log::warn!("⚠️  Browser driver removed - no page context available");
+        // Connect to robert-server on port 8443 (default)
+        let url = "http://localhost:8443/inference";
+        let payload = serde_json::json!({
+            "prompt": user_message
+        });
 
-        // PHASE 1: Planning - Check if clarification is needed
-        log::info!("╔═══════════════════════════════════════════════════════════╗");
-        log::info!("║  📋 PHASE 1: PLANNING                                     ║");
-        log::info!("╚═══════════════════════════════════════════════════════════╝");
-        log::info!("📝 Building planning prompt...");
+        log::info!("Sending inference request to {}", url);
 
-        let template = PromptTemplate::new(PromptType::CdpGeneration);
-        let planning_prompt = template.build_planning_prompt(
-            &user_message,
-            current_url.as_deref(),
-            page_title.as_deref(),
-            &agent_config.instructions,
-        );
-
-        log::info!(
-            "✓ Planning prompt created ({} chars)",
-            planning_prompt.len()
-        );
-
-        // Call Claude for planning
-        let planning_response = self
-            .call_claude(
-                &planning_prompt,
-                screenshot_path.clone(),
-                html_content.clone(),
-                &agent_config.settings.model,
-            )
-            .await
-            .map_err(|e| {
-                log::error!("❌ Claude planning call failed");
-                log::error!("Error details: {:?}", e);
-                e
-            })?;
-
-        // Parse planning response
-        let cleaned_planning = planning_response.text().trim();
-        let cleaned_planning = if cleaned_planning.starts_with("```json") {
-            cleaned_planning
-                .trim_start_matches("```json")
-                .trim_end_matches("```")
-                .trim()
-        } else if cleaned_planning.starts_with("```") {
-            cleaned_planning
-                .trim_start_matches("```")
-                .trim_end_matches("```")
-                .trim()
-        } else {
-            cleaned_planning
-        };
-
-        log::debug!("Planning response: {}", cleaned_planning);
-
-        let planning_result: PlanningResponse = match serde_json::from_str(cleaned_planning) {
-            Ok(result) => result,
+        let response = match http_client.post(url).json(&payload).send().await {
+            Ok(res) => res,
             Err(e) => {
-                log::error!("❌ Failed to parse planning response as JSON");
-                log::error!("Parse error: {}", e);
-                log::error!("Response: {}", cleaned_planning);
+                log::error!("Failed to connect to robert-server: {}", e);
                 return Ok(WorkflowResult {
                     success: false,
                     workflow_type: WorkflowType::CdpAutomation,
-                    message: "Failed to parse planning response".to_string(),
+                    message: "Failed to connect to robert-server".to_string(),
                     cdp_script: None,
                     execution_report: None,
-                    error: Some(format!("Parse error: {}", e)),
+                    error: Some(format!("Connection failed: {}", e)),
                     clarification: None,
                     understanding: None,
+                    refined_feedback: None,
                 });
             }
         };
 
-        // Check if clarification is needed
-        match planning_result {
-            PlanningResponse::ClarificationNeeded {
-                questions,
-                understanding,
-            } => {
-                log::info!("⚠️  Clarification needed - returning questions to user");
-                log::info!("Understanding: {}", understanding);
-                log::info!("Questions: {:?}", questions);
-
-                return Ok(WorkflowResult {
-                    success: false,
-                    workflow_type: WorkflowType::CdpAutomation,
-                    message: "Need clarification before proceeding".to_string(),
-                    cdp_script: None,
-                    execution_report: None,
-                    error: None,
-                    clarification: Some(questions),
-                    understanding: Some(understanding),
-                });
-            }
-            PlanningResponse::Ready {
-                understanding,
-                next_step,
-            } => {
-                log::info!("✓ Ready to proceed with CDP generation");
-                log::info!("Understanding: {}", understanding);
-                log::info!("Next step: {}", next_step);
-                // Continue to Phase 2
-            }
-        }
-
-        // PHASE 2: CDP Script Generation
-        log::info!("╔═══════════════════════════════════════════════════════════╗");
-        log::info!("║  ⚙️  PHASE 2: CDP SCRIPT GENERATION                       ║");
-        log::info!("╚═══════════════════════════════════════════════════════════╝");
-        log::info!("📝 Building CDP generation prompt...");
-
-        let prompt = template.build_cdp_prompt(
-            &user_message,
-            current_url.as_deref(),
-            page_title.as_deref(),
-            &agent_config.instructions,
-        );
-        log::info!("✓ Template created ({} chars)", prompt.len());
-        log::debug!(
-            "📋 Prompt preview: {}...",
-            &prompt.chars().take(150).collect::<String>()
-        );
-
-        // Call Claude to generate CDP script
-        log::info!("╔═══════════════════════════════════════════════════════════╗");
-        log::info!("║  🧠 SUBMITTING TO INFERENCE                               ║");
-        log::info!("╚═══════════════════════════════════════════════════════════╝");
-        log::info!(
-            "🔮 Model: {}",
-            agent_config.settings.model.as_deref().unwrap_or("default")
-        );
-        log::debug!(
-            "📸 Screenshot: {}",
-            if screenshot_path.is_some() {
-                "✓"
-            } else {
-                "✗"
-            }
-        );
-        log::debug!(
-            "📄 HTML: {}",
-            if html_content.is_some() { "✓" } else { "✗" }
-        );
-
-        let claude_response = self
-            .call_claude(
-                &prompt,
-                screenshot_path.clone(),
-                html_content.clone(),
-                &agent_config.settings.model,
-            )
-            .await
-            .map_err(|e| {
-                log::error!("❌ Claude API call failed in workflow");
-                log::error!("Error details: {:?}", e);
-                e
-            })?;
-
-        log::info!("╔═══════════════════════════════════════════════════════════╗");
-        log::info!("║  ✨ INFERENCE RESPONSE RECEIVED                           ║");
-        log::info!("╚═══════════════════════════════════════════════════════════╝");
-        log::info!("📏 Response length: {} chars", claude_response.text().len());
-        log::debug!(
-            "📋 Response preview: {}...",
-            &claude_response.text().chars().take(200).collect::<String>()
-        );
-
-        // Parse the generated script
-        log::info!("🔍 Parsing CDP script from JSON...");
-
-        // Clean up the response - remove markdown code blocks if present
-        let response_text = claude_response.text().trim();
-        let cleaned_json = if response_text.starts_with("```json") {
-            response_text
-                .trim_start_matches("```json")
-                .trim_end_matches("```")
-                .trim()
-        } else if response_text.starts_with("```") {
-            response_text
-                .trim_start_matches("```")
-                .trim_end_matches("```")
-                .trim()
-        } else {
-            response_text
-        };
-
-        log::debug!("Cleaned response length: {} chars", cleaned_json.len());
-        log::debug!(
-            "Cleaned response preview: {}...",
-            &cleaned_json.chars().take(200).collect::<String>()
-        );
-
-        // Note: CDP script execution has been removed with webdriver
-        // Just validate that the response is valid JSON and return it
-        let is_valid_json = serde_json::from_str::<serde_json::Value>(cleaned_json).is_ok();
-
-        if !is_valid_json {
-            log::error!("❌ Failed to parse response as valid JSON");
-            log::error!("Response that failed to parse: {}", cleaned_json);
-
-            // Check if the response contains questions or non-JSON content
-            if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
-                log::error!(
-                    "⚠️  Claude appears to have asked a question instead of generating JSON"
-                );
-                return Ok(WorkflowResult {
-                    success: false,
-                    workflow_type: WorkflowType::CdpAutomation,
-                    message: "Claude asked for clarification instead of generating a script. Please provide more specific instructions.".to_string(),
-                    cdp_script: None,
-                    execution_report: None,
-                    error: Some(format!("Non-JSON response: {}", cleaned_json)),
-                    clarification: None,
-                    understanding: None,
-                });
-            }
-
+        if !response.status().is_success() {
+            let error_text = response.text().await.unwrap_or_default();
             return Ok(WorkflowResult {
                 success: false,
                 workflow_type: WorkflowType::CdpAutomation,
-                message: "Failed to parse response as valid JSON".to_string(),
-                cdp_script: Some(claude_response.text().to_string()),
+                message: format!("Server error: {}", error_text),
+                cdp_script: None,
                 execution_report: None,
-                error: Some("Invalid JSON response".to_string()),
+                error: Some(error_text),
                 clarification: None,
                 understanding: None,
+                refined_feedback: None,
             });
         }
 
-        log::info!("✓ Response is valid JSON");
+        let json: serde_json::Value = match response.json().await {
+            Ok(j) => j,
+            Err(e) => {
+                return Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::CdpAutomation,
+                    message: "Invalid response from server".to_string(),
+                    cdp_script: None,
+                    execution_report: None,
+                    error: Some(e.to_string()),
+                    clarification: None,
+                    understanding: None,
+                    refined_feedback: None,
+                });
+            }
+        };
 
-        // Note: Webdriver execution removed - returning script for display only
-        log::warn!("⚠️  CDP script execution disabled (webdriver removed)");
+        let status = json
+            .get("status")
+            .and_then(|s| s.as_str())
+            .unwrap_or("error");
+        let message = json
+            .get("message")
+            .and_then(|s| s.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let success = status == "success";
+        let execution_report = json.get("execution_report").cloned();
 
         Ok(WorkflowResult {
-            success: true,
+            success,
             workflow_type: WorkflowType::CdpAutomation,
-            message: "CDP script generated successfully (execution disabled)".to_string(),
-            cdp_script: Some(cleaned_json.to_string()),
-            execution_report: None,
-            error: None,
+            message,
+            cdp_script: None, // Server doesn't return raw script currently, or maybe it does in report
+            execution_report,
+            error: if success {
+                None
+            } else {
+                Some("Execution failed on server".to_string())
+            },
             clarification: None,
             understanding: None,
+            refined_feedback: None,
         })
     }
 
@@ -418,6 +243,7 @@ impl WorkflowExecutor {
                     error: None,
                     clarification: None,
                     understanding: None,
+                    refined_feedback: None,
                 })
             }
             Err(e) => Ok(WorkflowResult {
@@ -432,7 +258,79 @@ impl WorkflowExecutor {
                 )),
                 clarification: None,
                 understanding: None,
+                refined_feedback: None,
             }),
+        }
+    }
+
+    /// Execute feedback improvement workflow
+    async fn execute_feedback_improvement_workflow(
+        &self,
+        user_feedback: String,
+        agent_config: &AgentConfig,
+    ) -> Result<WorkflowResult> {
+        let template = PromptTemplate::new(PromptType::FeedbackImprovement);
+        let context = PromptContext {
+            user_feedback: user_feedback.clone(),
+            ..Default::default()
+        };
+        let prompt = template.build(context);
+
+        let claude_response = self
+            .call_claude(&prompt, None, None, &agent_config.settings.model)
+            .await?;
+
+        let response_text = claude_response.text().trim();
+
+        // Clean markdown
+        let json_text = if response_text.starts_with("```json") {
+            response_text
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim()
+        } else if response_text.starts_with("```") {
+            response_text
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim()
+        } else {
+            response_text
+        };
+
+        // Parse JSON
+        #[derive(Deserialize)]
+        struct FeedbackResponse {
+            #[serde(default)]
+            message: String,
+            refined_feedback: Option<String>,
+        }
+
+        match serde_json::from_str::<FeedbackResponse>(json_text) {
+            Ok(parsed) => Ok(WorkflowResult {
+                success: true,
+                workflow_type: WorkflowType::FeedbackImprovement,
+                message: parsed.message,
+                cdp_script: None,
+                execution_report: None,
+                error: None,
+                clarification: None,
+                understanding: None,
+                refined_feedback: parsed.refined_feedback,
+            }),
+            Err(e) => {
+                // Fallback if JSON parsing fails - simple pass-through or error
+                Ok(WorkflowResult {
+                    success: false,
+                    workflow_type: WorkflowType::FeedbackImprovement,
+                    message: "I encountered an error processing your feedback.".to_string(),
+                    cdp_script: None,
+                    execution_report: None,
+                    error: Some(format!("Failed to parse response: {}\n{}", e, json_text)),
+                    clarification: None,
+                    understanding: None,
+                    refined_feedback: None,
+                })
+            }
         }
     }
 

@@ -50,8 +50,6 @@ pub async fn process_chat_message(
     log::info!("📝 Message: {}", request.message);
     log::info!("🤖 Agent: {}", request.agent_name);
     log::info!("🔄 Workflow: {:?}", request.workflow_type);
-    log::debug!("📸 Include screenshot: {}", request.include_screenshot);
-    log::debug!("📄 Include HTML: {}", request.include_html);
 
     emit_info(&app, "Processing chat message...").ok();
 
@@ -60,25 +58,18 @@ pub async fn process_chat_message(
     let agent_config = load_or_create_agent_config(&app, &request.agent_name).await?;
     log::info!("✓ Agent config loaded: {}", agent_config.name);
 
-    // Get screenshot if requested and browser is available
-    let screenshot_path = if request.include_screenshot {
-        capture_screenshot_if_available(&app, &state).await
-    } else {
-        None
-    };
-
-    // Get HTML if requested and browser is available
-    let html_content = if request.include_html {
-        get_html_if_available(&app, &state).await
-    } else {
-        None
-    };
+    // Screenshot/HTML capture from local driver is no longer supported
+    // The standalone webdriver handles context internally if needed for certain flows
+    // or we could implement a fetch here via HTTP if the server exposes 'get_context'.
+    // For now, we pass None.
+    let screenshot_path: Option<PathBuf> = None;
+    let html_content: Option<String> = None;
 
     let executor = WorkflowExecutor::new();
 
     emit_claude_processing(&app, "Executing workflow...").ok();
 
-    // Execute workflow (browser driver removed)
+    // Execute workflow with http_client
     let result = executor
         .execute(
             request.workflow_type,
@@ -86,6 +77,7 @@ pub async fn process_chat_message(
             &agent_config,
             screenshot_path,
             html_content,
+            &state.http_client,
         )
         .await;
 
@@ -238,9 +230,10 @@ async fn load_or_create_agent_config(
         let config = match agent_name {
             "cdp-generator" => AgentConfig::default_cdp_agent(),
             "meta-agent" => AgentConfig::default_meta_agent(),
+            "feedback-assistant" => AgentConfig::default_feedback_agent(),
             _ => {
                 return Err(format!(
-                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent",
+                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent, feedback-assistant",
                     agent_name
                 ));
             }
@@ -256,19 +249,6 @@ async fn load_or_create_agent_config(
 
         Ok(config)
     }
-}
-
-async fn capture_screenshot_if_available(
-    _app: &AppHandle,
-    _state: &State<'_, AppState>,
-) -> Option<PathBuf> {
-    // Note: Browser driver removed - screenshot capture disabled
-    None
-}
-
-async fn get_html_if_available(_app: &AppHandle, _state: &State<'_, AppState>) -> Option<String> {
-    // Note: Browser driver removed - HTML extraction disabled
-    None
 }
 
 /// Feedback for an action
@@ -297,6 +277,7 @@ pub struct ActionFeedback {
 #[tauri::command]
 pub async fn submit_action_feedback(
     app: AppHandle,
+    state: State<'_, AppState>,
     feedback: ActionFeedback,
 ) -> Result<String, String> {
     emit_info(
@@ -350,6 +331,7 @@ pub async fn submit_action_feedback(
                 &meta_agent,
                 None,
                 None,
+                &state.http_client,
             )
             .await
         {

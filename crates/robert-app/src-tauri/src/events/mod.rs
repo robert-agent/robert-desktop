@@ -101,7 +101,6 @@ pub fn emit_error(
     .emit(app)
 }
 
-// Browser-related events (preserved for future use, currently unused after webdriver removal)
 #[allow(dead_code)]
 pub fn emit_chrome_downloading(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ChromeDownloading {
@@ -144,7 +143,6 @@ pub fn emit_page_loaded(
     .emit(app)
 }
 
-#[allow(dead_code)]
 pub fn emit_claude_checking(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ClaudeChecking {
         message: message.into(),
@@ -152,7 +150,6 @@ pub fn emit_claude_checking(app: &AppHandle, message: impl Into<String>) -> Resu
     .emit(app)
 }
 
-#[allow(dead_code)]
 pub fn emit_claude_ready(
     app: &AppHandle,
     version: impl Into<String>,
@@ -167,7 +164,6 @@ pub fn emit_claude_ready(
     .emit(app)
 }
 
-#[allow(dead_code)]
 pub fn emit_claude_not_ready(
     app: &AppHandle,
     issue: impl Into<String>,

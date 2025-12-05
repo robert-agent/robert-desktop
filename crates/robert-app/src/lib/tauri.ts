@@ -12,7 +12,9 @@ import type {
   CommandInfo,
   JsonValue,
   // Legacy types (deprecated)
+  // Legacy types (deprecated)
   CommandConfig,
+  WebdriverStatus,
 } from './types';
 
 export async function launchBrowser(screenWidth?: number, screenHeight?: number): Promise<string> {
@@ -20,6 +22,10 @@ export async function launchBrowser(screenWidth?: number, screenHeight?: number)
     screenWidth: screenWidth ? screenWidth : null,
     screenHeight: screenHeight ? screenHeight : null,
   });
+}
+
+export async function getBrowserStatus(): Promise<WebdriverStatus> {
+  return await invoke<WebdriverStatus>('get_browser_status');
 }
 
 export async function navigateToUrl(url: string): Promise<NavigationResult> {
