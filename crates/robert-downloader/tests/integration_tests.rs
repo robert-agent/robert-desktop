@@ -6,7 +6,7 @@ use tempfile::TempDir;
 async fn test_download_with_public_model() {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let output_path = temp_dir.path().join("test_model");
-    
+
     // Test downloading a small public model
     // We use a very small model to avoid long download times
     let result = download_model(
@@ -30,13 +30,19 @@ async fn test_download_with_public_model() {
                 !entries.is_empty(),
                 "No files were downloaded to output directory"
             );
-            
+
             // Check for specific expected files
             let file_names: Vec<String> = entries
                 .iter()
-                .map(|e| e.as_ref().unwrap().file_name().to_string_lossy().to_string())
+                .map(|e| {
+                    e.as_ref()
+                        .unwrap()
+                        .file_name()
+                        .to_string_lossy()
+                        .to_string()
+                })
                 .collect();
-            
+
             println!("Downloaded files: {:?}", file_names);
             assert!(file_names.iter().any(|f| f.contains("config.json")));
         }
@@ -62,5 +68,8 @@ async fn test_download_with_invalid_model() {
     .await;
 
     // This should fail
-    assert!(result.is_err(), "Expected download of nonexistent model to fail");
+    assert!(
+        result.is_err(),
+        "Expected download of nonexistent model to fail"
+    );
 }

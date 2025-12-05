@@ -1,5 +1,5 @@
 use crate::{GraphError, GraphStore, Node, VectorStore};
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use uuid::Uuid;
 
 pub struct IngestionPipeline<S: GraphStore + VectorStore> {
@@ -22,7 +22,7 @@ impl<S: GraphStore + VectorStore> IngestionPipeline<S> {
 
     pub async fn process_document(&self, title: &str, content: &str) -> Result<String, GraphError> {
         let doc_id = Uuid::new_v4().to_string();
-        
+
         // 1. Create Document Node
         let node = Node {
             id: doc_id.clone(),
@@ -37,9 +37,11 @@ impl<S: GraphStore + VectorStore> IngestionPipeline<S> {
 
         // 2. Generate Embedding using FastEmbed
         let documents = vec![content.to_string()];
-        let embeddings = self.embedding_model.embed(documents, None)
+        let embeddings = self
+            .embedding_model
+            .embed(documents, None)
             .map_err(|e| GraphError::Storage(format!("Embedding failed: {}", e)))?;
-        
+
         if let Some(embedding) = embeddings.first() {
             self.store.add_embedding(&doc_id, embedding.clone()).await?;
         }
@@ -49,10 +51,15 @@ impl<S: GraphStore + VectorStore> IngestionPipeline<S> {
 
     pub async fn embed_text(&self, text: &str) -> Result<Vec<f32>, GraphError> {
         let documents = vec![text.to_string()];
-        let embeddings = self.embedding_model.embed(documents, None)
+        let embeddings = self
+            .embedding_model
+            .embed(documents, None)
             .map_err(|e| GraphError::Storage(format!("Embedding failed: {}", e)))?;
-        
-        embeddings.first().cloned().ok_or(GraphError::Storage("No embedding generated".to_string()))
+
+        embeddings
+            .first()
+            .cloned()
+            .ok_or(GraphError::Storage("No embedding generated".to_string()))
     }
 }
 
@@ -60,8 +67,8 @@ impl<S: GraphStore + VectorStore> IngestionPipeline<S> {
 mod tests {
     use super::*;
     use crate::mocks::{MockGraphStore, MockVectorStore};
-    use async_trait::async_trait;
     use crate::{Edge, Node};
+    use async_trait::async_trait;
 
     // Combined mock for testing
     struct MockStore {
@@ -102,7 +109,11 @@ mod tests {
         async fn add_embedding(&self, id: &str, vector: Vec<f32>) -> Result<(), GraphError> {
             self.vector.add_embedding(id, vector).await
         }
-        async fn search(&self, vector: Vec<f32>, limit: usize) -> Result<Vec<(String, f32)>, GraphError> {
+        async fn search(
+            &self,
+            vector: Vec<f32>,
+            limit: usize,
+        ) -> Result<Vec<(String, f32)>, GraphError> {
             self.vector.search(vector, limit).await
         }
     }
@@ -113,7 +124,7 @@ mod tests {
         // Note: This test will try to download the model, which might be slow or fail in some envs.
         // For unit tests, we might want to mock the embedding model too, but FastEmbed struct is hard to mock.
         // We'll skip if model loading fails (e.g. no network) or just run it.
-        
+
         let pipeline = IngestionPipeline::new(store);
         if let Ok(pipeline) = pipeline {
             let doc_id = pipeline

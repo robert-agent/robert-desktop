@@ -1,9 +1,9 @@
+use crate::claude::ClaudeClient;
+use anyhow::Result;
 use async_openai::{
-    types::{CreateChatCompletionRequestArgs, ChatCompletionRequestMessage, Role},
+    types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs, Role},
     Client,
 };
-use anyhow::Result;
-use crate::claude::ClaudeClient;
 
 pub enum LlmProvider {
     OpenAI(Client<async_openai::config::OpenAIConfig>, String),
@@ -16,10 +16,9 @@ pub struct LlmClient {
 
 impl LlmClient {
     pub fn new_openai(api_key: String, model: Option<String>) -> Self {
-        let config = async_openai::config::OpenAIConfig::new()
-            .with_api_key(api_key);
+        let config = async_openai::config::OpenAIConfig::new().with_api_key(api_key);
         let client = Client::with_config(config);
-        
+
         Self {
             provider: LlmProvider::OpenAI(client, model.unwrap_or_else(|| "gpt-4o".to_string())),
         }
@@ -31,7 +30,7 @@ impl LlmClient {
         } else {
             ClaudeClient::new()
         };
-        
+
         Self {
             provider: LlmProvider::Claude(client),
         }
@@ -77,15 +76,15 @@ impl LlmClient {
 
                 let response = client.chat().create(request).await?;
 
-                let content = response.choices.first()
+                let content = response
+                    .choices
+                    .first()
                     .and_then(|choice| choice.message.content.clone())
                     .unwrap_or_default();
 
                 Ok(content)
             }
-            LlmProvider::Claude(client) => {
-                client.complete(prompt, system_prompt).await
-            }
+            LlmProvider::Claude(client) => client.complete(prompt, system_prompt).await,
         }
     }
 

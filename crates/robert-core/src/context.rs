@@ -31,7 +31,7 @@ impl ContextManager {
             contexts: std::sync::RwLock::new(HashMap::new()),
             active_context_id: std::sync::RwLock::new(None),
         };
-        
+
         // Initialize defaults
         let personal = Context {
             id: "personal".to_string(),
@@ -40,7 +40,7 @@ impl ContextManager {
             rules: vec![],
             included_paths: vec![],
         };
-        
+
         let work = Context {
             id: "work".to_string(),
             name: "Work".to_string(),
@@ -51,7 +51,7 @@ impl ContextManager {
 
         manager.create_context(personal).unwrap();
         manager.create_context(work).unwrap();
-        
+
         manager
     }
 
@@ -66,7 +66,10 @@ impl ContextManager {
 
     pub fn get_context(&self, id: &str) -> Result<Context, ContextError> {
         let contexts = self.contexts.read().unwrap();
-        contexts.get(id).cloned().ok_or(ContextError::NotFound(id.to_string()))
+        contexts
+            .get(id)
+            .cloned()
+            .ok_or(ContextError::NotFound(id.to_string()))
     }
 
     pub fn set_active_context(&self, id: &str) -> Result<(), ContextError> {

@@ -1,4 +1,4 @@
-use robert_graph::{GraphStore, GraphError, Node};
+use robert_graph::{GraphError, GraphStore, Node};
 use serde_json::json;
 
 pub struct PruningManager<G: GraphStore> {
@@ -12,11 +12,14 @@ impl<G: GraphStore> PruningManager<G> {
 
     pub async fn mark_as_outdated(&self, node_id: &str) -> Result<(), GraphError> {
         let mut node = self.graph_store.get_node(node_id).await?;
-        
+
         // Update properties
         if let Some(props) = node.properties.as_object_mut() {
             props.insert("status".to_string(), json!("outdated"));
-            props.insert("pruned_at".to_string(), json!(chrono::Utc::now().to_rfc3339()));
+            props.insert(
+                "pruned_at".to_string(),
+                json!(chrono::Utc::now().to_rfc3339()),
+            );
         }
 
         self.graph_store.update_node(node).await?;

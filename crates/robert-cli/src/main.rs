@@ -16,18 +16,18 @@ enum Commands {
     Download {
         /// Model ID (e.g., microsoft/Phi-3-mini-4k-instruct)
         model_id: String,
-        
+
         /// Revision (optional)
         #[arg(long)]
         revision: Option<String>,
     },
-    
+
     /// Ingest a file into memory
     Ingest {
         /// Path to file
         file: PathBuf,
     },
-    
+
     /// Query the agent
     Query {
         /// Query text
@@ -38,7 +38,7 @@ enum Commands {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
-    
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -50,12 +50,12 @@ async fn main() -> anyhow::Result<()> {
         Commands::Ingest { file } => {
             println!("Ingesting file: {:?}", file);
             // TODO: Connect to robert-core memory
-             println!("Ingest feature coming soon via robert-core");
+            println!("Ingest feature coming soon via robert-core");
         }
         Commands::Query { text } => {
             println!("Querying: {}", text);
-             // TODO: Connect to robert-core inference
-             println!("Query feature coming soon via robert-core");
+            // TODO: Connect to robert-core inference
+            println!("Query feature coming soon via robert-core");
         }
     }
 

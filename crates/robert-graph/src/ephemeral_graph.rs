@@ -1,6 +1,6 @@
-use petgraph::graph::{DiGraph, NodeIndex};
+use crate::{Edge, Node};
 use petgraph::algo::kosaraju_scc;
-use crate::{Node, Edge};
+use petgraph::graph::{DiGraph, NodeIndex};
 use std::collections::HashMap;
 
 pub struct EphemeralGraph {
@@ -18,7 +18,7 @@ impl EphemeralGraph {
 
     pub fn from_nodes_and_edges(nodes: Vec<Node>, edges: Vec<Edge>) -> Self {
         let mut ephem = Self::new();
-        
+
         for node in nodes {
             ephem.add_node(node);
         }
@@ -51,7 +51,8 @@ impl EphemeralGraph {
         let scc = kosaraju_scc(&self.graph);
         scc.into_iter()
             .map(|indices| {
-                indices.into_iter()
+                indices
+                    .into_iter()
                     .map(|idx| self.graph[idx].clone())
                     .collect()
             })
@@ -118,13 +119,12 @@ mod tests {
     fn test_disconnected_components() {
         // 1 -> 2, 3 -> 4
         let nodes = vec![
-            create_node("1"), create_node("2"),
-            create_node("3"), create_node("4")
+            create_node("1"),
+            create_node("2"),
+            create_node("3"),
+            create_node("4"),
         ];
-        let edges = vec![
-            create_edge("1", "2"),
-            create_edge("3", "4"),
-        ];
+        let edges = vec![create_edge("1", "2"), create_edge("3", "4")];
 
         let graph = EphemeralGraph::from_nodes_and_edges(nodes, edges);
         let scc = graph.get_strongly_connected_components();
@@ -134,15 +134,15 @@ mod tests {
         // So we expect 4 components.
         assert_eq!(scc.len(), 4);
     }
-    
+
     #[test]
     fn test_duplicate_nodes() {
         let mut graph = EphemeralGraph::new();
         let node1 = create_node("1");
-        
+
         graph.add_node(node1.clone());
         graph.add_node(node1.clone()); // Should be ignored
-        
+
         assert_eq!(graph.graph.node_count(), 1);
     }
 }

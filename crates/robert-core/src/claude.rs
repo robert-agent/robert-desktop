@@ -32,16 +32,14 @@ impl ClaudeClient {
     }
 
     pub fn with_path(path: String) -> Self {
-        Self {
-            binary_path: path,
-        }
+        Self { binary_path: path }
     }
 
     pub async fn complete(&self, prompt: &str, system_prompt: Option<&str>) -> Result<String> {
-        // Claude CLI doesn't support system prompt directly in the same way as API, 
+        // Claude CLI doesn't support system prompt directly in the same way as API,
         // but we can prepend it to the prompt or use --system if available (it's not standard in CLI yet usually).
         // We'll prepend it.
-        
+
         let full_prompt = if let Some(sys) = system_prompt {
             format!("{}\n\n{}", sys, prompt)
         } else {
@@ -65,9 +63,8 @@ impl ClaudeClient {
 
     pub async fn execute(&self, input: ClaudeInput) -> Result<ClaudeResponse> {
         let mut cmd = Command::new(&self.binary_path);
-        
-        cmd.arg("--print")
-           .arg("--output-format").arg("json");
+
+        cmd.arg("--print").arg("--output-format").arg("json");
 
         // Construct prompt
         let mut prompt_text = input.prompt.clone();
@@ -85,7 +82,11 @@ impl ClaudeClient {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         if !output.status.success() {
-             anyhow::bail!("Claude CLI failed with status {}: {}", output.status, stderr);
+            anyhow::bail!(
+                "Claude CLI failed with status {}: {}",
+                output.status,
+                stderr
+            );
         }
 
         // Parse JSON
@@ -99,7 +100,6 @@ impl ClaudeClient {
         Ok(response)
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeHealthCheck {
@@ -142,7 +142,9 @@ impl ClaudeHealthCheck {
                         check.version = Some(version);
                     }
                     Err(e) => {
-                        check.issues.push(format!("Failed to get Claude CLI version: {}", e));
+                        check
+                            .issues
+                            .push(format!("Failed to get Claude CLI version: {}", e));
                     }
                 }
 
@@ -150,19 +152,31 @@ impl ClaudeHealthCheck {
                     Ok(authenticated) => {
                         check.authenticated = authenticated;
                         if !authenticated {
-                            check.issues.push("Claude CLI is not authenticated".to_string());
-                            check.suggestions.push("Run 'claude setup-token' to authenticate".to_string());
+                            check
+                                .issues
+                                .push("Claude CLI is not authenticated".to_string());
+                            check
+                                .suggestions
+                                .push("Run 'claude setup-token' to authenticate".to_string());
                         }
                     }
                     Err(e) => {
-                        check.issues.push(format!("Failed to check authentication: {}", e));
+                        check
+                            .issues
+                            .push(format!("Failed to check authentication: {}", e));
                     }
                 }
             }
             Err(_) => {
-                check.issues.push("Claude CLI is not installed or not in PATH".to_string());
-                check.suggestions.push("Install Claude CLI: npm install -g @anthropic-ai/claude-code".to_string());
-                check.suggestions.push("Or via Homebrew: brew install claude".to_string());
+                check
+                    .issues
+                    .push("Claude CLI is not installed or not in PATH".to_string());
+                check.suggestions.push(
+                    "Install Claude CLI: npm install -g @anthropic-ai/claude-code".to_string(),
+                );
+                check
+                    .suggestions
+                    .push("Or via Homebrew: brew install claude".to_string());
             }
         }
 
@@ -230,7 +244,10 @@ impl ClaudeHealthCheck {
             .context("Failed to check authentication")?;
 
         let stderr = String::from_utf8_lossy(&output.stderr);
-        if stderr.contains("not authenticated") || stderr.contains("login") || stderr.contains("setup-token") {
+        if stderr.contains("not authenticated")
+            || stderr.contains("login")
+            || stderr.contains("setup-token")
+        {
             Ok(false)
         } else {
             Ok(true)

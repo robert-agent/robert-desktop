@@ -2,10 +2,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod ephemeral_graph;
 pub mod ingest;
 pub mod query;
 pub mod surreal_store;
-pub mod ephemeral_graph;
 
 #[derive(Error, Debug)]
 pub enum GraphError {
@@ -42,7 +42,11 @@ pub trait GraphStore: Send + Sync {
 #[async_trait]
 pub trait VectorStore: Send + Sync {
     async fn add_embedding(&self, id: &str, vector: Vec<f32>) -> Result<(), GraphError>;
-    async fn search(&self, vector: Vec<f32>, limit: usize) -> Result<Vec<(String, f32)>, GraphError>;
+    async fn search(
+        &self,
+        vector: Vec<f32>,
+        limit: usize,
+    ) -> Result<Vec<(String, f32)>, GraphError>;
 }
 
 #[cfg(any(test, feature = "test-utils"))]
@@ -80,13 +84,16 @@ pub mod mocks {
 
         async fn get_node(&self, id: &str) -> Result<Node, GraphError> {
             let nodes = self.nodes.read().unwrap();
-            nodes.get(id).cloned().ok_or(GraphError::NotFound(id.to_string()))
+            nodes
+                .get(id)
+                .cloned()
+                .ok_or(GraphError::NotFound(id.to_string()))
         }
 
         async fn get_neighbors(&self, id: &str) -> Result<Vec<(Edge, Node)>, GraphError> {
             let edges = self.edges.read().unwrap();
             let nodes = self.nodes.read().unwrap();
-            
+
             let mut result = Vec::new();
             for edge in edges.iter() {
                 if edge.source == id {
@@ -139,7 +146,11 @@ pub mod mocks {
             Ok(())
         }
 
-        async fn search(&self, query: Vec<f32>, limit: usize) -> Result<Vec<(String, f32)>, GraphError> {
+        async fn search(
+            &self,
+            query: Vec<f32>,
+            limit: usize,
+        ) -> Result<Vec<(String, f32)>, GraphError> {
             let vectors = self.vectors.read().unwrap();
             let mut results: Vec<(String, f32)> = vectors
                 .iter()
@@ -197,18 +208,21 @@ mod tests {
     #[tokio::test]
     async fn test_vector_operations() {
         let store = MockVectorStore::new();
-        
+
         // Simple 2D vectors for testing
         store.add_embedding("vec1", vec![1.0, 0.0]).await.unwrap();
         store.add_embedding("vec2", vec![0.0, 1.0]).await.unwrap();
-        store.add_embedding("vec3", vec![0.707, 0.707]).await.unwrap(); // ~45 degrees
+        store
+            .add_embedding("vec3", vec![0.707, 0.707])
+            .await
+            .unwrap(); // ~45 degrees
 
         let query = vec![1.0, 0.0];
         let results = store.search(query, 3).await.unwrap();
 
         assert_eq!(results[0].0, "vec1");
         assert!((results[0].1 - 1.0).abs() < 0.001); // Exact match
-        
+
         assert_eq!(results[1].0, "vec3"); // Closer than vec2
         assert!((results[1].1 - 0.707).abs() < 0.001);
     }

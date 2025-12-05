@@ -9,18 +9,24 @@ pub mod developer_mode;
 mod events;
 mod logging;
 pub mod profiles;
-mod state;
 mod setup;
+mod state;
 
-use state::AppState;
-use setup::RobertState;
 use robert_core::context::{Context, ContextManager};
+use setup::RobertState;
+use state::AppState;
 use tauri::State;
 
 #[tauri::command]
 async fn get_contexts(state: State<'_, RobertState>) -> Result<Vec<Context>, String> {
-    let personal = state.context_manager.get_context("personal").map_err(|e| e.to_string())?;
-    let work = state.context_manager.get_context("work").map_err(|e| e.to_string())?;
+    let personal = state
+        .context_manager
+        .get_context("personal")
+        .map_err(|e| e.to_string())?;
+    let work = state
+        .context_manager
+        .get_context("work")
+        .map_err(|e| e.to_string())?;
     Ok(vec![personal, work])
 }
 
@@ -34,21 +40,35 @@ async fn create_context(state: State<'_, RobertState>, name: String) -> Result<(
         rules: vec![],
         included_paths: vec![],
     };
-    state.context_manager.create_context(ctx).map_err(|e| e.to_string())
+    state
+        .context_manager
+        .create_context(ctx)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 async fn chat(state: State<'_, RobertState>, message: String) -> Result<String, String> {
     // Use SearchManager for reasoning
-    let results = state.search_manager.search(&message, 3).await.map_err(|e| e.to_string())?;
-    
+    let results = state
+        .search_manager
+        .search(&message, 3)
+        .await
+        .map_err(|e| e.to_string())?;
+
     if results.is_empty() {
         Ok("I couldn't find any relevant information in your context.".to_string())
     } else {
         // For Alpha, just return the top result's content preview
         let top_doc = &results[0];
-        let preview = top_doc.properties.get("content_preview").and_then(|v| v.as_str()).unwrap_or("No preview");
-        Ok(format!("Found relevant context: {}\n\n{}", top_doc.properties["title"], preview))
+        let preview = top_doc
+            .properties
+            .get("content_preview")
+            .and_then(|v| v.as_str())
+            .unwrap_or("No preview");
+        Ok(format!(
+            "Found relevant context: {}\n\n{}",
+            top_doc.properties["title"], preview
+        ))
     }
 }
 

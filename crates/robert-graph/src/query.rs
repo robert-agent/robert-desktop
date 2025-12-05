@@ -1,5 +1,5 @@
-use crate::{GraphError, GraphStore, VectorStore, Node};
 use crate::ephemeral_graph::EphemeralGraph;
+use crate::{GraphError, GraphStore, Node, VectorStore};
 use std::collections::HashSet;
 
 pub struct GraphQuery<S: GraphStore + VectorStore> {
@@ -11,10 +11,14 @@ impl<S: GraphStore + VectorStore> GraphQuery<S> {
         Self { store }
     }
 
-    pub async fn search(&self, query_vector: Vec<f32>, limit: usize) -> Result<Vec<Node>, GraphError> {
+    pub async fn search(
+        &self,
+        query_vector: Vec<f32>,
+        limit: usize,
+    ) -> Result<Vec<Node>, GraphError> {
         // 1. Vector Search to get entry points
         let initial_results = self.store.search(query_vector, limit).await?;
-        
+
         let mut visited = HashSet::new();
         let mut subgraph_nodes = Vec::new();
         let mut subgraph_edges = Vec::new();
@@ -25,7 +29,7 @@ impl<S: GraphStore + VectorStore> GraphQuery<S> {
             if visited.contains(&id) {
                 continue;
             }
-            
+
             if let Ok(node) = self.store.get_node(&id).await {
                 visited.insert(id.clone());
                 subgraph_nodes.push(node.clone());
@@ -45,7 +49,7 @@ impl<S: GraphStore + VectorStore> GraphQuery<S> {
 
         // 3. Build Ephemeral Graph for reasoning (e.g. finding paths, communities)
         let _graph = EphemeralGraph::from_nodes_and_edges(subgraph_nodes.clone(), subgraph_edges);
-        
+
         // For now, just return the nodes found
         // In v1.0, we would run PageRank or Community Detection here
         Ok(subgraph_nodes)
@@ -98,7 +102,11 @@ mod tests {
         async fn add_embedding(&self, id: &str, vector: Vec<f32>) -> Result<(), GraphError> {
             self.vector.add_embedding(id, vector).await
         }
-        async fn search(&self, vector: Vec<f32>, limit: usize) -> Result<Vec<(String, f32)>, GraphError> {
+        async fn search(
+            &self,
+            vector: Vec<f32>,
+            limit: usize,
+        ) -> Result<Vec<(String, f32)>, GraphError> {
             self.vector.search(vector, limit).await
         }
     }
@@ -106,19 +114,27 @@ mod tests {
     #[tokio::test]
     async fn test_graph_traversal() {
         let store = MockStore::new();
-        
+
         // Setup data
-        let node1 = Node { id: "1".to_string(), label: "Doc".to_string(), properties: serde_json::json!({}) };
-        let node2 = Node { id: "2".to_string(), label: "Doc".to_string(), properties: serde_json::json!({}) };
+        let node1 = Node {
+            id: "1".to_string(),
+            label: "Doc".to_string(),
+            properties: serde_json::json!({}),
+        };
+        let node2 = Node {
+            id: "2".to_string(),
+            label: "Doc".to_string(),
+            properties: serde_json::json!({}),
+        };
         store.add_node(node1.clone()).await.unwrap();
         store.add_node(node2.clone()).await.unwrap();
-        
+
         // Mock vector search result
         store.add_embedding("1", vec![1.0, 0.0]).await.unwrap();
-        
+
         let query = GraphQuery::new(store);
         let results = query.search(vec![1.0, 0.0], 1).await.unwrap();
-        
+
         assert!(!results.is_empty());
         assert_eq!(results[0].id, "1");
     }

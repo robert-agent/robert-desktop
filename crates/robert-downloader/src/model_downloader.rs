@@ -341,7 +341,9 @@ fn get_hf_cache_dir() -> Result<PathBuf> {
         return Ok(cache_dir);
     }
 
-    Err(anyhow!("Could not determine home directory for Robert cache. Please set HOME environment variable"))
+    Err(anyhow!(
+        "Could not determine home directory for Robert cache. Please set HOME environment variable"
+    ))
 }
 
 async fn download_huggingface_model(

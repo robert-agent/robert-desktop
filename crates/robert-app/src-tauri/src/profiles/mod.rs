@@ -9,7 +9,6 @@
 /// The system ensures data isolation between users through password-based
 /// encryption using Argon2id for key derivation and AES-256-GCM for file encryption.
 pub mod auth;
-pub mod browser;
 pub mod command;
 pub mod command_md;
 pub mod crypto;
