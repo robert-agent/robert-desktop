@@ -101,6 +101,8 @@ pub fn emit_error(
     .emit(app)
 }
 
+// Browser-related events (preserved for future use, currently unused after webdriver removal)
+#[allow(dead_code)]
 pub fn emit_chrome_downloading(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ChromeDownloading {
         message: message.into(),
@@ -108,6 +110,7 @@ pub fn emit_chrome_downloading(app: &AppHandle, message: impl Into<String>) -> R
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_chrome_launching(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ChromeLaunching {
         message: message.into(),
@@ -115,6 +118,7 @@ pub fn emit_chrome_launching(app: &AppHandle, message: impl Into<String>) -> Res
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_chrome_launched(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ChromeLaunched {
         message: message.into(),
@@ -122,10 +126,12 @@ pub fn emit_chrome_launched(app: &AppHandle, message: impl Into<String>) -> Resu
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_page_navigating(app: &AppHandle, url: impl Into<String>) -> Result<(), String> {
     DebugEvent::PageNavigating { url: url.into() }.emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_page_loaded(
     app: &AppHandle,
     url: impl Into<String>,
@@ -138,6 +144,7 @@ pub fn emit_page_loaded(
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_checking(app: &AppHandle, message: impl Into<String>) -> Result<(), String> {
     DebugEvent::ClaudeChecking {
         message: message.into(),
@@ -145,6 +152,7 @@ pub fn emit_claude_checking(app: &AppHandle, message: impl Into<String>) -> Resu
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_ready(
     app: &AppHandle,
     version: impl Into<String>,
@@ -159,6 +167,7 @@ pub fn emit_claude_ready(
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_not_ready(
     app: &AppHandle,
     issue: impl Into<String>,
@@ -178,14 +187,17 @@ pub fn emit_claude_processing(app: &AppHandle, message: impl Into<String>) -> Re
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_screenshot(app: &AppHandle, path: impl Into<String>) -> Result<(), String> {
     DebugEvent::ClaudeScreenshot { path: path.into() }.emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_html_extracted(app: &AppHandle, size_kb: usize) -> Result<(), String> {
     DebugEvent::ClaudeHtmlExtracted { size_kb }.emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_api_call(
     app: &AppHandle,
     model: impl Into<String>,
@@ -198,6 +210,7 @@ pub fn emit_claude_api_call(
     .emit(app)
 }
 
+#[allow(dead_code)]
 pub fn emit_claude_response(
     app: &AppHandle,
     preview: impl Into<String>,

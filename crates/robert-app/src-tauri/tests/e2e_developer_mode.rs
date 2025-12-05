@@ -100,51 +100,9 @@ async fn test_manual_testing_workflow() {
     drop(server);
 }
 
-#[tokio::test]
-async fn test_developer_mode_with_chrome_automation() {
-    // This test verifies the developer mode server works with Chrome automation
-    use robert_webdriver::{ChromeDriver, ConnectionMode};
-
-    // Start test server
-    let server = DevTestServer::start()
-        .await
-        .expect("Failed to start test server");
-
-    server.wait_ready().await.expect("Server not ready");
-
-    let url = server.url();
-
-    // Launch Chrome
-    let driver = ChromeDriver::new(ConnectionMode::Sandboxed {
-        chrome_path: None,
-        no_sandbox: true,
-        headless: true,
-    })
-    .await
-    .expect("Failed to launch Chrome");
-
-    // Navigate to test server
-    driver
-        .navigate(&url)
-        .await
-        .expect("Failed to navigate to test server");
-
-    // Get page title
-    let title = driver.title().await.expect("Failed to get title");
-    assert_eq!(title, "Robert Developer Test Page");
-
-    // Get page text
-    let text = driver
-        .get_page_text()
-        .await
-        .expect("Failed to get page text");
-    assert!(text.contains("Robert Developer Test Page"));
-    assert!(text.contains("Interactive Elements"));
-
-    // Clean up
-    driver.close().await.expect("Failed to close browser");
-    drop(server);
-}
+// Test disabled: webdriver functionality removed
+// Original test verified developer mode server works with Chrome automation
+// NOTE: This test is no longer functional after webdriver removal
 
 #[test]
 fn test_system_paths_structure() {

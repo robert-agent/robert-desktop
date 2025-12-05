@@ -29,6 +29,7 @@ pub enum HealthStatus {
     Error,
 }
 
+#[allow(dead_code)] // Health check functionality preserved for future use
 impl ClaudeHealthCheck {
     /// Perform a comprehensive health check
     pub async fn check() -> Self {

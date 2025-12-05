@@ -1,4 +1,5 @@
 use robert_core::context::ContextManager;
+use robert_core::llm::LlmClient;
 use robert_core::search::SearchManager;
 use robert_graph::ingest::IngestionPipeline;
 use robert_graph::surreal_store::SurrealStore;
@@ -29,8 +30,11 @@ pub async fn init_backend() -> Result<RobertState, String> {
     let ingestion_pipeline =
         Arc::new(IngestionPipeline::new(store.clone()).map_err(|e| e.to_string())?);
 
-    // 4. Initialize Search Manager
-    let search_manager = Arc::new(SearchManager::new(store, ingestion_pipeline));
+    // 4. Initialize LLM Client
+    let llm_client = Arc::new(LlmClient::from_env());
+
+    // 5. Initialize Search Manager
+    let search_manager = Arc::new(SearchManager::new(store, ingestion_pipeline, llm_client));
 
     Ok(RobertState {
         context_manager,

@@ -78,22 +78,16 @@ pub async fn process_chat_message(
 
     emit_claude_processing(&app, "Executing workflow...").ok();
 
-    // Execute workflow with driver reference
-    let result = {
-        let driver_lock = state.driver.lock().await;
-        let driver_ref = driver_lock.as_ref();
-
-        executor
-            .execute(
-                request.workflow_type,
-                request.message.clone(),
-                &agent_config,
-                screenshot_path,
-                html_content,
-                driver_ref,
-            )
-            .await
-    };
+    // Execute workflow (browser driver removed)
+    let result = executor
+        .execute(
+            request.workflow_type,
+            request.message.clone(),
+            &agent_config,
+            screenshot_path,
+            html_content,
+        )
+        .await;
 
     match result {
         Ok(result) => {
@@ -265,63 +259,15 @@ async fn load_or_create_agent_config(
 }
 
 async fn capture_screenshot_if_available(
-    app: &AppHandle,
-    state: &State<'_, AppState>,
+    _app: &AppHandle,
+    _state: &State<'_, AppState>,
 ) -> Option<PathBuf> {
-    let mut driver_lock = state.driver.lock().await;
-
-    if let Some(driver) = driver_lock.as_ref() {
-        // Check if browser is still alive
-        if !driver.is_alive().await {
-            log::warn!("Browser connection is dead during screenshot capture, clearing state");
-            emit_error(
-                app,
-                "Browser connection lost",
-                Some("The browser may have been closed manually or crashed.".to_string()),
-            )
-            .ok();
-            *driver_lock = None;
-            return None;
-        }
-
-        let temp_dir = std::env::temp_dir().join("robert-chat");
-        if tokio::fs::create_dir_all(&temp_dir).await.is_ok() {
-            let timestamp = chrono::Utc::now().timestamp();
-            let screenshot_path = temp_dir.join(format!("chat-screenshot-{}.png", timestamp));
-
-            if driver.screenshot_to_file(&screenshot_path).await.is_ok() {
-                emit_info(app, "Captured screenshot for AI context").ok();
-                return Some(screenshot_path);
-            }
-        }
-    }
-
+    // Note: Browser driver removed - screenshot capture disabled
     None
 }
 
-async fn get_html_if_available(app: &AppHandle, state: &State<'_, AppState>) -> Option<String> {
-    let mut driver_lock = state.driver.lock().await;
-
-    if let Some(driver) = driver_lock.as_ref() {
-        // Check if browser is still alive
-        if !driver.is_alive().await {
-            log::warn!("Browser connection is dead during HTML extraction, clearing state");
-            emit_error(
-                app,
-                "Browser connection lost",
-                Some("The browser may have been closed manually or crashed.".to_string()),
-            )
-            .ok();
-            *driver_lock = None;
-            return None;
-        }
-
-        if let Ok(html) = driver.get_page_source().await {
-            emit_info(app, format!("Extracted {} KB of HTML", html.len() / 1024)).ok();
-            return Some(html);
-        }
-    }
-
+async fn get_html_if_available(_app: &AppHandle, _state: &State<'_, AppState>) -> Option<String> {
+    // Note: Browser driver removed - HTML extraction disabled
     None
 }
 
@@ -402,7 +348,6 @@ pub async fn submit_action_feedback(
                 WorkflowType::ConfigUpdate,
                 feedback_message,
                 &meta_agent,
-                None,
                 None,
                 None,
             )

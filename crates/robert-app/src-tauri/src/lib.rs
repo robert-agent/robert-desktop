@@ -12,7 +12,7 @@ pub mod profiles;
 mod setup;
 mod state;
 
-use robert_core::context::{Context, ContextManager};
+use robert_core::context::Context;
 use setup::RobertState;
 use state::AppState;
 use tauri::State;

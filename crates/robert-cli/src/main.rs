@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Download { model_id, revision } => {
+        Commands::Download { model_id, revision: _ } => {
             println!("Downloading model: {}", model_id);
             // TODO: Connect to robert-downloader
             println!("Download feature coming soon via robert-downloader");

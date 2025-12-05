@@ -4,7 +4,6 @@ use super::config::AgentConfig;
 use super::prompts::{PromptContext, PromptTemplate, PromptType};
 use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeInput, ClaudeResponse};
 use anyhow::{Context, Result};
-use robert_webdriver::ChromeDriver;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -80,7 +79,6 @@ impl WorkflowExecutor {
         agent_config: &AgentConfig,
         screenshot_path: Option<PathBuf>,
         html_content: Option<String>,
-        driver: Option<&ChromeDriver>,
     ) -> Result<WorkflowResult> {
         match workflow_type {
             WorkflowType::CdpAutomation => {
@@ -89,7 +87,6 @@ impl WorkflowExecutor {
                     agent_config,
                     screenshot_path,
                     html_content,
-                    driver,
                 )
                 .await
             }
@@ -107,23 +104,14 @@ impl WorkflowExecutor {
         agent_config: &AgentConfig,
         screenshot_path: Option<PathBuf>,
         html_content: Option<String>,
-        driver: Option<&ChromeDriver>,
     ) -> Result<WorkflowResult> {
         log::info!("╔═══════════════════════════════════════════════════════════╗");
         log::info!("║  🤖 CDP AUTOMATION WORKFLOW                               ║");
         log::info!("╚═══════════════════════════════════════════════════════════╝");
 
-        // Get current page context if driver is available
-        let (current_url, page_title) = if let Some(driver) = driver {
-            let url = driver.current_url().await.ok();
-            let title = driver.title().await.ok();
-            log::info!("🌐 Current URL: {}", url.as_deref().unwrap_or("N/A"));
-            log::info!("📄 Page title: {}", title.as_deref().unwrap_or("N/A"));
-            (url, title)
-        } else {
-            log::warn!("⚠️  No browser driver available");
-            (None, None)
-        };
+        // Note: Browser driver has been removed - page context not available
+        let (current_url, page_title): (Option<String>, Option<String>) = (None, None);
+        log::warn!("⚠️  Browser driver removed - no page context available");
 
         // PHASE 1: Planning - Check if clarification is needed
         log::info!("╔═══════════════════════════════════════════════════════════╗");
@@ -315,161 +303,58 @@ impl WorkflowExecutor {
             &cleaned_json.chars().take(200).collect::<String>()
         );
 
-        let cdp_script: robert_webdriver::CdpScript = match serde_json::from_str::<
-            robert_webdriver::CdpScript,
-        >(cleaned_json)
-        {
-            Ok(script) => {
-                log::info!("✓ CDP script parsed successfully");
-                log::info!("📊 Commands in script: {}", script.cdp_commands.len());
-                script
-            }
-            Err(e) => {
-                log::error!("❌ Failed to parse CDP script JSON");
-                log::error!("⚠️  Parse error: {}", e);
-                log::error!("Response that failed to parse: {}", cleaned_json);
+        // Note: CDP script execution has been removed with webdriver
+        // Just validate that the response is valid JSON and return it
+        let is_valid_json = serde_json::from_str::<serde_json::Value>(cleaned_json).is_ok();
 
-                // Check if the response contains questions or non-JSON content
-                if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
-                    log::error!(
-                        "⚠️  Claude appears to have asked a question instead of generating JSON"
-                    );
-                    return Ok(WorkflowResult {
-                            success: false,
-                            workflow_type: WorkflowType::CdpAutomation,
-                            message: "Claude asked for clarification instead of generating a script. Please provide more specific instructions.".to_string(),
-                            cdp_script: None,
-                            execution_report: None,
-                            error: Some(format!("Non-JSON response: {}", cleaned_json)),
-                            clarification: None,
-                            understanding: None,
-                        });
-                }
+        if !is_valid_json {
+            log::error!("❌ Failed to parse response as valid JSON");
+            log::error!("Response that failed to parse: {}", cleaned_json);
 
+            // Check if the response contains questions or non-JSON content
+            if cleaned_json.contains("?") && !cleaned_json.starts_with("{") {
+                log::error!(
+                    "⚠️  Claude appears to have asked a question instead of generating JSON"
+                );
                 return Ok(WorkflowResult {
                     success: false,
                     workflow_type: WorkflowType::CdpAutomation,
-                    message: "Failed to parse CDP script JSON".to_string(),
-                    cdp_script: Some(claude_response.text().to_string()),
+                    message: "Claude asked for clarification instead of generating a script. Please provide more specific instructions.".to_string(),
+                    cdp_script: None,
                     execution_report: None,
-                    error: Some(format!("Parse error: {}", e)),
+                    error: Some(format!("Non-JSON response: {}", cleaned_json)),
                     clarification: None,
                     understanding: None,
                 });
             }
-        };
 
-        // Validate the script
-        log::info!("🔎 Validating CDP script...");
-        if let Err(e) = cdp_script.validate() {
-            log::error!("❌ CDP script validation failed");
-            log::error!("⚠️  Validation error: {}", e);
             return Ok(WorkflowResult {
                 success: false,
                 workflow_type: WorkflowType::CdpAutomation,
-                message: "CDP script validation failed".to_string(),
+                message: "Failed to parse response as valid JSON".to_string(),
                 cdp_script: Some(claude_response.text().to_string()),
                 execution_report: None,
-                error: Some(format!("Validation error: {}", e)),
+                error: Some("Invalid JSON response".to_string()),
                 clarification: None,
                 understanding: None,
             });
         }
-        log::info!("✓ CDP script validation passed");
 
-        // Execute the CDP script if driver is available
-        if let Some(driver) = driver {
-            log::info!("╔═══════════════════════════════════════════════════════════╗");
-            log::info!("║  🎯 ATTEMPTING TO DRIVE WEBPAGE WITH CDP                 ║");
-            log::info!("╚═══════════════════════════════════════════════════════════╝");
-            log::info!(
-                "📋 Total commands to execute: {}",
-                cdp_script.cdp_commands.len()
-            );
+        log::info!("✓ Response is valid JSON");
 
-            for (i, cmd) in cdp_script.cdp_commands.iter().enumerate() {
-                log::info!(
-                    "  {}. {} - {}",
-                    i + 1,
-                    cmd.method,
-                    cmd.description.as_deref().unwrap_or("")
-                );
-            }
+        // Note: Webdriver execution removed - returning script for display only
+        log::warn!("⚠️  CDP script execution disabled (webdriver removed)");
 
-            log::info!("🚀 Executing CDP script...");
-            match driver.execute_cdp_script_direct(&cdp_script).await {
-                Ok(report) => {
-                    log::info!("╔═══════════════════════════════════════════════════════════╗");
-                    log::info!("║  ✅ CDP EXECUTION SUCCESSFUL                              ║");
-                    log::info!("╚═══════════════════════════════════════════════════════════╝");
-                    log::info!("📊 Total commands: {}", report.total_commands);
-                    log::info!("✓ Successful: {}", report.successful);
-                    log::info!("✗ Failed: {}", report.failed);
-                    log::info!("⏱️  Duration: {:?}", report.total_duration);
-
-                    if !report.results.is_empty() {
-                        log::debug!("📋 Command results:");
-                        for result in &report.results {
-                            use robert_webdriver::CommandStatus;
-                            let status = match result.status {
-                                CommandStatus::Success => "✓",
-                                CommandStatus::Failed => "✗",
-                                CommandStatus::Skipped => "⊘",
-                            };
-                            log::debug!("  {} Step {} - {}", status, result.step, result.method);
-                            if let Some(err) = &result.error {
-                                log::warn!("    ⚠️  Error: {}", err);
-                            }
-                        }
-                    }
-
-                    Ok(WorkflowResult {
-                        success: true,
-                        workflow_type: WorkflowType::CdpAutomation,
-                        message: format!(
-                            "Successfully executed {} commands",
-                            report.total_commands
-                        ),
-                        cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
-                        execution_report: Some(serde_json::to_value(&report)?),
-                        error: None,
-                        clarification: None,
-                        understanding: None,
-                    })
-                }
-                Err(e) => {
-                    log::error!("╔═══════════════════════════════════════════════════════════╗");
-                    log::error!("║  ❌ CDP EXECUTION FAILED                                  ║");
-                    log::error!("╚═══════════════════════════════════════════════════════════╝");
-                    log::error!("⚠️  Error: {}", e);
-
-                    Ok(WorkflowResult {
-                        success: false,
-                        workflow_type: WorkflowType::CdpAutomation,
-                        message: "Failed to execute CDP script".to_string(),
-                        cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
-                        execution_report: None,
-                        error: Some(e.to_string()),
-                        clarification: None,
-                        understanding: None,
-                    })
-                }
-            }
-        } else {
-            // No driver available, just return the generated script
-            log::warn!("⚠️  Browser not available - CDP script generated but not executed");
-
-            Ok(WorkflowResult {
-                success: true,
-                workflow_type: WorkflowType::CdpAutomation,
-                message: "Generated CDP script (browser not available for execution)".to_string(),
-                cdp_script: Some(serde_json::to_string_pretty(&cdp_script)?),
-                execution_report: None,
-                error: None,
-                clarification: None,
-                understanding: None,
-            })
-        }
+        Ok(WorkflowResult {
+            success: true,
+            workflow_type: WorkflowType::CdpAutomation,
+            message: "CDP script generated successfully (execution disabled)".to_string(),
+            cdp_script: Some(cleaned_json.to_string()),
+            execution_report: None,
+            error: None,
+            clarification: None,
+            understanding: None,
+        })
     }
 
     /// Execute config update workflow
