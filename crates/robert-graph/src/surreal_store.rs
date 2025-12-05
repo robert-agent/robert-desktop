@@ -76,25 +76,102 @@ impl GraphStore for SurrealStore {
     }
 
     async fn get_neighbors(&self, id: &str) -> Result<Vec<(Edge, Node)>, GraphError> {
-        // Query: SELECT ->? as edge, ->?.out as target FROM node:id
-        // This is a bit complex to map directly to our Edge struct which expects strings
-        // Let's simplify: fetch edges where out = target
+        // Get all outgoing edges from this node
+        // In SurrealDB, relations are stored as: node:source->relation_name->node:target
+        // We need to query all relations from this node
 
-        // SurrealDB graph traversal: SELECT ->? as relation FROM node:id
-        // We want the edge details and the target node
+        let sql = format!(
+            "SELECT ->? as edges FROM node:{} FETCH edges, edges.out",
+            id
+        );
 
-        // Let's use a custom query
-        let sql = format!("SELECT * FROM node:{}->?", id);
-        let _response = self
+        let mut response = self
             .db
             .query(sql)
             .await
             .map_err(|e| GraphError::Storage(e.to_string()))?;
 
-        // Parsing this dynamic result is tricky without a specific struct
-        // For Alpha, let's just return empty or implement a simpler version
-        // TODO: Implement proper neighbor parsing
-        Ok(vec![])
+        #[derive(Deserialize, Debug)]
+        struct RelationEdge {
+            #[serde(rename = "in")]
+            source: surrealdb::sql::Thing,
+            #[serde(rename = "out")]
+            target: surrealdb::sql::Thing,
+        }
+
+        #[derive(Deserialize, Debug)]
+        struct NeighborResult {
+            edges: Option<Vec<RelationEdge>>,
+        }
+
+        let result: Vec<NeighborResult> = response
+            .take(0)
+            .map_err(|e| GraphError::Storage(e.to_string()))?;
+
+        let mut neighbors = Vec::new();
+
+        if let Some(first) = result.into_iter().next() {
+            if let Some(edges) = first.edges {
+                for rel_edge in edges {
+                    // Fetch the target node
+                    let target_node: Option<Node> = self
+                        .db
+                        .select((rel_edge.target.tb.clone(), rel_edge.target.id.to_string()))
+                        .await
+                        .map_err(|e| GraphError::Storage(e.to_string()))?;
+
+                    if let Some(node) = target_node {
+                        // Create Edge representation
+                        let edge = Edge {
+                            source: rel_edge.source.id.to_string(),
+                            target: rel_edge.target.id.to_string(),
+                            relation: rel_edge.target.tb.clone(), // Relation name is the table name
+                            weight: 1.0, // Default weight, could be stored in relation properties
+                        };
+
+                        neighbors.push((edge, node));
+                    }
+                }
+            }
+        }
+
+        Ok(neighbors)
+    }
+
+    async fn query_by_partition(&self, partition_id: &str) -> Result<Vec<Node>, GraphError> {
+        let sql = "SELECT * FROM node WHERE partition_id = $partition";
+
+        let mut response = self
+            .db
+            .query(sql)
+            .bind(("partition", partition_id))
+            .await
+            .map_err(|e| GraphError::Storage(e.to_string()))?;
+
+        let nodes: Vec<Node> = response
+            .take(0)
+            .map_err(|e| GraphError::Storage(e.to_string()))?;
+
+        Ok(nodes)
+    }
+
+    async fn get_neighbors_in_partition(
+        &self,
+        id: &str,
+        partition_id: &str,
+    ) -> Result<Vec<(Edge, Node)>, GraphError> {
+        // Get neighbors filtered by partition
+        let all_neighbors = self.get_neighbors(id).await?;
+
+        // Filter by partition
+        let filtered: Vec<(Edge, Node)> = all_neighbors
+            .into_iter()
+            .filter(|(edge, node)| {
+                edge.partition_id == partition_id && node.partition_id == partition_id
+            })
+            .collect();
+
+        Ok(filtered)
     }
 }
 

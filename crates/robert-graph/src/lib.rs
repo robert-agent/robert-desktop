@@ -20,6 +20,8 @@ pub struct Node {
     pub id: String,
     pub label: String,
     pub properties: serde_json::Value,
+    #[serde(default = "default_partition")]
+    pub partition_id: String, // "personal", "work", "business", etc.
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -28,6 +30,12 @@ pub struct Edge {
     pub target: String,
     pub relation: String,
     pub weight: f32,
+    #[serde(default = "default_partition")]
+    pub partition_id: String, // Same as nodes - edges belong to partitions
+}
+
+fn default_partition() -> String {
+    "personal".to_string()
 }
 
 #[async_trait]
@@ -37,6 +45,14 @@ pub trait GraphStore: Send + Sync {
     async fn get_node(&self, id: &str) -> Result<Node, GraphError>;
     async fn get_neighbors(&self, id: &str) -> Result<Vec<(Edge, Node)>, GraphError>;
     async fn update_node(&self, node: Node) -> Result<(), GraphError>;
+
+    // Partition-aware queries
+    async fn query_by_partition(&self, partition_id: &str) -> Result<Vec<Node>, GraphError>;
+    async fn get_neighbors_in_partition(
+        &self,
+        id: &str,
+        partition_id: &str,
+    ) -> Result<Vec<(Edge, Node)>, GraphError>;
 }
 
 #[async_trait]
@@ -118,6 +134,37 @@ pub mod mocks {
             }
             nodes.insert(node.id.clone(), node);
             Ok(())
+        }
+
+        async fn query_by_partition(&self, partition_id: &str) -> Result<Vec<Node>, GraphError> {
+            let nodes = self.nodes.read().unwrap();
+            let filtered: Vec<Node> = nodes
+                .values()
+                .filter(|n| n.partition_id == partition_id)
+                .cloned()
+                .collect();
+            Ok(filtered)
+        }
+
+        async fn get_neighbors_in_partition(
+            &self,
+            id: &str,
+            partition_id: &str,
+        ) -> Result<Vec<(Edge, Node)>, GraphError> {
+            let edges = self.edges.read().unwrap();
+            let nodes = self.nodes.read().unwrap();
+
+            let mut result = Vec::new();
+            for edge in edges.iter() {
+                if edge.source == id && edge.partition_id == partition_id {
+                    if let Some(target_node) = nodes.get(&edge.target) {
+                        if target_node.partition_id == partition_id {
+                            result.push((edge.clone(), target_node.clone()));
+                        }
+                    }
+                }
+            }
+            Ok(result)
         }
     }
 
