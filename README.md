@@ -104,6 +104,13 @@ User Device (Local)                  Robert Cloud (Trusted)
   - Modern desktop UI for macOS, Windows, Linux
   - Context sidebar with transparent attribution
   - Graph visualization and exploration
+  - Spawns local robert-server or connects to remote
+
+- **[robert-server](./crates/robert-server)** - REST API Server (Warp + Tokio)
+  - Provides REST API for clients
+  - Manages authentication and sessions
+  - Instantiates robert-core for request handling
+  - Supports local and remote deployment modes
 
 - **[robert-core](./crates/robert-core)** - AI/RAG Engine
   - GraphRAG implementation
@@ -120,7 +127,7 @@ User Device (Local)                  Robert Cloud (Trusted)
 - **[robert-cli](./crates/robert-cli)** - Command Line Tool
   - Document ingestion
   - Query interface
-  - Server management
+  - Server management (start/stop/status)
 
 - **[types](./crates/types)** - Shared Types
   - User profiles and authentication
