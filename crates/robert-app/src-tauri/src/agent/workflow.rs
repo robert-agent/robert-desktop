@@ -6,23 +6,6 @@ use crate::claude::{ClaudeClient, ClaudeConfig, ClaudeInput, ClaudeResponse};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-
-/// Planning response types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "response_type", rename_all = "snake_case")]
-pub enum PlanningResponse {
-    /// Agent is ready to proceed
-    Ready {
-        understanding: String,
-        next_step: String,
-    },
-    /// Agent needs clarification
-    ClarificationNeeded {
-        questions: Vec<ClarificationQuestion>,
-        understanding: String,
-    },
-}
-
 /// A question that needs clarification
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClarificationQuestion {
