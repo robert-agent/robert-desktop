@@ -1,4 +1,4 @@
-use robert_graph::{GraphError, GraphStore, Node};
+use robert_graph::{GraphError, GraphStore};
 use serde_json::json;
 
 pub struct PruningManager<G: GraphStore> {

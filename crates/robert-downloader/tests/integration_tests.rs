@@ -1,5 +1,4 @@
 use robert_downloader::model_downloader::download_model;
-use std::path::Path;
 use tempfile::TempDir;
 
 #[tokio::test]

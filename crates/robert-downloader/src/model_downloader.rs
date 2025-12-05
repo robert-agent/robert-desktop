@@ -4,7 +4,6 @@ use git2::{Cred, FetchOptions, RemoteCallbacks, Repository};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use sha2::{Digest, Sha256};
 use std::env;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tokio::fs;

@@ -59,6 +59,12 @@ pub mod mocks {
         edges: std::sync::RwLock<Vec<Edge>>,
     }
 
+    impl Default for MockGraphStore {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     impl MockGraphStore {
         pub fn new() -> Self {
             Self {
@@ -117,6 +123,12 @@ pub mod mocks {
 
     pub struct MockVectorStore {
         vectors: std::sync::RwLock<std::collections::HashMap<String, Vec<f32>>>,
+    }
+
+    impl Default for MockVectorStore {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl MockVectorStore {

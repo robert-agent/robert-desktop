@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
-use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum ContextError {
@@ -25,9 +24,15 @@ pub struct ContextManager {
     active_context_id: std::sync::RwLock<Option<String>>,
 }
 
+impl Default for ContextManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextManager {
     pub fn new() -> Self {
-        let mut manager = Self {
+        let manager = Self {
             contexts: std::sync::RwLock::new(HashMap::new()),
             active_context_id: std::sync::RwLock::new(None),
         };

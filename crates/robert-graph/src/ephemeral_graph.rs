@@ -8,6 +8,12 @@ pub struct EphemeralGraph {
     node_indices: HashMap<String, NodeIndex>,
 }
 
+impl Default for EphemeralGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EphemeralGraph {
     pub fn new() -> Self {
         Self {
