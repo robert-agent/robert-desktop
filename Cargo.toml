@@ -1,33 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/robert-webdriver",
     "crates/robert-cli",
     "crates/robert-app/src-tauri",
     "crates/robert-server",
     "crates/types",
 ]
-# Exclude Tauri app from default builds (requires GTK/Pango system libraries)
-# To build the Tauri app: cargo build -p robert-app
-default-members = [
-    "crates/robert-webdriver",
-    "crates/robert-cli",
-    "crates/robert-server",
-]
 
 [workspace.dependencies]
 robert-server = { path = "crates/robert-server" }
+robert-types = { path = "crates/types" }
 # Shared dependencies across all crates
 tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-
-# Browser automation - spider_chrome (maintained fork of chromiumoxide)
-
-spider_chrome = "2.37"
-spider_chromiumoxide_fetcher = "0.7"
 
 # CLI
 clap = { version = "4.0", features = ["derive"] }

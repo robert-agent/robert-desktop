@@ -4,11 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Dependencies from robert-app/src-tauri/src/profiles
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
-anyhow = { workspace = true }
 thiserror = { workspace = true }
 chrono = { workspace = true }
 dirs = { workspace = true }
@@ -18,22 +15,15 @@ log = { workspace = true }
 argon2 = { workspace = true }
 aes-gcm = { workspace = true }
 rand = { workspace = true }
-zeroize = { workspace = true, features = ["derive"] }
+zeroize = { workspace = true }
 
 # Utilities
-uuid = { workspace = true, features = ["v4", "serde"] }
-once_cell = { workspace = true }
+uuid = { workspace = true }
 
 # Markdown command system
 pulldown-cmark = { workspace = true }
 serde_yaml = { workspace = true }
 
-# Browser automation dependencies that profiles depend on (indirectly or directly)
-spider_chrome = { workspace = true, optional = true }
-
-[features]
-default = []
-browser = ["spider_chrome"]
 
 [dev-dependencies]
-tempfile.workspace = true
+tempfile = { workspace = true }
