@@ -13,6 +13,8 @@ mod state;
 
 use state::AppState;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Initialize custom logger that writes to both console and encrypted log file
@@ -28,20 +30,65 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState::new())
+        .setup(|app| {
+            let state = app.state::<AppState>();
+            let webdriver_mode = state.webdriver_mode.clone();
+
+            // Spawn the embedded robert-server
+            tauri::async_runtime::spawn(async move {
+                log::info!("🚀 Starting embedded robert-server...");
+
+                // load dev defaults for now
+                let config = robert_server::Config::dev_default();
+
+                // Spawn server in a separate task
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = robert_server::server::run(config).await {
+                        log::error!("❌ Embedded server error: {}", e);
+                    }
+                });
+
+                // Wait for server to be healthy
+                let client = reqwest::Client::new();
+                let health_url = "http://localhost:8443/api/v1/health";
+                let mut retries = 0;
+                let max_retries = 30; // 30 attempts * 500ms = 15 seconds
+
+                while retries < max_retries {
+                    match client.get(health_url).send().await {
+                        Ok(res) => {
+                            if res.status().is_success() {
+                                log::info!(
+                                    "✅ Embedded robert-server is healthy and reachable at {}",
+                                    health_url
+                                );
+                                *webdriver_mode.lock().await = true; // Still using this flag to indicate "backend ready"
+                                break;
+                            }
+                        }
+                        Err(_) => {
+                            // Server starting up...
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    retries += 1;
+                }
+
+                if retries >= max_retries {
+                    log::error!("❌ Timed out waiting for embedded server to start");
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
-            commands::launch_browser,
-            commands::navigate_to_url,
-            commands::get_page_content,
-            commands::close_browser,
-            commands::take_screenshot,
-            commands::ask_claude,
-            commands::ask_claude_about_page,
+            // Legacy commands removed/refactored
             commands::check_claude_health,
             commands::run_diagnostics,
-            commands::validate_cdp_script,
-            commands::validate_cdp_script_file,
-            commands::execute_cdp_script,
+            // commands::validate_cdp_script,
+            // commands::validate_cdp_script_file,
+            // commands::execute_cdp_script,
             // Developer mode commands
             commands::get_system_paths,
             commands::start_dev_test_server,
@@ -73,6 +120,7 @@ pub fn run() {
             commands::browser::close_browser_session,
             commands::browser::get_browser_status,
             commands::browser::close_all_browser_sessions,
+            commands::browser::execute_webdriver_inference,
             // Command system commands (Phase 3 - Markdown-based)
             commands::save_command,
             commands::get_command,
@@ -85,6 +133,8 @@ pub fn run() {
             commands::get_logs,
             commands::clear_logs,
             commands::get_log_size,
+            // Feedback commands
+            commands::submit_application_feedback,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

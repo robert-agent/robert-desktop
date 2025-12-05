@@ -23,15 +23,15 @@ agent-formats/
 
 ### For First-Time Users
 
-1. **[README.md](./README.md)** - Start here for overview
-2. **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick summary of both formats
+1. **[readme.md](./readme.md)** - Start here for overview
+2. **[quick-reference.md](./quick-reference.md)** - Quick summary of both formats
 3. **[examples/workflows/](./examples/workflows/)** - See real examples
 
 ### For Implementation
 
-4. **[specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md)** - Complete graph format specification
-5. **[specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md)** - Complete frame format specification
-6. **[specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)** - Integration guide and best practices
+4. **[specs/workflow-graph-schema.md](./specs/workflow-graph-schema.md)** - Complete graph format specification
+5. **[specs/step-frame-schema.md](./specs/step-frame-schema.md)** - Complete frame format specification
+6. **[specs/agent-workflow-standards.md](./specs/agent-workflow-standards.md)** - Integration guide and best practices
 
 ## 📋 The Two Formats
 
@@ -82,31 +82,31 @@ agent-formats/
 ### I want to...
 
 **Understand the system**
-→ [README.md](./README.md)
+→ [readme.md](./readme.md)
 
 **Get a quick overview**
-→ [QUICK_REFERENCE.md](./QUICK_REFERENCE.md)
+→ [quick-reference.md](./quick-reference.md)
 
 **See an example**
 → [examples/workflows/github.com/create_repository/](./examples/workflows/github.com/create_repository/)
 
 **Implement workflow graphs**
-→ [specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md)
+→ [specs/workflow-graph-schema.md](./specs/workflow-graph-schema.md)
 
 **Implement session recording**
-→ [specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md)
+→ [specs/step-frame-schema.md](./specs/step-frame-schema.md)
 
 **Integrate into my agent**
-→ [specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)
+→ [specs/agent-workflow-standards.md](./specs/agent-workflow-standards.md)
 
 **Learn best practices**
-→ [specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md)
+→ [specs/agent-workflow-standards.md](./specs/agent-workflow-standards.md)
 
 ## 🔗 Related Documentation
 
-- **[../docs/PRD.md](../docs/PRD.md)** - Product requirements (see "Workflow Learning System" section)
-- **[../docs/IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md)** - Implementation plan (see "Phase 9")
-- **[../WORKFLOW_FORMATS_ADDED.md](../WORKFLOW_FORMATS_ADDED.md)** - Summary of what was added
+- **[../docs/prd.md](../docs/prd.md)** - Product requirements (see "Workflow Learning System" section)
+- **[../docs/implementation-plan.md](../docs/implementation-plan.md)** - Implementation plan (see "Phase 9")
+- **[../workflow-formats-added.md](../workflow-formats-added.md)** - Summary of what was added
 
 ## 📦 File Format Summary
 
@@ -142,4 +142,4 @@ agent-formats/
 
 ---
 
-**Start exploring: [README.md](./README.md)**
+**Start exploring: [readme.md](./readme.md)**

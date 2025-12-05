@@ -8,25 +8,25 @@ A complete standard format system for AI agents to learn and improve website nav
 
 ### 📚 Documentation
 
-1. **[README_WORKFLOW_STANDARDS.md](./README_WORKFLOW_STANDARDS.md)**
+1. **[readme-workflow-standards.md](./readme-workflow-standards.md)**
    - Main introduction and overview
    - Quick start guide for agents
    - Benefits, features, and FAQ
    - Best starting point for understanding the system
 
-2. **[WORKFLOW_GRAPH_SCHEMA.md](./WORKFLOW_GRAPH_SCHEMA.md)**
+2. **[workflow-graph-schema.md](./workflow-graph-schema.md)**
    - Complete specification of the workflow graph format (`.workflow.md`)
    - Nodes, edges, metadata, and visualization
    - Usage guidelines for agents
    - Detailed examples with GitHub workflow
 
-3. **[STEP_FRAME_SCHEMA.md](./STEP_FRAME_SCHEMA.md)**
+3. **[step-frame-schema.md](./step-frame-schema.md)**
    - Complete specification of the step frame format (`.frames.json`)
    - Screenshot, DOM, action, and transcript structure
    - Privacy, security, and storage guidelines
    - Learning and analysis queries
 
-4. **[AGENT_WORKFLOW_STANDARDS.md](./AGENT_WORKFLOW_STANDARDS.md)**
+4. **[agent-workflow-standards.md](./agent-workflow-standards.md)**
    - Best practices and integration guide
    - Agent responsibilities (recording, learning, updating)
    - Workflow lifecycle (discovery → maintenance)
@@ -371,14 +371,14 @@ agents/agent-001:
 ## Files to Read
 
 **Start here:**
-1. [README.md](./README.md) - Overview and introduction
+1. [readme.md](./readme.md) - Overview and introduction
 2. [examples/workflows/github.com/create_repository/github.com_create_repository_v1.workflow.md](./examples/workflows/github.com/create_repository/github.com_create_repository_v1.workflow.md) - Example workflow graph
 3. [examples/workflows/github.com/create_repository/session_demo/minimal_example.frames.json](./examples/workflows/github.com/create_repository/session_demo/minimal_example.frames.json) - Example session frames
 
 **Deep dive:**
-4. [specs/WORKFLOW_GRAPH_SCHEMA.md](./specs/WORKFLOW_GRAPH_SCHEMA.md) - Complete graph format spec
-5. [specs/STEP_FRAME_SCHEMA.md](./specs/STEP_FRAME_SCHEMA.md) - Complete frame format spec
-6. [specs/AGENT_WORKFLOW_STANDARDS.md](./specs/AGENT_WORKFLOW_STANDARDS.md) - Best practices and integration
+4. [specs/workflow-graph-schema.md](./specs/workflow-graph-schema.md) - Complete graph format spec
+5. [specs/step-frame-schema.md](./specs/step-frame-schema.md) - Complete frame format spec
+6. [specs/agent-workflow-standards.md](./specs/agent-workflow-standards.md) - Best practices and integration
 
 ## Key Takeaways
 

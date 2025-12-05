@@ -50,8 +50,6 @@ pub async fn process_chat_message(
     log::info!("📝 Message: {}", request.message);
     log::info!("🤖 Agent: {}", request.agent_name);
     log::info!("🔄 Workflow: {:?}", request.workflow_type);
-    log::debug!("📸 Include screenshot: {}", request.include_screenshot);
-    log::debug!("📄 Include HTML: {}", request.include_html);
 
     emit_info(&app, "Processing chat message...").ok();
 
@@ -60,40 +58,28 @@ pub async fn process_chat_message(
     let agent_config = load_or_create_agent_config(&app, &request.agent_name).await?;
     log::info!("✓ Agent config loaded: {}", agent_config.name);
 
-    // Get screenshot if requested and browser is available
-    let screenshot_path = if request.include_screenshot {
-        capture_screenshot_if_available(&app, &state).await
-    } else {
-        None
-    };
-
-    // Get HTML if requested and browser is available
-    let html_content = if request.include_html {
-        get_html_if_available(&app, &state).await
-    } else {
-        None
-    };
+    // Screenshot/HTML capture from local driver is no longer supported
+    // The standalone webdriver handles context internally if needed for certain flows
+    // or we could implement a fetch here via HTTP if the server exposes 'get_context'.
+    // For now, we pass None.
+    let screenshot_path: Option<PathBuf> = None;
+    let html_content: Option<String> = None;
 
     let executor = WorkflowExecutor::new();
 
     emit_claude_processing(&app, "Executing workflow...").ok();
 
-    // Execute workflow with driver reference
-    let result = {
-        let driver_lock = state.driver.lock().await;
-        let driver_ref = driver_lock.as_ref();
-
-        executor
-            .execute(
-                request.workflow_type,
-                request.message.clone(),
-                &agent_config,
-                screenshot_path,
-                html_content,
-                driver_ref,
-            )
-            .await
-    };
+    // Execute workflow with http_client
+    let result = executor
+        .execute(
+            request.workflow_type,
+            request.message.clone(),
+            &agent_config,
+            screenshot_path,
+            html_content,
+            &state.http_client,
+        )
+        .await;
 
     match result {
         Ok(result) => {
@@ -244,9 +230,10 @@ async fn load_or_create_agent_config(
         let config = match agent_name {
             "cdp-generator" => AgentConfig::default_cdp_agent(),
             "meta-agent" => AgentConfig::default_meta_agent(),
+            "feedback-assistant" => AgentConfig::default_feedback_agent(),
             _ => {
                 return Err(format!(
-                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent",
+                    "Unknown agent '{}'. Available agents: cdp-generator, meta-agent, feedback-assistant",
                     agent_name
                 ));
             }
@@ -262,67 +249,6 @@ async fn load_or_create_agent_config(
 
         Ok(config)
     }
-}
-
-async fn capture_screenshot_if_available(
-    app: &AppHandle,
-    state: &State<'_, AppState>,
-) -> Option<PathBuf> {
-    let mut driver_lock = state.driver.lock().await;
-
-    if let Some(driver) = driver_lock.as_ref() {
-        // Check if browser is still alive
-        if !driver.is_alive().await {
-            log::warn!("Browser connection is dead during screenshot capture, clearing state");
-            emit_error(
-                app,
-                "Browser connection lost",
-                Some("The browser may have been closed manually or crashed.".to_string()),
-            )
-            .ok();
-            *driver_lock = None;
-            return None;
-        }
-
-        let temp_dir = std::env::temp_dir().join("robert-chat");
-        if tokio::fs::create_dir_all(&temp_dir).await.is_ok() {
-            let timestamp = chrono::Utc::now().timestamp();
-            let screenshot_path = temp_dir.join(format!("chat-screenshot-{}.png", timestamp));
-
-            if driver.screenshot_to_file(&screenshot_path).await.is_ok() {
-                emit_info(app, "Captured screenshot for AI context").ok();
-                return Some(screenshot_path);
-            }
-        }
-    }
-
-    None
-}
-
-async fn get_html_if_available(app: &AppHandle, state: &State<'_, AppState>) -> Option<String> {
-    let mut driver_lock = state.driver.lock().await;
-
-    if let Some(driver) = driver_lock.as_ref() {
-        // Check if browser is still alive
-        if !driver.is_alive().await {
-            log::warn!("Browser connection is dead during HTML extraction, clearing state");
-            emit_error(
-                app,
-                "Browser connection lost",
-                Some("The browser may have been closed manually or crashed.".to_string()),
-            )
-            .ok();
-            *driver_lock = None;
-            return None;
-        }
-
-        if let Ok(html) = driver.get_page_source().await {
-            emit_info(app, format!("Extracted {} KB of HTML", html.len() / 1024)).ok();
-            return Some(html);
-        }
-    }
-
-    None
 }
 
 /// Feedback for an action
@@ -351,6 +277,7 @@ pub struct ActionFeedback {
 #[tauri::command]
 pub async fn submit_action_feedback(
     app: AppHandle,
+    state: State<'_, AppState>,
     feedback: ActionFeedback,
 ) -> Result<String, String> {
     emit_info(
@@ -404,7 +331,7 @@ pub async fn submit_action_feedback(
                 &meta_agent,
                 None,
                 None,
-                None,
+                &state.http_client,
             )
             .await
         {

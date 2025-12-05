@@ -7,12 +7,6 @@ edition = "2021"
 name = "robert"
 path = "src/main.rs"
 
-[[bin]]
-name = "robert-generate"
-path = "src/bin/robert-generate.rs"
-
 [dependencies]
-robert-webdriver = { path = "../robert-webdriver" }
 tokio = { workspace = true }
 clap = { workspace = true }
-anyhow = { workspace = true }
