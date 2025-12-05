@@ -32,8 +32,8 @@ pub mod claude;
 pub mod config;
 pub mod error;
 pub mod models;
-pub mod session;
 pub mod server;
+pub mod session;
 
 // Re-export commonly used types
 pub use config::Config;

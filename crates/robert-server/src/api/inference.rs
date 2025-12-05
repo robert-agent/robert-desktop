@@ -91,16 +91,16 @@ pub async fn inference_handler(
                 ClaudeEvent::Error { message, .. } => {
                     status = "error".to_string();
                     if final_message.is_empty() {
-                         final_message = message;
+                        final_message = message;
                     } else {
-                         final_message = format!("{}\nError: {}", final_message, message);
+                        final_message = format!("{}\nError: {}", final_message, message);
                     }
                 }
                 ClaudeEvent::Content { text } => {
                     // Accumulate text content
                     final_message.push_str(&text);
                 }
-                 _ => {}
+                _ => {}
             },
             Err(e) => {
                 status = "error".to_string();
@@ -111,9 +111,9 @@ pub async fn inference_handler(
 
     if final_message.is_empty() {
         if status == "success" {
-             final_message = "Command executed successfully.".to_string();
+            final_message = "Command executed successfully.".to_string();
         } else {
-             final_message = "Unknown error occurred.".to_string();
+            final_message = "Unknown error occurred.".to_string();
         }
     }
 

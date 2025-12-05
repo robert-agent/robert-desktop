@@ -199,7 +199,8 @@ Key principles:
             },
             instructions: r#"You are a helpful QA assistant.
 Your goal is to improve bug reports and feedback from users.
-You are professional, concise, and helpful."#.to_string(),
+You are professional, concise, and helpful."#
+                .to_string(),
             examples: vec![],
             tags: vec!["feedback".to_string(), "qa".to_string()],
         }

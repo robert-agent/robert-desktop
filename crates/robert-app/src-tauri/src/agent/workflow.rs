@@ -296,16 +296,22 @@ impl WorkflowExecutor {
         let claude_response = self
             .call_claude(&prompt, None, None, &agent_config.settings.model)
             .await?;
-        
+
         let response_text = claude_response.text().trim();
-        
+
         // Clean markdown
         let json_text = if response_text.starts_with("```json") {
-             response_text.trim_start_matches("```json").trim_end_matches("```").trim()
+            response_text
+                .trim_start_matches("```json")
+                .trim_end_matches("```")
+                .trim()
         } else if response_text.starts_with("```") {
-             response_text.trim_start_matches("```").trim_end_matches("```").trim()
+            response_text
+                .trim_start_matches("```")
+                .trim_end_matches("```")
+                .trim()
         } else {
-             response_text
+            response_text
         };
 
         // Parse JSON
@@ -317,22 +323,20 @@ impl WorkflowExecutor {
         }
 
         match serde_json::from_str::<FeedbackResponse>(json_text) {
-            Ok(parsed) => {
-                Ok(WorkflowResult {
-                    success: true,
-                    workflow_type: WorkflowType::FeedbackImprovement,
-                    message: parsed.message,
-                    cdp_script: None,
-                    execution_report: None,
-                    error: None,
-                    clarification: None,
-                    understanding: None,
-                    refined_feedback: parsed.refined_feedback,
-                })
-            },
+            Ok(parsed) => Ok(WorkflowResult {
+                success: true,
+                workflow_type: WorkflowType::FeedbackImprovement,
+                message: parsed.message,
+                cdp_script: None,
+                execution_report: None,
+                error: None,
+                clarification: None,
+                understanding: None,
+                refined_feedback: parsed.refined_feedback,
+            }),
             Err(e) => {
                 // Fallback if JSON parsing fails - simple pass-through or error
-                 Ok(WorkflowResult {
+                Ok(WorkflowResult {
                     success: false,
                     workflow_type: WorkflowType::FeedbackImprovement,
                     message: "I encountered an error processing your feedback.".to_string(),

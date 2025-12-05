@@ -3,7 +3,10 @@
 //! This module contains the core logic for running the Robert Server.
 
 use crate::{
-    api::{delete_session_handler, execute_handler, get_session_handler, health_handler, inference_handler, health::HealthState},
+    api::{
+        delete_session_handler, execute_handler, get_session_handler, health::HealthState,
+        health_handler, inference_handler,
+    },
     auth::{with_auth, AuthState},
     claude::{ClaudeExecutor, Executor, MockClaudeExecutor},
     session::SessionManager,
@@ -28,11 +31,11 @@ pub async fn run(config: Config) -> Result<(), Box<dyn std::error::Error + Send 
     // Override mock mode if specified in config (already handled by config loading, but good to check)
     let use_mock = config.claude.mock_mode;
 
-    // Initialize logging (assumes subscriber already set up by caller or main, 
+    // Initialize logging (assumes subscriber already set up by caller or main,
     // but if we want to ensure it, we can check. For library usage, typically caller sets up logging.
-    // However, main.rs set it up. We'll leave logging setup to the caller for flexibility, 
+    // However, main.rs set it up. We'll leave logging setup to the caller for flexibility,
     // or we can move init_logging here if we want strictly consistent behavior.)
-    
+
     // For now, we'll assume the caller calls init_logging or sets up their own subscriber.
 
     info!("Starting Robert Server");
@@ -161,7 +164,7 @@ fn build_routes(
         .and_then(|session_id: Uuid, _token: String, manager| {
             delete_session_handler(session_id, manager)
         });
-    
+
     // Inference endpoint (simple JSON)
     let inference = warp::path!("inference")
         .and(warp::post())
@@ -170,7 +173,11 @@ fn build_routes(
         .and(with_config(config))
         .and_then(inference_handler);
 
-    health.or(execute).or(get_session).or(delete_session).or(inference)
+    health
+        .or(execute)
+        .or(get_session)
+        .or(delete_session)
+        .or(inference)
 }
 
 /// Warp filter to inject executor

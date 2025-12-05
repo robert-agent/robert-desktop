@@ -39,10 +39,10 @@ pub fn run() {
             // Spawn the embedded robert-server
             tauri::async_runtime::spawn(async move {
                 log::info!("🚀 Starting embedded robert-server...");
-                
+
                 // load dev defaults for now
                 let config = robert_server::Config::dev_default();
-                
+
                 // Spawn server in a separate task
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = robert_server::server::run(config).await {
@@ -60,7 +60,10 @@ pub fn run() {
                     match client.get(health_url).send().await {
                         Ok(res) => {
                             if res.status().is_success() {
-                                log::info!("✅ Embedded robert-server is healthy and reachable at {}", health_url);
+                                log::info!(
+                                    "✅ Embedded robert-server is healthy and reachable at {}",
+                                    health_url
+                                );
                                 *webdriver_mode.lock().await = true; // Still using this flag to indicate "backend ready"
                                 break;
                             }
@@ -74,7 +77,7 @@ pub fn run() {
                 }
 
                 if retries >= max_retries {
-                     log::error!("❌ Timed out waiting for embedded server to start");
+                    log::error!("❌ Timed out waiting for embedded server to start");
                 }
             });
             Ok(())

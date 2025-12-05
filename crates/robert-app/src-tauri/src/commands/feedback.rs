@@ -17,8 +17,8 @@ pub async fn submit_application_feedback(
 
     // Placeholder URL - user needs to replace this with their actual Cloudflare Worker URL
     // TODO: Move this to a configuration file or environment variable
-    let worker_url = "https://feedback-api.internal/submit"; 
-    
+    let worker_url = "https://feedback-api.internal/submit";
+
     // In a real implementation this would POST to the worker
     if worker_url.contains("internal") {
         // Mock success for development if URL not set
@@ -29,7 +29,8 @@ pub async fn submit_application_feedback(
     }
 
     let client = reqwest::Client::new();
-    let res = client.post(worker_url)
+    let res = client
+        .post(worker_url)
         .json(&feedback)
         .send()
         .await

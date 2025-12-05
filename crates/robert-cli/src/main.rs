@@ -62,7 +62,5 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let _no_sandbox = cli.no_sandbox || is_ci;
     let _headless = cli.headless || is_ci;
 
-
-
     Ok(())
 }

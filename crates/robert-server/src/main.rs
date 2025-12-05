@@ -30,7 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Load configuration
     let mut config = if let Some(path) = config_path {
-        Config::from_file(path).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?
+        Config::from_file(path)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?
     } else if dev_mode {
         Config::dev_default()
     } else {
@@ -39,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             Ok(c) => c,
             Err(_) => {
                 // specific fallback for dev convenience if config missing
-                 Config::dev_default()
+                Config::dev_default()
             }
         }
     };
@@ -51,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Initialize logging
     init_logging(&config);
-    
+
     info!("Starting Robert Server v{}", env!("CARGO_PKG_VERSION"));
 
     // Run server
