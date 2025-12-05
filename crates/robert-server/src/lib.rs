@@ -33,6 +33,7 @@ pub mod config;
 pub mod error;
 pub mod models;
 pub mod session;
+pub mod server;
 
 // Re-export commonly used types
 pub use config::Config;

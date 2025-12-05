@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { launchBrowser, processChatMessage } from '../lib/tauri';
+  import { processChatMessage } from '../lib/tauri';
   import type { WorkflowType, ClarificationQuestion } from '../lib/types';
   import UrlInput from './UrlInput.svelte';
 
@@ -38,12 +38,8 @@
 
     try {
       // Ensure browser is launched
+      // Browser launching is now handled by the server/agent workflow automatically
       if (!browserLaunched) {
-        // Get screen dimensions
-        const screenWidth = window.screen.width;
-        const screenHeight = window.screen.height;
-
-        await launchBrowser(screenWidth, screenHeight);
         browserLaunched = true;
       }
 

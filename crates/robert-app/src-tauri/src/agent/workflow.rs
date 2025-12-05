@@ -111,7 +111,8 @@ impl WorkflowExecutor {
         log::info!("║  🤖 CDP AUTOMATION WORKFLOW (DELEGATED TO SERVER)         ║");
         log::info!("╚═══════════════════════════════════════════════════════════╝");
 
-        let url = "http://localhost:9669/inference";
+        // Connect to robert-server on port 8443 (default)
+        let url = "http://localhost:8443/inference";
         let payload = serde_json::json!({
             "prompt": user_message
         });
@@ -121,11 +122,11 @@ impl WorkflowExecutor {
         let response = match http_client.post(url).json(&payload).send().await {
             Ok(res) => res,
             Err(e) => {
-                log::error!("Failed to connect to webdriver server: {}", e);
+                log::error!("Failed to connect to robert-server: {}", e);
                 return Ok(WorkflowResult {
                     success: false,
                     workflow_type: WorkflowType::CdpAutomation,
-                    message: "Failed to connect to webdriver server".to_string(),
+                    message: "Failed to connect to robert-server".to_string(),
                     cdp_script: None,
                     execution_report: None,
                     error: Some(format!("Connection failed: {}", e)),

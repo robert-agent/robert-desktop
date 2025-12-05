@@ -30,26 +30,51 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState::new())
         .setup(|app| {
             let state = app.state::<AppState>();
             let webdriver_mode = state.webdriver_mode.clone();
 
-            // Spawn a task to check webdriver status without blocking startup
+            // Spawn the embedded robert-server
             tauri::async_runtime::spawn(async move {
-                let client = reqwest::Client::new();
-                match client.get("http://localhost:9669/health").send().await {
-                    Ok(res) => {
-                        if res.status().is_success() {
-                            log::info!("✅ Webdriver detected at startup. Enabling webdriver mode.");
-                            *webdriver_mode.lock().await = true;
-                        } else {
-                            log::warn!("⚠️ Webdriver detected but returned error {}. Webdriver mode disabled.", res.status());
-                        }
-                    },
-                    Err(_) => {
-                        log::info!("ℹ️ Webdriver not detected at startup. Webdriver mode disabled.");
+                log::info!("🚀 Starting embedded robert-server...");
+                
+                // load dev defaults for now
+                let config = robert_server::Config::dev_default();
+                
+                // Spawn server in a separate task
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = robert_server::server::run(config).await {
+                        log::error!("❌ Embedded server error: {}", e);
                     }
+                });
+
+                // Wait for server to be healthy
+                let client = reqwest::Client::new();
+                let health_url = "http://localhost:8443/api/v1/health";
+                let mut retries = 0;
+                let max_retries = 30; // 30 attempts * 500ms = 15 seconds
+
+                while retries < max_retries {
+                    match client.get(health_url).send().await {
+                        Ok(res) => {
+                            if res.status().is_success() {
+                                log::info!("✅ Embedded robert-server is healthy and reachable at {}", health_url);
+                                *webdriver_mode.lock().await = true; // Still using this flag to indicate "backend ready"
+                                break;
+                            }
+                        }
+                        Err(_) => {
+                            // Server starting up...
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    retries += 1;
+                }
+
+                if retries >= max_retries {
+                     log::error!("❌ Timed out waiting for embedded server to start");
                 }
             });
             Ok(())

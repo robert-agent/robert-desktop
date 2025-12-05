@@ -66,7 +66,7 @@ pub async fn execute_webdriver_inference(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let client = &state.http_client;
-    let url = "http://localhost:9669/inference";
+    let url = "http://localhost:8443/inference";
 
     let payload = serde_json::json!({
         "prompt": prompt
