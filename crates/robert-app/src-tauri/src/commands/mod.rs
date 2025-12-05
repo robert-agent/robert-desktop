@@ -1,16 +1,16 @@
 mod agent;
-pub mod browser;
 mod developer_mode;
 mod feedback;
 mod logging;
 mod profiles;
+pub mod query;
 
 pub use agent::*;
-// Note: browser module is pub mod so we can selectively export commands to avoid conflicts
 pub use developer_mode::*;
 pub use feedback::*;
 pub use logging::*;
 pub use profiles::*;
+// Note: query module is pub mod so we can selectively export commands to avoid conflicts
 
 use crate::claude::health::{ClaudeHealthCheck, HealthStatus};
 use crate::events::*;

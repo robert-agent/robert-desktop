@@ -1,7 +1,12 @@
-/// Tauri commands for interacting with the standalone webdriver
+/// Tauri commands for querying the robert-server GraphRAG endpoints
 ///
-/// This module provides Tauri commands that check the status of the external
-/// webdriver server and proxy requests to it.
+/// This module provides Tauri commands for:
+/// - Querying the knowledge graph
+/// - Managing contexts (Personal/Work/Business)
+/// - Document ingestion
+/// - Memory management (mark as outdated, attribution)
+///
+/// NOTE: Currently contains legacy webdriver commands that should be migrated/removed
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -145,4 +150,106 @@ pub async fn close_browser_session(
 #[tauri::command]
 pub async fn close_all_browser_sessions(_state: State<'_, AppState>) -> Result<usize, String> {
     Ok(0)
+}
+
+// ============================================================================
+// GraphRAG Query Commands (TO BE IMPLEMENTED)
+// ============================================================================
+
+/// Request to query the knowledge graph
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphQueryRequest {
+    pub query: String,
+    pub context_id: Option<String>,
+    pub limit: Option<usize>,
+}
+
+/// Response from a graph query
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphQueryResponse {
+    pub answer: String,
+    pub sources: Vec<SourceAttribution>,
+    pub used_local_model: bool,
+    pub used_cloud_model: bool,
+}
+
+/// Source attribution for transparency
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceAttribution {
+    pub node_id: String,
+    pub content: String,
+    pub metadata: serde_json::Value,
+}
+
+/// Query the knowledge graph using robert-server
+#[tauri::command]
+pub async fn query_knowledge_graph(
+    _request: GraphQueryRequest,
+    _state: State<'_, AppState>,
+) -> Result<GraphQueryResponse, String> {
+    // TODO: Implement GraphRAG query via robert-server
+    // Should call POST /api/query endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
+}
+
+/// Ingest a document into the knowledge graph
+#[tauri::command]
+pub async fn ingest_document(
+    _path: String,
+    _context_id: String,
+    _state: State<'_, AppState>,
+) -> Result<(), String> {
+    // TODO: Implement document ingestion via robert-server
+    // Should call POST /api/ingest endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
+}
+
+/// Get available contexts (Personal, Work, etc.)
+#[tauri::command]
+pub async fn get_contexts(_state: State<'_, AppState>) -> Result<Vec<ContextInfo>, String> {
+    // TODO: Implement context listing via robert-server
+    // Should call GET /api/contexts endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
+}
+
+/// Context information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContextInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub is_active: bool,
+}
+
+/// Switch active context
+#[tauri::command]
+pub async fn set_active_context(
+    _context_id: String,
+    _state: State<'_, AppState>,
+) -> Result<(), String> {
+    // TODO: Implement context switching via robert-server
+    // Should call POST /api/contexts/:id/activate endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
+}
+
+/// Mark a node as outdated (reactive pruning)
+#[tauri::command]
+pub async fn mark_as_outdated(
+    _node_id: String,
+    _state: State<'_, AppState>,
+) -> Result<(), String> {
+    // TODO: Implement reactive pruning via robert-server
+    // Should call POST /api/nodes/:id/prune endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
+}
+
+/// Get attribution for a query result
+#[tauri::command]
+pub async fn get_attribution(
+    _node_id: String,
+    _state: State<'_, AppState>,
+) -> Result<Vec<SourceAttribution>, String> {
+    // TODO: Implement attribution retrieval via robert-server
+    // Should call GET /api/nodes/:id/attribution endpoint
+    Err("Not yet implemented - see TODO.md".to_string())
 }
