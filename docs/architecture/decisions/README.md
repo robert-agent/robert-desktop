@@ -5,7 +5,7 @@ This directory contains Architecture Decision Records (ADRs) documenting key arc
 ## Active ADRs
 
 - [ADR-001: Core Crate Structure](./adr-001-core-crate-structure.md) - Modular crate organization (robert-app, robert-server, robert-core, robert-graph)
-- [ADR-002: SurrealDB-Only Graph Architecture](./adr-002-surrealdb-only-graph.md) - Using SurrealDB exclusively for Alpha
+- [ADR-002: Hybrid Graph Architecture](./adr-002-hybrid-graph-architecture.md) - SurrealDB for persistence + Petgraph for ephemeral operations
 - [ADR-003: Robert Server Architecture](./adr-003-robert-server-architecture.md) - Server component with local + remote modes
 - [ADR-004: Split-Brain Generation Architecture](./adr-004-split-brain-generation.md) - Local "Little Brain" + Cloud "Big Brain"
 - [ADR-006: Local LLM as Hard Requirement](./adr-006-local-llm-requirement.md) - Required local model for privacy operations

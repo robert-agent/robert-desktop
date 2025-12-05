@@ -4,14 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio.workspace = true
-anyhow.workspace = true
-thiserror.workspace = true
-serde.workspace = true
+# Robert internal dependencies
+robert-graph = { workspace = true }
+
+# Core dependencies
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-robert-graph = { path = "../robert-graph" }
+
+# AI & ML
 async-openai = { workspace = true }
 candle-core = { workspace = true }
 candle-nn = { workspace = true }
@@ -23,4 +28,4 @@ regex = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"
-robert-graph = { path = "../robert-graph", features = ["test-utils"] }
+robert-graph = { workspace = true, features = ["test-utils"] }
